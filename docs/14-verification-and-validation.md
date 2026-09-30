@@ -31,7 +31,7 @@ This document explains how *Gemelo Digital Ecuador – El Niño* (GDE-Niño) pro
 
 ### 0.2 Owner codes
 
-The codes PL, DL, FL, FE, AI, SRE, DPO and TA come from [03](./03-architecture.md); PM, IC, COM, LI and LS from [11 §0](./11-operations-runbook.md#0-conventions); IM, HYD, EPI, AGR and PT from [07](./07-impact-modules-and-triggers.md); PA, LC and ETH from [13 §0.2](./13-governance-legal-risk.md). The governance bodies SC (*Comité Directivo*), TAG (*Grupo Técnico Asesor*) and MRC (*Comité de Riesgo de Modelos*, a TAG sub-committee) come from [12 §6.1](./12-roadmap-team-budget.md) and [13 §9.1](./13-governance-legal-risk.md). This document adds two codes:
+The codes PL, DL, FL, FE, AI, SRE, DPO and TA come from [03](./03-architecture.md); PM, IC, COM, LI and LS from [11 §0](./11-operations-runbook.md#0-conventions); IM, HYD, EPI, AGR and PT (partnerships lead, [12 §4.1](./12-roadmap-team-budget.md)) from [07](./07-impact-modules-and-triggers.md); LC and ETH from [13 §0.2](./13-governance-legal-risk.md), where PA is an alias of PT. The governance bodies SC (*Comité Directivo*), TAG (*Grupo Técnico Asesor*) and MRC (*Comité de Riesgo de Modelos*, a TAG sub-committee) come from [12 §6.1](./12-roadmap-team-budget.md) and [13 §9.1](./13-governance-legal-risk.md). This document adds two codes:
 
 | Code | Role | Notes |
 |---|---|---|
@@ -320,7 +320,7 @@ def ece(p: np.ndarray, y: np.ndarray, n_bins: int = 10) -> float:
 | CHIRPS v3 (truth) | Preliminary ≈2 days; final ≈3 weeks after month end **(unverified)** | 1981→ | — | Truth only |
 | SNGR SITREPs (truth) | As scraped | 2016→ | — | Truth only |
 
-**Out-of-sample proxy for 2023 (optional, Phase 2).** To estimate out-of-sample AI skill for the 2023 coastal El Niño, the GenCast `0p25deg <2019` open checkpoint ([weathernext repo](https://github.com/google-deepmind/weathernext)) can be self-run on weekly 12Z initialisations from March to June 2023 (≈17 runs). WN2 is described as about 8× faster than GenCast, and one WN2 member takes "just under 1 minute" on a TPU v5p (search summary), so one 50-member GenCast run is roughly 50 × 8 min = 400 min ≈ 6.7 chip-hours, US$14–28 at US$2.10–4.20 per v5p chip-hour (Spot to on-demand); 17 runs ≈ US$240–480 (**estimate; runtime unverified**). This is research use of open weights, never an operational source ([06](./06-forecast-model-stack.md)). Decision by FL at the 2027-01-15 checkpoint.
+**Out-of-sample proxy for 2023 (optional, Phase 2).** To estimate out-of-sample AI skill for the 2023 coastal El Niño, the GenCast `0p25deg <2019` open checkpoint ([weathernext repo](https://github.com/google-deepmind/weathernext)) can be self-run on weekly 12Z initialisations from March to June 2023 (≈17 runs). WN2 is described as about 8× faster than GenCast, and one WN2 member takes "just under 1 minute" on a TPU v5p (search summary), so one 50-member GenCast run is roughly 50 × 8 min = 400 min ≈ 6.7 chip-hours, US$14–28 at US$2.10–4.20 per v5p chip-hour (DWS Flex-start to on-demand, [09 §2.1](./09-cost-model.md)); 17 runs ≈ US$240–480 (**estimate; runtime unverified**). This is research use of open weights, never an operational source ([06](./06-forecast-model-stack.md)). Decision by FL at the 2027-01-15 checkpoint.
 
 ### 4.3 Event set
 
@@ -340,7 +340,7 @@ def ece(p: np.ndarray, y: np.ndarray, n_bins: int = 10) -> float:
 
 | Product | Hindcast source and period | Truth | Headline metrics | Deliverable | Owner, date |
 |---|---|---|---|---|---|
-| WN2 parish exceedance | WN2 2022-01-01 → 2026-09-30, 00Z and 12Z inits (1,734 days × 2 ≈ 3,470 inits. Scan estimate: ≈3,470 × 0.4 GB (two leaf columns at ≈0.2 GB each, [03 §7.5](./03-architecture.md)) ≈ 1.4 TB ≈ 1.26 TiB if clustering prunes poorly; ≈650 cells × 64 members × 60 leads × 8 B × 3,470 ≈ 69 GB if it prunes well. Split by month across billing months to stay inside the free TiB) | CHIRPS v3; held-out INAMHI stations; IMERG Final to 2025-09 | BSS, reliability, ROC by region, lead, ENSO phase; `training_overlap` split at 2025-01-01 | VR-01 rain hindcast report | VA, FL — 2026-11-13 |
+| WN2 parish exceedance | WN2 2022-01-01 → 2026-09-30, 00Z inits from `commons_internal.wn2_hindcast_members_ec` ([06 §3.9](./06-forecast-model-stack.md)): ≈1,730 inits × 0.4 GB (two leaf columns at ≈0.2 GB each, the basis of [03 §7.5](./03-architecture.md)) ≈ 0.69 TB ≈ 0.63 TiB upper estimate, ≈70 GB with exact pruning; spread over two billing months to stay inside the free TiB alongside routine scans. If 12Z scoring is needed, it is added to 06 §3.9, not extracted separately here | CHIRPS v3; held-out INAMHI stations; IMERG Final to 2025-09 | BSS, reliability, ROC by region, lead, ENSO phase; `training_overlap` split at 2025-01-01 | VR-01 rain hindcast report | VA, FL — 2026-11-13 |
 | IFS ENS baseline | WB2 2016–2024; open data 2023-07→ | Same | Same; paired differences vs WN2 | Part of VR-01 | VA — 2026-11-13 |
 | WN3 parish exceedance and QCRPS | 2026-01-01 → live | CHIRPS v3 prelim/final; stations | QCRPS (calibrated), BSS; results before 2026-07-01 flagged `possible` | VR-01 addendum; monthly | VA — 2026-11-13, then monthly |
 | Bias correction (`bc_params`) | Quantile mapping of WN2 daily rain against CHIRPS v3 (0.05°), trained 2022–2025 by month (±1 month), lead day and elevation class; WN3: regional pooling or delta mapping until a full wet season exists, then EMOS or a censored shifted-gamma model | Leave-one-season-out; held-out INAMHI stations | CRPSS gain raw → corrected; reliability slope | Model card `FC-BC-QM` | FL — 2026-11-06; EMOS decision 2027-02-15 |
@@ -521,7 +521,7 @@ flowchart LR
   EVV --> PUB
 ```
 
-Jobs `verification-daily`, `verification-weekly` and `verification-monthly` are already named in [03 §7.2](./03-architecture.md) and [11 §2.1](./11-operations-runbook.md). This document adds `verification-truth-build`, `verification-hindcast` and `verification-event`.
+Jobs `verification-daily`, `verification-weekly` and `verification-monthly` are already named in [11 §2.1](./11-operations-runbook.md) ([03 §7.2](./03-architecture.md) lists `verification-weekly`). This document adds `verification-truth-build`, `verification-hindcast` and `verification-event`.
 
 | Job | Trigger (UTC) | Inputs | Outputs | Runtime (estimate) | Owner |
 |---|---|---|---|---|---|
@@ -532,16 +532,16 @@ Jobs `verification-daily`, `verification-weekly` and `verification-monthly` are 
 | `verification-hindcast` | On demand | `hc_*`, `availability_log` | Pairs with `hindcast_run_id` | Hours (Delayed Jobs) | VA |
 | `verification-event` | On demand, ≤ 5 days after an event closes | Products, S1/EMS extents, SITREPs | `event_verification` rows; post-event report draft | 1–2 h + EECU | VA, IM |
 
-**Cost (estimate, from the verification brief's unit prices).** The items below sum to ≈US$9–52 one-off (WN2 0–8 + Sentinel-1 4–24 + IFS 5–20) and ≈US$4–7/month (EE 1–4 + storage ≈3). The planning envelope keeps the brief's rounded-up figure of **US$20–80 one-off plus US$5–15/month** to absorb re-runs:
+**Cost (estimate, from the verification brief's unit prices).** The items below sum to ≈US$9–48 one-off (WN2 0–4 + Sentinel-1 4–24 + IFS 5–20) and ≈US$4–7/month (EE 0.80–4 + storage ≈3). The planning envelope keeps the brief's rounded-up figure of **US$20–80 one-off plus US$5–15/month** to absorb re-runs:
 
 | Item | Assumption | Cost |
 |---|---|---|
-| WN2 hindcast extract | ≈69 GB (good pruning) to ≈1.26 TiB (poor pruning) for 00Z/12Z inits (§4.4) | US$0 if spread over two billing months; at most 1.26 TiB × US$6.25 ≈ US$8 if billed in full |
+| WN2 hindcast extract | ≈70 GB (good pruning) to ≈0.63 TiB (poor pruning), 00Z inits only ([06 §3.9](./06-forecast-model-stack.md), §4.4) | US$0 if spread over two billing months; at most 0.63 TiB × US$6.25 ≈ US$4 if billed in full |
 | WN3 statistics, daily scoring | ≈135 MB per init, ≈16 GB/month | US$0 (inside the free TiB) |
-| Earth Engine reductions (WN3, IMERG, CHIRPS) | 2–10 EECU-h/month × US$0.40 | US$1–4/month |
+| Earth Engine reductions (WN3, IMERG, CHIRPS) | 2–10 EECU-h/month × US$0.40 | US$0.80–4/month |
 | Sentinel-1 flood maps | 10–60 EECU-h per event season × US$0.40 | US$4–24 |
 | IFS ENS 2023 from the WB2 bucket | ≈1 TB read by Cloud Batch in `us-central1` | US$5–20 one-off |
-| BigQuery storage (member extract, pairs, scores) | ≈140 GB active × ≈US$0.023/GiB-month (≈US$0.016 at the long-term rate after 90 days) | ≈US$3/month |
+| BigQuery storage (member extract, pairs, scores) | ≈140 GB active × US$0.02/GiB-month (US$0.01 long-term after 90 days; first 10 GiB free, [09 §2.1](./09-cost-model.md)) | ≈US$3/month |
 
 Earth Engine: if LP-07 classes the Commons' operational use as commercial, the EECU-h above are billed at US$0.40 each under the Limited plan (usage fees only) instead of being free under a noncommercial tier; a Basic plan (US$500/month) is not needed at these volumes. This fits inside the Commons envelope of US$100–300/month.
 
@@ -553,7 +553,7 @@ Earth Engine: if LP-07 classes the Commons' operational use as commercial, the E
 import ee, datetime as dt
 ee.Initialize(project="ectwin-commons-prod")
 
-PARISHES = ee.FeatureCollection("projects/ectwin-commons-prod/assets/dim_dpa_parish")   # asset name to confirm (export of dim_dpa)
+PARISHES = ee.FeatureCollection("projects/ectwin-commons-prod/assets/dpa_parroquias")   # parish polygons, created by DL (06 §12)
 CHIRPS = "UCSB-CHC/CHIRPS/V3/DAILY_SAT"   # fallback: CHC COGs data.chc.ucsb.edu/products/CHIRPS/v3.0/daily/final/sat/cogs/YYYY/
 
 def parish_day(date: dt.date):
@@ -591,7 +591,7 @@ All are in `US`, partitioned where time-varying, `require_partition_filter = TRU
 | `reliability_bins` | `commons_pub` | stratum × bin | Reliability diagrams |
 | `event_verification` | `commons_pub` | observed event or false-alarm episode × product | Misses, false alarms, lead time |
 | `skill_lookup` (view) | `commons_pub` | stratum | Skill class for confidence labels |
-| `model_registry` | `commons_ops` | model × version | Governance (§8.6) |
+| `model_registry` | `commons_internal` | model × version | Governance (§8.6; base table in [06 §9](./06-forecast-model-stack.md)) |
 | `genai_eval_results` | `commons_internal` | eval item | Gemini evaluation (§7.3) |
 
 ```sql
@@ -759,7 +759,7 @@ Step 6 of the forecast cycle ([03 §4.2](./03-architecture.md)) reads `skill_cla
 
 ### 6.6 Tenant-side verification
 
-Tenants run the same library (`libs/ectwin_core/verification/`) inside their own project against their own observations: FR-075 reports in `ectwin.observations`, private gauges, Segura EP incident logs, insurer loss records. Results go to tenant tables and are **never** merged into national scores unless the tenant opts in and the data owner agrees. Trigger replays use the tenant's `ectwin.observed_events` and the contingency SQL of [07 §6.5](./07-impact-modules-and-triggers.md), always behind the as-of guard of §4.5.
+Tenants run the same library (`libs/ectwin_core/verification/`) inside their own project against their own observations: FR-075 reports in `ectwin.observations`, private gauges, Segura EP incident logs, insurer loss records. Results go to tenant tables and are **never** merged into national scores unless the tenant opts in and the data owner agrees. Trigger replays use the tenant's `ectwin.observed_events` and the contingency SQL of [07 §6.5](./07-impact-modules-and-triggers.md), always behind the as-of guard of §4.5. Tenant datasets and runner permissions: [04 §5.4](./04-identity-tenancy-byo-gcp.md) and [04 §5.3](./04-identity-tenancy-byo-gcp.md); tenant table DDL: [03 §5.4](./03-architecture.md); opt-in sharing path: [03 §4.6](./03-architecture.md).
 
 ---
 
@@ -787,7 +787,7 @@ The gold sets (E1–E6, EB1–EB4), labelling protocol (κ ≥ 0.70), gates and 
 
 ### 7.3 Gemini evaluation
 
-Gemini writes prose only (D18): Spanish bulletin narratives (Flash-Lite Batch; Phase 2), the analyst copilot and NL→SQL (Phase 3, opt-in per tenant, evaluated in December 2026), and escalations ([08 §8](./08-ai-decision-layer-jev.md)). The daily canton PDF of FR-044 stays template-only; an AI paragraph is added only after a human approves it ([08 §8.1](./08-ai-decision-layer-jev.md); MR-10 in [13 §9.3](./13-governance-legal-risk.md) requires 100% human sign-off before sending).
+Gemini writes prose only (D18): Spanish bulletin narratives (Flash-Lite Batch; Phase 2), the analyst copilot and NL→SQL (Phase 3, opt-in per tenant, off by default; pilot and evaluation under AI-24 by 2027-06-30, [08 §8.2](./08-ai-decision-layer-jev.md)), and escalations ([08 §8](./08-ai-decision-layer-jev.md)). The daily canton PDF of FR-044 stays template-only; an AI paragraph is added only after a human approves it ([08 §8.1](./08-ai-decision-layer-jev.md); MR-10 in [13 §9.3](./13-governance-legal-risk.md) requires 100% human sign-off before sending).
 
 | Use | Test set | Metric | Gate to publish or enable |
 |---|---|---|---|
@@ -806,7 +806,7 @@ Results go to `commons_internal.genai_eval_results` (`eval_id`, `use`, `prompt_v
 
 ### 8.1 Model inventory
 
-Anything that turns data into a number, level, class or text that users see is a governed "model". Each has an entry in `commons_ops.model_registry` (§8.6) and a model card. The last column maps each entry to the model-risk inventory and tiers of [13 §9.3](./13-governance-legal-risk.md) (Tier A: outputs seen by public institutions for life-safety-relevant decisions; Tier A models need MRC independent validation before G2).
+Anything that turns data into a number, level, class or text that users see is a governed "model". Each has an entry in `commons_internal.model_registry` (§8.6) and a model card. The last column maps each entry to the model-risk inventory and tiers of [13 §9.3](./13-governance-legal-risk.md) (Tier A: outputs seen by public institutions for life-safety-relevant decisions; Tier A models need MRC independent validation before G2).
 
 | Model id (examples) | Kind | Owner | Version key | Initial gate | Model-risk id and tier ([13 §9.3](./13-governance-legal-risk.md)) |
 |---|---|---|---|---|---|
@@ -933,7 +933,7 @@ The plan has one technical body, the *Grupo Técnico Asesor* (TAG, [12 §6.1](./
 | Aspect | Proposal |
 |---|---|
 | Members (voting) | The TAG members of [12 §6.1](./12-roadmap-team-budget.md): INAMHI (chair, proposed), INOCAR/CN-ERFEN, CIIFEN, two universities (for example ESPOL, EPN, UCuenca, USFQ; names **to confirm**), MSP, MAG, CELEC/CENACE. SNGR monitoring is listed as a TAG member in the partner table of [12](./12-roadmap-team-budget.md) but not in §6.1; its seat is **to confirm** in the terms of reference |
-| Members (non-voting) | FL and IM (TAG secretaries); AI, DPO, PT/PA; the MRC chair (the independent validator); a rotating user representative from a pilot COE; trigger owners for agenda items about their triggers |
+| Members (non-voting) | FL and IM (TAG secretaries); AI, DPO, PT; the MRC chair (the independent validator); a rotating user representative from a pilot COE; trigger owners for agenda items about their triggers |
 | MRC | Independent validator (a TAG academic member not on the build team, chair), FL, IM, AI, DPO; monthly, and ad hoc before any G2/G3 gate ([13 §9.1](./13-governance-legal-risk.md)). Prepares validation reports and recommendations for the CTC |
 | Cadence | First CTC session **2026-11-19** ([12 §6.1](./12-roadmap-team-budget.md)); monthly during the peak on the third Thursday (2026-12-17, 2027-01-21, 2027-02-18, 2027-03-18, 2027-04-15), inside the TAG's biweekly rhythm; quarterly otherwise; extraordinary sessions by written procedure within 48 h |
 | Quorum | Half of voting members plus one, including INAMHI |
@@ -960,27 +960,24 @@ The plan has one technical body, the *Grupo Técnico Asesor* (TAG, [12 §6.1](./
 
 ### 8.6 Model registry and audit trail
 
+The registry is the single table `ectwin-commons-prod.commons_internal.model_registry` defined in [06 §9](./06-forecast-model-stack.md) (no table expiry; loaded nightly from `catalog/models.yaml`). It is not in `commons_ops`, whose 400-day default table expiry ([03 §5.2](./03-architecture.md)) would silently drop governance and audit rows. V&V does not create a second table: it adds the governance columns below, filled from the same `catalog/models.yaml` entries. The base columns `model_id`, `version`, `kind`, `owner`, `status` (values of 06 §9), `valid_from` and `valid_to` are reused as they are.
+
 ```sql
-CREATE TABLE `ectwin-commons-prod.commons_ops.model_registry` (
-  model_id         STRING    NOT NULL,   -- e.g. 'FC-RAIN-WN2-EXC', 'RI', 'JEV-S3'
-  version          STRING    NOT NULL,   -- semver or ri-x.y.z or template_version
-  method_version   STRING,               -- git tag + image digest
-  kind             STRING    NOT NULL,
-  owner            STRING    NOT NULL,
-  upstream         JSON,                 -- external ids and versions
-  card_uri         STRING    NOT NULL,   -- path of model_card.yaml at the release tag
-  module_gate      STRING,               -- G0..G3
-  trigger_use      STRING,               -- TU-0..TU-3
-  status           STRING    NOT NULL,   -- 'shadow' | 'active' | 'demoted' | 'retired'
-  mcr_id           STRING,
-  approved_by      ARRAY<STRING>,
-  ctc_minute       STRING,
-  valid_from       TIMESTAMP NOT NULL,
-  valid_to         TIMESTAMP,
-  evidence_uris    ARRAY<STRING>          -- hindcast reports, shadow comparisons
-)
-CLUSTER BY model_id, status;
+-- Governance extension of 06 §9's table (columns added by ALTER are NULLABLE in BigQuery;
+-- the models.yaml CI check makes card_uri mandatory for every governed model)
+ALTER TABLE `ectwin-commons-prod.commons_internal.model_registry`
+  ADD COLUMN IF NOT EXISTS method_version STRING,         -- git tag + image digest
+  ADD COLUMN IF NOT EXISTS upstream       JSON,           -- external ids and versions
+  ADD COLUMN IF NOT EXISTS card_uri       STRING,         -- path of model_card.yaml at the release tag
+  ADD COLUMN IF NOT EXISTS module_gate    STRING,         -- G0..G3
+  ADD COLUMN IF NOT EXISTS trigger_use    STRING,         -- TU-0..TU-3
+  ADD COLUMN IF NOT EXISTS mcr_id         STRING,
+  ADD COLUMN IF NOT EXISTS approved_by    ARRAY<STRING>,
+  ADD COLUMN IF NOT EXISTS ctc_minute     STRING,
+  ADD COLUMN IF NOT EXISTS evidence_uris  ARRAY<STRING>;  -- hindcast reports, shadow comparisons
 ```
+
+Governed model ids follow §8.1 (for example `FC-RAIN-WN2-EXC`, `RI`, `JEV-S3`); `version` holds a semver, `ri-x.y.z` or a template version.
 
 Every published row already carries `method_version` (and `risk_index_version`, `model_version` where relevant, [03 §5.3](./03-architecture.md)), so any number on a map, PDF or evidence pack can be traced back to its registry entry, its card and its approvals. Evidence packs ([07 §6.6](./07-impact-modules-and-triggers.md)) include the registry rows and the skill card valid at pack time.
 
@@ -1113,7 +1110,8 @@ gantt
   Season verification report                  :vv32, 2027-05-17, 45d
   Recalibration and model cards v2            :vv33, 2027-07-01, 30d
   OpenHydroNet and GloFAS v5 evaluation       :vv34, 2027-06-01, 92d
-  Hydro-energy and scenario-engine tests      :vv35, 2027-07-15, 62d
+  Scenario-engine sensitivity test            :vv33b, 2027-07-01, 30d
+  Hydro-energy and drought verification       :vv35, 2027-07-15, 62d
   Hand-over package                           :vv36, 2027-09-01, 30d
 ```
 
@@ -1123,13 +1121,13 @@ gantt
 | VV-0.1 | 2026-10-02 | FL named as V&V accountable (FL covers VA duties until the VA starts, planned 2026-10-23 in [12](./12-roadmap-team-budget.md)); `libs/ectwin_core/verification/` skeleton with `metrics.py` | Unit tests for every metric in §3.1 pass against hand-computed cases and an independent implementation | FL |
 | VV-0.2 | 2026-10-06 | Day-1 archiving live (M0.2 of [03 §13](./03-architecture.md)); `availability_log` written for every live product | ≥ 3 consecutive days of INAMHI, Flood API, COE2 and SITREP captures; `available_at` present for 100% of published partitions | DL, VA |
 | VV-0.3 | 2026-10-09 | Truth access checks | CHIRPS v3 route decided (EE or CHC COGs) with a test month loaded; IMERG Late aggregation tested for 12Z–12Z; EMSR870, EMSR789, EMSR796, EMSR813 vectors downloaded; written requests sent for INAMHI historical station and discharge data (MoU) and to the BYU/GEOGloWS team for the 182-station archive **(to confirm)**; questions sent to Google on WN2/WN3 archive model versions and backfill timing | VA, PT, FL |
-| VV-0.4 | 2026-10-16 | Pre-registration v0 and governance drafts | Metrics, strata, event definitions and TU criteria (§5) circulated to INAMHI; model card schema in CI; model-governance annex to the TAG terms of reference (CTC sessions, MRC procedure, §8.5) drafted with PA and DPO, consistent with [12 §6.1](./12-roadmap-team-budget.md) and [13 §9.1](./13-governance-legal-risk.md) | FL, PA |
+| VV-0.4 | 2026-10-16 | Pre-registration v0 and governance drafts | Metrics, strata, event definitions and TU criteria (§5) circulated to INAMHI; model card schema in CI; model-governance annex to the TAG terms of reference (CTC sessions, MRC procedure, §8.5) drafted with PT and DPO, consistent with [12 §6.1](./12-roadmap-team-budget.md) and [13 §9.1](./13-governance-legal-risk.md) | FL, PT |
 | **Phase 1 – MVP** | | | | |
 | VV-1.1 | 2026-10-23 | Truth tables | `truth_precip_parish` (CHIRPS v3 1991→present, IMERG Late 2025-10→), `clim_exceedance_parish` 1991–2020 for all INAMHI thresholds; station QC flags applied | VA |
-| VV-1.2 | 2026-10-30 | Hindcast pairs | WN2 2022-01→2026-09 and IFS ENS 2016–2024 pairs for Ecuador; WN3 2026-01→ pairs; all with `training_overlap` and `availability_basis`; total scan within the estimate of [03 §7.5](./03-architecture.md) | VA |
+| VV-1.2 | 2026-10-30 | Hindcast pairs | WN2 2022-01→2026-09 and IFS ENS 2016–2024 pairs for Ecuador; WN3 2026-01→ pairs; all with `training_overlap` and `availability_basis`; WN2 scan within the extract estimate of [06 §3.9](./06-forecast-model-stack.md) (§4.4) | VA |
 | VV-1.3 | 2026-11-06 | Coupling indicator calibrated (VR-04, CTX-03); bias correction `FC-BC-QM` v1; river pairs | Coupling ROC AUC and leave-one-year-out weights published; QM improves CRPSS on held-out stations (paired bootstrap) or is not deployed; GRRR, GEOGloWS (split-sample), GloFAS and Flood API pairs built | FL, VA |
 | VV-1.4 | 2026-11-13 | Hindcast reports VR-01 (rain), VR-02 (rivers), VR-03 (seasonal) | Reviewed at the INAMHI Thursday session of 2026-11-12; each report lists misses and false alarms for 2015-16, 2017, 2023 and 2026; signed FL + LI | FL, LI |
-| VV-1.5 | 2026-11-19 | First CTC session (TAG model-governance session) | Model-governance annex adopted; pre-registration v1 discussed; TU levels of pilot indicators reviewed; MRC validation plan for Tier A products (MR-01, MR-02, MR-03, MR-12) agreed | PA, FL |
+| VV-1.5 | 2026-11-19 | First CTC session (TAG model-governance session) | Model-governance annex adopted; pre-registration v1 discussed; TU levels of pilot indicators reviewed; MRC validation plan for Tier A products (MR-01, MR-02, MR-03, MR-12) agreed | PT, FL |
 | VV-1.6 | 2026-11-20 | Confidence labels live with `ri-1.0.0` | `skill_lookup` populated; labels and texts of §5.3 rendered; "sin verificar aún" shown where `n_events < 5`; model cards for all Phase 1 products (`FC-RAIN-*`, `FC-BC-QM`, `FC-RIVER-STATUS`, `ENSO-COUPLING`, `SEAS-CANTON-MME`, `RI`, M1, M10) | FL, FE |
 | VV-1.7 | 2026-11-23 | First `verification-weekly` run in prod and first public scorecard | SLO-11 met ([11 §4.1](./11-operations-runbook.md)); scorecard PDF published; DB-08 public copy live | VA |
 | VV-1.8 | 2026-11-27 | Pre-registration frozen; trigger backtests for pilot triggers; Jev go/no-go; MVP V&V gate | Tag `vv-prereg-2026-27`; TR-03, TR-04 and TR-05 (or the pilot partners' equivalents) have backtest sheets with TU levels; Jev gates per [08 §9.5](./08-ai-decision-layer-jev.md) decided; no Phase 1 product without a model card | FL, IM, AI, PM |
@@ -1146,8 +1144,9 @@ gantt
 | VV-3.1 | 2027-05-15 (or earlier if CN-ERFEN declares the event over) | Season closed; data freeze | Raw archive of the season frozen with a DR check ([11 §12.4](./11-operations-runbook.md)); final truth scheduled (CHIRPS final for April expected late May, **unverified**) | DL, VA |
 | VV-3.2 | 2027-06-30 | Season verification report 2026-27 | Every pre-registered metric reported; deviations explained; misses and false alarms listed; approved by the CTC; open dataset and code tag published | FL, CTC |
 | VV-3.3 | 2027-07-30 | Recalibration and model cards v2 | Bias correction, thresholds and `ri-2.x` weights refitted on the full season through MCRs; all cards updated | FL, IM |
+| VV-3.3b | 2027-07-31 | WN2 perturbed-SST scenario engine sensitivity test | Engine at G1 or formally parked with the result published ([12 §2.4](./12-roadmap-team-budget.md), [07 §7.4](./07-impact-modules-and-triggers.md)) | FL |
 | VV-3.4 | 2027-08-31 | OpenHydroNet Ecuador (VR-06) and GloFAS v5 | Leave-basin-out KGE and event scores vs GRRR, GEOGloWS BC and GloFAS; GloFAS v5.0 re-verified if operational; `OHN-EC` gate decided | FL, HYD |
-| VV-3.5 | 2027-09-15 | Hydro-energy and drought verification (M8); WN2 perturbed-SST scenario engine sensitivity test | M8 G-level decided on 2014→ record including 2024; scenario engine at G1 or formally parked by 2027-09-30 ([07 §8](./07-impact-modules-and-triggers.md)) | IM, FL |
+| VV-3.5 | 2027-09-15 | Hydro-energy and drought verification (M8) | M8 G-level decided on 2014→ record including 2024 | IM |
 | VV-3.6 | 2027-09-30 | Hand-over package for Phase 4 | V&V standard operating procedures, runbooks for all verification jobs, model registry export, pre-registration template for 2027-28, external peer review by INAMHI and academia | FL, PM |
 
 **Staffing (estimate).** VA full time from 2026-10-23 (the second data-engineer position in [12](./12-roadmap-team-budget.md); FL covers VA duties in Phase 0, and in the minimum variant VA duties fall on FL and CS); FL about 40% on V&V in Phases 1–2; LI about 4 h/week (Thursday review plus co-signing); IM, AI, HYD and EPI as per their module milestones; CTC members about 3 h/month in the peak. Headcount and budget are consolidated in [12-roadmap-team-budget.md](./12-roadmap-team-budget.md).
