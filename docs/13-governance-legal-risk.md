@@ -35,7 +35,7 @@ This document sets the legal, institutional and risk framework under which *Geme
 
 ### 0.2 Owner roles
 
-This document uses the codes in [03 §0](./03-architecture.md) (PL, DL, FL, FE, AI, SRE, DPO, TA), [11 §0](./11-operations-runbook.md#0-conventions) (PM, IC, COM, LI, LS) and [07](./07-impact-modules-and-triggers.md) (IM). It adds three:
+This document uses the codes in the owner-role table at the top of [03](./03-architecture.md) (PL, DL, FL, FE, AI, SRE, DPO, TA, PM), [11 §0](./11-operations-runbook.md#0-conventions) (PM, IC, COM, LI, LS) and [07](./07-impact-modules-and-triggers.md) (IM). It adds three:
 
 | Code | Role | Notes |
 |---|---|---|
@@ -43,7 +43,7 @@ This document uses the codes in [03 §0](./03-architecture.md) (PL, DL, FL, FE, 
 | LC | Ecuadorian legal counsel | External firm retained by the operator; signs off legal texts and positions. Engagement by **2026-10-09** |
 | ETH | Ethics and inclusion lead | UX lead by default until named in [12-roadmap-team-budget.md](./12-roadmap-team-budget.md) |
 
-The DPO in [03](./03-architecture.md) combines security and data protection until Phase 2. From Phase 2 (by 2027-01-15) a separate information-security officer is recommended once more than 30 tenants are live (§10.1).
+The DPO in [03](./03-architecture.md) combines security and data protection until Phase 2. From Phase 2 (by 2027-01-15) a separate information-security officer is recommended once more than 30 tenants are live (§10.1). Because the Reglamento requires the DPO to act independently and bars people with conflicts of interest (Reglamento Arts. 48 and 56), the combined role is a known compromise; §2.7 sets the safeguards.
 
 ### 0.3 Key legal positions (summary register)
 
@@ -74,9 +74,10 @@ Each position has an ID so that code, contracts and tickets can refer to it.
 | Constitution Art. 389 ¶1–2 | The State protects people, communities and nature from disasters; it exercises *rectoría* "a través del organismo técnico establecido en la ley" | ¶1 [VP] via [WRI NDC mirror](https://github.com/wri/ndc/blob/HEAD/ECU-second_ndc-ES.html); ¶2 function 2 "generar, democratizar el acceso y difundir información suficiente y oportuna" (unverified) |
 | Constitution Art. 390 | *Descentralización subsidiaria*: each GAD is directly responsible within its territory | (unverified) |
 | Ley Orgánica para la Gestión Integral del Riesgo de Desastres | Published RO No. 488, 30 Jan 2024 [VS]. SNGR is the *ente rector* "con rango de ministerio", with COEs and a Comité Nacional de Reducción de Riesgos ([RESDAL text](https://github.com/Juanesillo/codefest-ad-astra-2026/blob/HEAD/lib/data/processed/DOC-1606.txt)) | **The article reserving alert declaration to SNGR was not retrieved (to confirm)** |
-| Reglamento General of the law | Executive Decree 394, 18 Sep 2024 per [01 §8.1](./01-context-el-nino-ecuador.md#81-legal-framework) [S]; the legal brief could not verify the decree number | To confirm |
+| Reglamento General of the law | Executive Decree 394, 18 Sep 2024 per [01 §8.1](./01-context-el-nino-ecuador.md#81-legal-framework) (secondary source there); the legal brief could not verify the decree number | [VS]; to confirm |
 | Decreto Ejecutivo 641 (Jan 2023) | Renamed SGR to SNGR | [VS] |
 | LOPDP Art. 2(e) | Excludes from the LOPDP personal data regulated by specialised disaster-risk rules of equal or higher rank, but human-rights standards and LOPDP principles still apply ([LOPDP mirror](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/lopd.md)) | [VP]; covers SNGR/COE lists of *damnificados*, **not** the platform's own user data |
+| LOPDP Art. 11 | Personal data governed by specialised rules on *gestión de riesgos* and *desastres naturales* follow the principles of those rules and of the LOPDP, with human-rights standards and at least legality, proportionality and necessity | [VP] (same mirror); relevant to ECU 911/SNGR narratives (PA-08) |
 
 **Institutional competences the twin must respect** (from prior knowledge, consistent with the spine and [01 §8.2](./01-context-el-nino-ecuador.md#82-actors-roles-and-what-the-twin-exchanges-with-them); article numbers to confirm):
 
@@ -137,7 +138,7 @@ The Gemini bulletin prompts (component 29 in [03 §3](./03-architecture.md#3-com
 
 The keys **D1–D13** are those proposed in [02 §8.5](./02-users-requirements-ux.md#85-disclaimer-texts-spanish-proposals). This section fixes **version 1.0.0** of each text for legal review and adds the **L-series** for the API, PDF, first-run notice, English equivalents and terms of service. Texts live in `legal/texts/es-EC.yaml` and `legal/texts/en.yaml`; each has an ID, a semantic version and a SHA-256. Every rendered surface records the version it showed, and user acceptance is stored in tenant Firestore `users/{uid}.ack_disclaimer_version` ([03 §5.6](./03-architecture.md#5-storage-layout)).
 
-**Rules.** (1) D2 and D3 appear on every screen footer, every PDF page and every API response that carries a platform product. (2) D4 appears, in English and verbatim, on every WeatherNext-derived output, as §4(b) of the WeatherNext terms requires. (3) Texts are never shortened below D1 on any surface. (4) A change to a text is a new version, approved by LC, announced 7 days ahead on the methodology page, except corrections required by law.
+**Rules.** (1) D2 and D3 appear on every screen footer, every PDF page and every API response that carries a platform product. (2) D4 appears, in English and verbatim, on every WeatherNext-derived output. §4(b) of the WeatherNext terms requires it whenever findings from real-time data or a Non-Retrievable VAS are shared; the platform applies it to all WeatherNext-derived output for simplicity, including derivatives of ≥1 h-old CC BY 4.0 data, where it also serves as the CC BY attribution. (3) Texts are never shortened below D1 on any surface. (4) A change to a text is a new version, approved by LC, announced 7 days ahead on the methodology page, except corrections required by law.
 
 #### 1.4.1 In-app texts (Spanish, version 1.0.0)
 
@@ -161,46 +162,52 @@ The keys **D1–D13** are those proposed in [02 §8.5](./02-users-requirements-u
 
 **D4 (verbatim English; WeatherNext ToU §4(b)).** "© 2024-6 Google LLC, whose machine learning models were used to create the experimental data made available under the following licence terms https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for experimental modelling only and is not intended, validated, or approved for real world use." It must also name the Google product used to access the data (for example "WeatherNext 3 via BigQuery") ([ToU](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)). The Spanish informative translation in [02 §8.5](./02-users-requirements-ux.md#85-disclaimer-texts-spanish-proposals) follows it and is labelled «Traducción informativa».
 
-**D5 (export bundle for WeatherNext data or a Retrievable VAS).** Files: `WEATHERNEXT_TERMS.pdf` (copy of the terms), `LEGALLY_BINDING_TERMS_OF_USE.txt` containing exactly "By using this information, you agree to the Terms of Use found at https://storage.googleapis.com/weathernext-public/terms-of-use.pdf", the prominent notice "Copyright 2024-6 Google LLC", and `MODIFICATIONS.txt` describing every change made (ToU §4(a)(i)–(iv)). The export service must not add any clause that conflicts with the terms.
+**D5 (export bundle for WeatherNext data or a Retrievable VAS).** Files: `WEATHERNEXT_TERMS.pdf` (copy of the terms), `LEGALLY_BINDING_TERMS_OF_USE.txt` containing exactly "By using this information, you agree to the Terms of Use found at https://storage.googleapis.com/weathernext-public/terms-of-use.pdf", the prominent notice "Copyright 2024-6 Google LLC" (in `COPYRIGHT.txt` and in the header of every data file), and `MODIFICATIONS.txt` describing every change made (ToU §4(a)(i)–(iv)). The export service must not add any clause that conflicts with the terms.
 
 #### 1.4.2 PDF footer (composite, both pages of the canton report)
 
-```
+```text
 GDE-Niño · Apoyo a la decisión · Pronóstico experimental · No es una alerta oficial      [D1]
 Producto informativo de apoyo a la decisión; no constituye alerta oficial. Las alertas oficiales
-las declara la SNGR con base en la información de INAMHI, INOCAR y el CN-ERFEN. Consulte
-gestionderiesgos.gob.ec y alertasecuador.gob.ec.                                            [D2]
+las declara la Secretaría Nacional de Gestión de Riesgos (SNGR) con base en la información de
+INAMHI, INOCAR y el CN-ERFEN. Consulte gestionderiesgos.gob.ec y alertasecuador.gob.ec.    [D2]
 No utilice este producto como única base para decisiones que afecten la vida o la seguridad
-de las personas. Ante una emergencia, siga las instrucciones de las autoridades y llame al ECU 911. [D3]
-WeatherNext 3 via BigQuery: © 2024-6 Google LLC, whose machine learning models were used ... real world use. [D4]
+de las personas. Ante una emergencia, siga las instrucciones de las autoridades competentes
+y llame al ECU 911.                                                                        [D3]
+WeatherNext 3 via BigQuery: © 2024-6 Google LLC, whose machine learning models were used to
+create the experimental data made available under the following licence terms
+https://storage.googleapis.com/weathernext-public/terms-of-use.pdf. This data is intended for
+experimental modelling only and is not intended, validated, or approved for real world use. [D4]
 Fuentes: INAMHI; SNGR; GloFAS (Copernicus Emergency Management Service); GEOGloWS/ECMWF; INEC CPV 2022; © OpenStreetMap contributors (ODbL).
 Versión de textos legales 1.0.0 · Método [method_version] · Corrida [init_time UTC] · Página x/y
 ```
 
-The GloFAS/Copernicus and GEOGloWS/ECMWF statements must be copied from the provider texts (`s3://geoglows-v2/licenses.md` for GEOGloWS; the EWDS dataset licence page for GloFAS) **(exact texts to confirm, owner DPO, by 2026-11-06)**.
+The footer repeats D2, D3 and D4 word for word (rule 3); only line breaks differ. The GloFAS/Copernicus and GEOGloWS/ECMWF statements must be copied from the provider texts (`s3://geoglows-v2/licenses.md` for GEOGloWS; the EWDS dataset licence page for GloFAS) **(exact texts to confirm, owner DPO, by 2026-11-06)**.
 
 #### 1.4.3 API legal block
 
 Every response that carries a platform product adds a `legal` object next to `data_versions`, `attribution` and `official_alerts` ([03 §6.1](./03-architecture.md#61-conventions)); this is an extension to adopt in [03 §6.5](./03-architecture.md#65-response-example). The broker also sets the header `X-Ectwin-Official: false`.
 
 ```json
-"legal": {
-  "official": false,
-  "product_class": "apoyo_a_la_decision",
-  "texts_version": "1.0.0",
-  "disclaimer": {"id": "D2", "text": "Producto informativo de apoyo a la decisión; no constituye alerta oficial. …"},
-  "life_safety": {"id": "D3", "text": "No utilice este producto como única base …"},
-  "citations": [
-    {"id": "D4", "source": "WeatherNext 3 via BigQuery",
-     "text": "© 2024-6 Google LLC, whose machine learning models were used to create the experimental data …"}
-  ],
-  "licence": {"licence_class": "wn_nrva", "commercial_ok": true, "layer_ids": ["parish_exceedance"]},
-  "terms_url": "https://<APP_DOMAIN>/legal/terminos",
-  "privacy_url": "https://<APP_DOMAIN>/legal/privacidad"
+{
+  "legal": {
+    "official": false,
+    "product_class": "apoyo_a_la_decision",
+    "texts_version": "1.0.0",
+    "disclaimer": {"id": "D2", "text": "Producto informativo de apoyo a la decisión; no constituye alerta oficial. …"},
+    "life_safety": {"id": "D3", "text": "No utilice este producto como única base …"},
+    "citations": [
+      {"id": "D4", "source": "WeatherNext 3 via BigQuery",
+       "text": "© 2024-6 Google LLC, whose machine learning models were used to create the experimental data …"}
+    ],
+    "licence": {"licence_class": "wn_nrva", "commercial_ok": true, "layer_ids": ["parish_exceedance"]},
+    "terms_url": "https://<APP_DOMAIN>/legal/terminos",
+    "privacy_url": "https://<APP_DOMAIN>/legal/privacidad"
+  }
 }
 ```
 
-`<APP_DOMAIN>` is still to be confirmed ([03 §14](./03-architecture.md#14-open-questions)). The OpenAPI contract at `schemas/api/openapi.yaml` marks `legal` as required on every `/v1/national/*` and `/v1/t/{tid}/aois/*/forecast` response.
+The texts are shortened with "…" in this example only; the API always returns the full versioned text of D2, D3 and D4 (rule 3). `<APP_DOMAIN>` is still to be confirmed ([03 §14](./03-architecture.md#14-open-questions)). The OpenAPI contract at `schemas/api/openapi.yaml` marks `legal` as required on every `/v1/national/*` and `/v1/t/{tid}/aois/*/forecast` response.
 
 #### 1.4.4 English equivalents (en, version 1.0.0)
 
@@ -242,7 +249,7 @@ sequenceDiagram
   Note over UI: Official band stays on top. No push to the public.
 ```
 
-Rules: (1) the divergence flag fires when ≥2 cantons in a province have *Nivel 4* at lead ≤72 h and no SNGR alert covers them; (2) the *nota técnica* is sent by email to LS and LI within 2 h in posture N2/N3, never through the *Mesa de enlace* chat, which carries operational notices only ([12 §6.1](./12-roadmap-team-budget.md#61-bodies)) ([11 §3](./11-operations-runbook.md#3-el-niño-event-mode)); (3) the note carries D2, D3 and D4; (4) the twin never contacts the media or the public about the divergence; (5) every divergence and its outcome is logged in `commons_ops.divergence_log` **(new table)** and reviewed at the next TAG session (§9.1).
+Rules: (1) the divergence flag fires when ≥2 cantons in a province have *Nivel 4* at lead ≤72 h and no SNGR or COE alert specific to those cantons and that hazard covers them. An event-wide declaration such as SNGR-193-2026 (*Alerta Naranja* for the "evento El Niño 2026–2027") does not count as covering them, otherwise the flag could never fire during this season **(criterion to confirm with LS)**; (2) the *nota técnica* is sent by email to LS and LI within 2 h in posture N2/N3 ([11 §3](./11-operations-runbook.md#3-el-niño-event-mode)), never through the *Mesa de enlace* chat, which carries operational notices only ([12 §6.1](./12-roadmap-team-budget.md#61-bodies)); (3) the note carries D2, D3 and D4; (4) the twin never contacts the media or the public about the divergence; (5) every divergence and its outcome is logged in `commons_ops.divergence_log` **(new table)** and reviewed at the next TAG session (§9.1).
 
 ### 1.6 Media and public communication policy
 
@@ -260,8 +267,8 @@ Rules: (1) the divergence flag fires when ≥2 cantons in a province have *Nivel
 
 | Instrument | Content relevant to GDE-Niño | Source |
 |---|---|---|
-| LOPDP, Quinto Suplemento RO 459, 26 May 2021 | Principles (Art. 10), lawful bases (Art. 7), rights (Arts. 12–20), security (Arts. 37–46), duties (Art. 47), DPO (Art. 48), transfers (Arts. 55–60), sanctions (Arts. 67–72) | [VP] [mirror](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/lopd.md) |
-| Reglamento General, Decreto Ejecutivo 904 (signed 6 Nov 2023; Tercer Suplemento RO 435, 13 Nov 2023) | Apoderado especial (Art. 3), breach content (Art. 26), DPIA (Art. 31), joint controllers (Art. 37), RAT (Arts. 38–39), processor contract (Art. 41), processor-as-controller (Art. 43), sub-processing (Art. 45), deletion (Art. 46), audit (Art. 47), DPO requirements (Art. 55), transfers (Arts. 71–78) | [VP] [mirror](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/decreto.md); publication [VS] [catalogue](https://github.com/CarlosJChileS/eculegaldev/blob/HEAD/data/normativa.json) |
+| LOPDP, Quinto Suplemento RO 459, 26 May 2021 | Scope (Arts. 2–3), lawful bases (Art. 7), legitimate interest (Art. 9), principles (Art. 10), specialised rules incl. disaster risk (Art. 11), rights (Arts. 12–24), special categories (Art. 25), processor access is not a transfer (Art. 34), security, privacy by design, DPIA and breaches (Arts. 37–46), duties (Art. 47), DPO (Arts. 48–50), Registro Nacional (Art. 51), transfers (Arts. 55–61), infractions (Arts. 67–70) and sanctions (Arts. 71–72) | [VP] [mirror](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/lopd.md) |
+| Reglamento General, Decreto Ejecutivo 904 (signed 6 Nov 2023; Tercer Suplemento RO 435, 13 Nov 2023) | Apoderado especial (Art. 3), when a breach is a risk (Art. 24), breach content (Art. 26) and processor notice content (Art. 27), DPIA (Arts. 29–31) and its content and filing (Art. 32), joint controllers (Art. 37), RAT (Arts. 38–39; processor RAT Art. 44), processor contract (Art. 41), processor assists with rights (Art. 42), processor-as-controller (Art. 43), sub-processing (Art. 45), deletion (Art. 46), audit (Art. 47), DPO independence and designation (Arts. 48–49), "control permanente y sistematizado" (Art. 53), DPO requirements (Art. 55) and impediments (Art. 56), transfers (Arts. 71–78), registration deadline (Art. 86) | [VP] [mirror](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/decreto.md); publication [VS] [catalogue](https://github.com/CarlosJChileS/eculegaldev/blob/HEAD/data/normativa.json) |
 | Sanctions regime | In force since 26 May 2023 (Transitoria Primera) | [VP] |
 | SPDP-SPDP-2024-0002-R (RO 640, 10 Sep 2024) | Registry of *apoderados especiales* for foreign controllers and processors | [VS] |
 | 2025-0003-R | Risk management and impact-assessment guide | [VS] |
@@ -280,8 +287,8 @@ Sources for the resolutions: [catalogue](https://github.com/CarlosJChileS/eculeg
 ### 2.2 Scope and applicability
 
 - **Territorial (Art. 3).** The LOPDP applies to processing in Ecuador and to foreign controllers or processors that offer services to, or monitor, residents of Ecuador. It therefore applies to the operator wherever it is incorporated.
-- **Apoderado especial (Reglamento Art. 3).** A foreign controller or processor must appoint a special attorney resident in Ecuador and register it (Res. 2024-0002-R). **Decision GOV-D1 (§9.2): the operating entity.** Option A: an Ecuadorian-domiciled entity operates the platform (no apoderado needed). Option B: a foreign entity operates it and appoints an apoderado by 2026-10-30. Option C: a public host (SNGR/INAMHI) operates it, in which case a DPO and EGSI alignment are mandatory from day one. Recommended: A or C; decision by **2026-10-09** (owner PM, LC).
-- **Art. 2(e) carve-out.** SNGR and COE processing under specialised disaster-risk rules (for example lists of *damnificados* and *albergados*) is outside the LOPDP, subject to human-rights standards and LOPDP principles. The platform does **not** process such lists; the Acceptable Use Policy (§8.3) forbids uploading them to tenant projects.
+- **Apoderado especial (Reglamento Art. 3).** A foreign controller or processor must appoint a special attorney resident in Ecuador and register it (Res. 2024-0002-R). The only exception (Art. 3.2) is processing that is occasional, involves no large-scale special-category data and is unlikely to entail risk; the platform's processing is continuous, so the exception does not apply. **Decision GOV-D1 (§9.2): the operating entity.** Option A: an Ecuadorian-domiciled entity operates the platform (no apoderado needed). Option B: a foreign entity operates it and appoints an apoderado by 2026-10-30. Option C: a public host (SNGR/INAMHI) operates it, in which case a DPO and EGSI alignment are mandatory from day one. Recommended: A or C; decision by **2026-10-09** (owner PM, LC).
+- **Art. 2(e) carve-out.** SNGR and COE processing under specialised disaster-risk rules of equal or higher rank (for example lists of *damnificados* and *albergados*) is outside the LOPDP, subject to human-rights standards and LOPDP principles; Art. 11 adds that such processing follows the principles of its own rules and of the LOPDP, at minimum legality, proportionality and necessity. The platform does **not** process such lists; the Acceptable Use Policy (§8.3) forbids uploading them to tenant projects.
 - **Art. 2(a) household exemption** may cover an individual who connects a personal GCP project for private use. Organisations must use organisational projects (D7), so the exemption is not relied on.
 - **Public servants' professional contact data** (name, role, institutional email, professional phone) are accessible and processable when they refer to the exercise of the post (Art. 2, last paragraph). This covers liaison lists and SNGR posts that name officials.
 
@@ -308,8 +315,8 @@ Rules: (1) the operator never uses tenant AOIs, logs or reports for its own purp
 
 | Activity | Lawful basis | Notes |
 |---|---|---|
-| PA-01–PA-03 | Art. 7(5) contract performance (terms of use) and Art. 7(8) legitimate interest for security logs | Legitimate-interest balancing test documented per Res. 2025-0041-R **(to confirm format)** |
-| PA-04–PA-06 for public tenants | Art. 7(4) mission in the public interest / exercise of public powers of the tenant | The tenant's DPO documents the competence |
+| PA-01–PA-03 | Art. 7(5) contract performance (terms of use) and Art. 7(8) legitimate interest for security logs | Art. 9: only strictly necessary data, transparency to the user, and the SPDP may ask for a risk report. Balancing test documented per Res. 2025-0041-R **(to confirm format)** |
+| PA-04–PA-06 for public tenants | Art. 7(4) mission in the public interest / exercise of public powers "derivados de una competencia atribuida por una norma con rango de ley"; Art. 7(2) legal obligation where a statute imposes the processing | The tenant's DPO documents the competence and the law that grants it |
 | PA-04–PA-06 for private tenants | Art. 7(5) contract (employment or service relationship) or Art. 7(8) | Tenant's own analysis |
 | PA-07 | Art. 7(1) consent of the reporter, specific to verification | Consent text in-app; photos optional; withdraw anytime |
 | PA-08 | Art. 7(4) and Art. 7(6) vital interests for the controller; operator acts on instructions | Art. 2(e) specialised-norm analysis by ECU 911/SNGR counsel |
@@ -319,23 +326,29 @@ Consent is never bundled with the terms of use; the FEF fine for invalid consent
 
 ### 2.5 Record of processing activities (RAT)
 
-A RAT is required for controllers with ≥100 workers, or for processing that is risky, non-occasional or involves special categories (Reglamento Arts. 38–39). The operator keeps a RAT for PA-01–PA-10 regardless of headcount, because the processing is non-occasional. The RAT lives in `legal/rat/rat.yaml` (source of truth) and is exported to PDF for the Registro Nacional (Art. 51).
+A RAT is required for controllers with ≥100 workers, or for processing that is risky, non-occasional or involves special categories (Reglamento Arts. 38–39). A processor must also keep one whenever its controller is obliged to (Reglamento Art. 44). The operator keeps a RAT for PA-01–PA-10 regardless of headcount, because the processing is non-occasional. The RAT lives in `legal/rat/rat.yaml` (source of truth), is kept in writing or electronically and is shown to the SPDP on request (Art. 38, last paragraph). The Registro Nacional filing (LOPDP Art. 51, nine items) is generated from the same file (§2.13).
+
+Reglamento Art. 38 lists nine fields: (1) name and contact of the controller, any joint controller and the DPO; (2) purposes; (3) categories of recipients; (4) data subjects and categories of data; (5) use of profiling, if any; (6) transfers to third countries or international organisations, if any; (7) lawful bases; (8) retention periods; (9) a general description of technical, legal, administrative and organisational measures. The comments in the template map each key to that list.
 
 ```yaml
-# legal/rat/rat.yaml — one entry per activity (fields to map to Reglamento Art. 38 list; LC to confirm)
+# legal/rat/rat.yaml — one entry per activity; keys mapped to Reglamento Art. 38 (1)–(9)
 - id: PA-04
   name: "Espacio de trabajo del tenant (sesiones, AOIs, reportes, auditoría)"
-  controller: "<Tenant legal name>, RUC <...>, DPO <name, email>"
+  controller: "<Tenant legal name>, RUC <...>"                          # (1)
+  dpo: "<nombre>, <correo institucional>, <teléfono>"                    # (1)
+  joint_controllers: none                                                # (1)
   processors: ["Google LLC (Cloud Data Processing Addendum)", "<Operator legal name> (contrato de encargo v1.0)"]
-  purposes: ["Apoyo técnico a decisiones de gestión de riesgos ante El Niño"]
-  lawful_basis: "Art. 7(4) LOPDP (entidades públicas) | Art. 7(5) (privadas)"
-  categories_subjects: ["servidores/empleados del tenant", "consultores autorizados"]
-  categories_data: ["uid", "correo institucional", "rol", "preferencias", "polígonos AOI (organizacionales)", "registros de auditoría"]
-  special_categories: none
+  purposes: ["Apoyo técnico a decisiones de gestión de riesgos ante El Niño"]   # (2)
+  recipients: ["encargados listados en processors", "ninguna comunicación a terceros salvo obligación legal"]  # (3)
+  categories_subjects: ["servidores/empleados del tenant", "consultores autorizados"]          # (4)
+  categories_data: ["uid", "correo institucional", "rol", "preferencias", "polígonos AOI (organizacionales)", "registros de auditoría"]  # (4)
+  special_categories: none                                               # (4)
+  profiling: none                                                        # (5)
+  transfers: "No (encargado en el exterior; Oficio SPDP-IRD-2026-0300-O) — revisar si cambia el criterio"  # (6)
   location: {firestore: "southamerica-west1 (Santiago, Chile)", bigquery: "US multi-region", gcs: "us-central1 (EE.UU.)"}
-  transfers: "No (encargado en el exterior; Oficio SPDP-IRD-2026-0300-O) — revisar si cambia el criterio"
-  retention: "sesiones 30 días; auditoría 5 años (público) / 400 días (privado); ver §2.10"
-  security: ["MFA TOTP", "tokens ≤15 min", "sin llaves de cuenta de servicio", "cifrado en reposo de Google", "auditoría"]
+  lawful_basis: "Art. 7(4) LOPDP (entidades públicas) | Art. 7(5) (privadas)"   # (7)
+  retention: "sesiones 30 días (Firestore) / 400 días (BigQuery); auditoría 5 años (público) / 400 días (privado); ver §2.10"  # (8)
+  security: ["MFA TOTP", "tokens ≤15 min", "sin llaves de cuenta de servicio", "cifrado en reposo de Google", "auditoría"]     # (9)
   dpia: "DPIA-03 plantilla por tenant"
   last_review: 2026-10-30
 ```
@@ -344,22 +357,23 @@ The tenant compliance pack (NFR-014) includes the same file with PA-04–PA-07 p
 
 ### 2.6 Data protection impact assessments (DPIA)
 
-A DPIA is required before processing that is likely to be high-risk (Art. 42; Reglamento Art. 31). The methodology follows the SPDP guide (Res. 2025-0003-R, content to confirm). A DPIA that concludes "zero risk" is itself a finding (the FEF case), so every DPIA must list residual risks.
+A DPIA is required before processing that is likely to be high-risk, or when the SPDP asks for one (Art. 42; Reglamento Art. 31). Where it is mandatory it is **filed with the SPDP** and contains at least a systematic description of the processing and its purposes, the necessity and proportionality justification, the risk assessment, and the planned measures and safeguards (Reglamento Art. 32). If it is unclear whether a DPIA is mandatory, the controller may consult the SPDP, which must answer within five (5) *días término* (Reglamento Art. 31). The methodology follows the SPDP guide (Res. 2025-0003-R, content to confirm). A DPIA that concludes "zero risk" is itself a finding (the FEF case), so every DPIA must list residual risks.
 
 | DPIA | Scope | Why high risk | Owner | Draft / signed |
 |---|---|---|---|---|
 | DPIA-01 | Platform (PA-01–PA-06, PA-09) | Multi-tenant SaaS; cross-border hosting; aggregate processor duties under Res. 2026-0005-R Arts. 13–15 | DPO | 2026-10-16 / 2026-11-13 |
-| DPIA-02 | AI triage of ECU 911/SNGR narratives and citizen reports (PA-07, PA-08; schemas S1, S2, S5 and B4 in [08 §10.5](./08-ai-decision-layer-jev.md)) | Possible health and vulnerability data; automated classification (Art. 20); external AI sub-processors in the US | DPO + AI | 2026-10-16 (aligned with 08) / signed before shadow mode on real personal data; no ECU 911 narrative flows before GOV-M9 (2027-01-15) |
+| DPIA-02 | AI triage of ECU 911/SNGR narratives and citizen reports (PA-07, PA-08; schemas S1, S2, S5 and B4 in [08 §10.5](./08-ai-decision-layer-jev.md#105-lopdp-and-contracts)) | Possible health and vulnerability data; automated classification (Art. 20); external AI sub-processors in the US | DPO + AI | 2026-10-16 (aligned with 08) / signed before shadow mode on real personal data; no ECU 911 narrative flows before GOV-M9 (2027-01-15) |
 | DPIA-03 | Template for tenants (public tenants must adapt and sign) | Public-sector processing | DPO | 2026-11-06 (template) |
 | DPIA-04 | Kichwa audio/SMS and WhatsApp channel (Phase 3) | Phone numbers; third-party messaging provider | DPO + ETH | 2027-05-15 |
 
-DPIA risk scale (used in each DPIA and aligned with §11): likelihood 1–5 × severity 1–5 on the rights and freedoms of the data subject; residual score ≥10 requires DPC approval (§9.1) and, where Art. 42 so requires, consultation of the SPDP.
+DPIA risk scale (used in each DPIA and aligned with §11): likelihood 1–5 × severity 1–5 on the rights and freedoms of the data subject; residual score ≥10 requires DPC approval (§9.1). Mandatory DPIAs (at least DPIA-02, and DPIA-01 unless LC concludes otherwise) are filed with the SPDP under Reglamento Art. 32 before the processing starts.
 
 ### 2.7 Data protection officer (DPO)
 
 - **Public-sector tenants must have a DPO** (Art. 48.1: "cuando el tratamiento se lleve a cabo por quienes conforman el sector público", per Const. Art. 225). Onboarding of a public tenant collects the DPO's name and contact; without it, the tenant can use T0/T1 views but cannot save personal data beyond its own members (acceptance criterion in §13).
-- **Qualifications** (Reglamento Art. 55): a third-level degree in law, IT or communications and at least 5 years' experience. DPO regulation: Res. 2025-0028-R.
-- **The operator appoints a DPO** even if not strictly required, because it processes data at scale in aggregate across tenants (Res. 2026-0005-R Arts. 13–15) and may become a processor for public entities. Target: named by **2026-10-16** (owner PM).
+- **Qualifications** (Reglamento Art. 55): of age, in full political rights, a third-level degree in law, information systems, communications or technology, and at least 5 years' professional experience. DPO regulation: Res. 2025-0028-R. In public entities the DPO is designated by the *máxima autoridad* (Reglamento Art. 49).
+- **The operator appoints a DPO.** It is probably mandatory, not only good practice: Art. 48(2) requires one where activities need "control permanente y sistematizado", and Reglamento Art. 53 tests that by whether processing is continuous, recurring or methodical, which the platform's is. It also processes data in aggregate across tenants (Res. 2026-0005-R Arts. 13–15) and may become a processor for public entities. LC confirms the legal basis. Target: named by **2026-10-16** (owner PM).
+- **Independence safeguards.** The DPO must act independently and cannot be sanctioned for doing the job (Reglamento Arts. 48 and 51). Members of the operator's administration or control bodies, its partners or shareholders, their close relatives and anyone with a conflict of interest cannot be DPO (Reglamento Art. 56). Therefore: (1) the PM, directors and owners of the operating entity are never the DPO; (2) while the DPO also acts as security officer (until the split in §10.1), the security controls the DPO owns in §10.3–§10.4 are reviewed each quarter by LC or an external auditor, not by the DPO; (3) the DPO reports to the SC chair on privacy matters and chairs the DPC (§9.1).
 - **T4 sponsored tenants** (GADs without capacity): the sponsor provides a shared DPO service or the GAD designates its own; the *convenio* with the sponsor states which (§5.3, clause 6).
 
 ### 2.8 Minimisation and privacy by design (Art. 39)
@@ -379,7 +393,7 @@ DPIA risk scale (used in each DPIA and aligned with §11): likelihood 1–5 × s
 
 ### 2.9 International transfers and residency
 
-**Law.** Transfers are allowed to countries declared adequate by the SPDP (Art. 56; Reglamento Arts. 71–73, where criterion 2 is ease of access by foreign authorities), or with appropriate safeguards (Art. 57; Reglamento Art. 74, including model clauses "adoptadas por organismos internacionales… avaladas por la autoridad"; the Iberoamerican RIPD clauses are recognised for controller-to-controller transfers only). Other cases need SPDP authorisation (Art. 59; Reglamento Art. 77) unless an Art. 60 exception applies (explicit consent, contract performance, public interest). Transfers are registered in the Registro Nacional (Reglamento Art. 78), and Res. 2026-0004-R Art. 65 makes registration a condition of lawfulness. **No SPDP adequacy list was found; the US is not declared adequate** [VS].
+**Law.** Transfers are allowed to countries declared adequate by the SPDP (Art. 56; Reglamento Arts. 71–73, where criterion 2 is the country's national-security and criminal legislation, with "especial énfasis" on provisions that let its authorities access personal data), or with appropriate safeguards (Art. 57; Reglamento Art. 74, including model clauses "adoptadas por organismos internacionales… avaladas por la autoridad"; the Iberoamerican RIPD clauses are recognised for controller-to-controller transfers only). Other cases need SPDP authorisation (Art. 59; Reglamento Art. 77) unless an Art. 60 exception applies. The relevant exceptions are Art. 60(1), data required to exercise institutional competences (useful to public tenants); 60(2), explicit informed consent; 60(4), performance of a contract with the data subject; 60(5), public interest; and 60(11), vital interests of a person unable to consent. Transfers are registered in the Registro Nacional (Reglamento Art. 78), and Res. 2026-0004-R Art. 65 makes registration a condition of lawfulness. **No SPDP adequacy list was found; the US is not declared adequate** [VS].
 
 **Position LP-03.** Per Oficio SPDP-IRD-2026-0300-O (cited through Bustamante Fabara in a secondary source), processing by a processor located abroad "no constituye transferencia ni comunicación" (LOPDP Art. 34; Res. 2026-0004-R Art. 23). The oficio answers one query and is not law.
 
@@ -402,8 +416,8 @@ This table resolves the "to confirm" items in [03 §5.8](./03-architecture.md#58
 |---|---|---|---|---|
 | Identity Platform account | Platform | Until deletion (`DELETE /v1/me`) or 24 months without sign-in, after a 30-day warning email | Scheduled job `ectwin-account-sweeper` **(new name)** | PL |
 | Registry rows | Platform Firestore | While active; ≤30 days after offboarding | Offboarding flow (FR-015) | PL |
-| Broker request logs (uid hash) | Platform Cloud Logging | 30 days (log bucket retention set explicitly) | Bucket retention | SRE |
-| Tenant sessions | Tenant Firestore | 30 days TTL | Firestore TTL | TA |
+| Broker request logs (uid hash) | Platform Cloud Logging | 30 days (log bucket retention set explicitly). Operations logs without user identifiers may use the 400 days proposed in [11 §10.4](./11-operations-runbook.md#104-retention-operations); logs that carry uid hashes stay at 30 days | Bucket retention; separate log buckets | SRE |
+| Tenant sessions | Tenant Firestore / tenant BigQuery `ectwin.session` | 30 days TTL (Firestore) / 400 days (pseudonymous analytics), as in [03 §5.8](./03-architecture.md#58-retention-summary) | Firestore TTL; partition expiration | TA |
 | Tenant `audit_events`, `decision_log`, evidence packs, signed reports | Tenant BigQuery/GCS | **Public tenants: 5 years; private tenants: 400 days default** (tenant may extend) **(to confirm)** | Partition expiration; bucket lifecycle | TA |
 | Notifications, runs | Tenant | 90 days (Firestore) / 400 days (BigQuery) | TTL / expiration | TA |
 | Observation reports (FR-075) | Tenant | Text and parish: 400 days; photos: 90 days unless attached to an evidence pack | Lifecycle rule on `raw/uploads/` | TA |
@@ -421,15 +435,15 @@ FR-071's default of 400 days for `audit_events` is kept for private tenants; pub
 | Right | LOPDP | Deadline | Who answers | Platform support |
 |---|---|---|---|---|
 | Information | Art. 12 | At collection | Tenant (privacy notice); operator for PA-01–PA-03 | Privacy notice templates in es-EC naming countries and regions |
-| Access | Art. 13 | 15 days (*plazo*) | Controller | `GET /v1/me/export` (central record); tenant export tool for workspace data |
-| Rectification and update | Art. 14 | 15 days | Controller | Profile editing; admin console |
-| Deletion | Art. 15 | Per Reglamento **(to confirm)** | Controller | `DELETE /v1/me`; tenant member removal purges `users/{uid}` and sessions |
-| Objection | Art. 16 | Per Reglamento | Controller | Notification opt-outs; observation reports withdrawable |
-| Portability | Art. 17 | SPDP norm pending | Controller | JSON export |
-| Suspension | Art. 19 | Per Reglamento | Controller | Account freeze flag |
-| No decision based solely or partly on automated assessment | Art. 20 | — | Controller | GDE-Niño makes **no decisions about individuals**. Jev classifies reports and places, never persons; D13 requires human review; tenants must not use outputs for decisions with legal effects on individuals (AUP §8.3) |
+| Access | Art. 13 | 15 days (*plazo*), free of charge | Controller | `GET /v1/me/export` (central record); tenant export tool for workspace data |
+| Rectification and update | Art. 14 | 15 days (*plazo*); inform recipients within the same period | Controller | Profile editing; admin console |
+| Deletion | Art. 15 | 15 days (*plazo*) from the request, free of charge | Controller | `DELETE /v1/me`; tenant member removal purges `users/{uid}` and sessions |
+| Objection | Art. 16 | 15 days (*plazo*) | Controller | Notification opt-outs; observation reports withdrawable |
+| Portability | Art. 17 | SPDP norm pending (Art. 17 tells the SPDP to issue it) | Controller | JSON export |
+| Suspension | Art. 19 | No fixed period in the law; applies while accuracy or objection is being checked; internal target 15 days | Controller | Account freeze flag; contested data marked as such (Art. 19) |
+| No decision based solely or partly on automated assessment | Art. 20 | — | Controller | GDE-Niño makes **no decisions about individuals**. Jev classifies reports and places, never persons; D13 requires human review; tenants must not use outputs for decisions with legal effects on individuals (AUP §8.3). If a tenant ever did, Art. 20 gives the person the right to a reasoned explanation, to comment, to know the criteria and data sources, and to challenge the decision |
 
-Procedure: requests reach the controller named in the notice. The operator forwards any request it receives for tenant data to the tenant DPO within 2 business days, and assists within 5 business days (processor contract clause, §5.3).
+Procedure: requests reach the controller named in the notice. If a request is incomplete, the controller may ask once, within five (5) *días término*, for clarification (Reglamento Art. 14). The operator forwards any request it receives for tenant data to the tenant DPO within 2 business days, and assists within 5 business days (processor contract clause, §5.3; Reglamento Art. 42 obliges the processor to assist).
 
 ### 2.12 Breach notification
 
@@ -437,14 +451,18 @@ Procedure: requests reach the controller named in the notice. The operator forwa
 |---|---|---|---|
 | Processor (operator, for tenant data) | Controller (tenant) | "dentro del término de dos (2) días"; operator commits to **≤48 h** | Art. 43 [VP] |
 | Controller (tenant, or operator for PA-01–PA-03) | SPDP and ARCOTEL; also the competent regulator and the **CSIRT** under the 2026 cybersecurity law | "a más tardar en el término de cinco (5) días"; late notices must state the reasons for delay | Art. 43 [VP]; amendment [VS] |
-| Controller | Data subjects | Within 3 days of knowing the risk, when rights are at risk; public communication if individual notice needs disproportionate effort | Art. 46 [VP] |
+| Controller | Data subjects | "sin dilación", within the *término* of three (3) days of knowing the risk, when rights are at risk; public communication if individual notice needs disproportionate effort. Exceptions for effective protective measures must be qualified by the SPDP | Art. 46 [VP] |
 
-Execution is RB-17 in [11](./11-operations-runbook.md) with templates T-07 and T-08. Two gaps are handled by contract: (1) Google's CDPA §7.2.1 promises notice "promptly and without undue delay", not tied to the 2-day *término*; the operator's SLO of ≤48 h to tenants starts when the operator learns of the breach, whatever Google's timing; (2) Res. 2026-0040-R (breach technical norm) may change content and channels once published; DPO checks the Registro Oficial monthly. Content of the SPDP notice follows Reglamento Art. 26 (to confirm with LC). A **breach register** records every incident, including those judged not notifiable, with the reasoning (Art. 43 exception: "improbable que… constituya un riesgo").
+Execution is RB-17 in [11](./11-operations-runbook.md) with templates T-07 and T-08. Two gaps are handled by contract: (1) Google's CDPA §7.2.1 promises notice "promptly and without undue delay", not tied to the 2-day *término*; the operator's SLO of ≤48 h to tenants starts when the operator learns of the breach, whatever Google's timing; (2) Res. 2026-0040-R (breach technical norm) may change content and channels once published; DPO checks the Registro Oficial monthly.
+
+**Content of the notice** (Reglamento Art. 26 [VP]): (1) nature and type of breach; (2) affected data subjects; (3) initial detail of the systems breached; (4) presumed cause; (5) volume and types of data exposed; (6) measures taken and planned; (7) assessment of the risk to data subjects' rights; (8) other items the SPDP sets. The processor's notice to the controller carries the same items except (7) (Art. 27), and the notice to data subjects carries the same items in plain language (Art. 28). T-07 and T-08 in [11](./11-operations-runbook.md) must follow this list (LC to review).
+
+**When is a breach notifiable?** Reglamento Art. 24 treats a breach as a risk to rights when data are destroyed or unavailable, altered or incomplete, out of the controller's control, or processed without authorisation (including disclosure). A **breach register** records every incident, including those judged not notifiable, with the reasoning against these four criteria (Art. 43 exception: "improbable que… constituya un riesgo").
 
 ### 2.13 Registration, sanctions and AI rules
 
-- **Registro Nacional (Art. 51).** The operator registers its processing, DPO and transfers (if any) once the SPDP platform accepts it; target 2026-11-20 (owner DPO).
-- **Sanctions (Arts. 71–72).** Private entities and public companies: 0.1–0.7% of prior-year turnover (minor), 0.7–1% (serious). Public servants: 1–10 SBU (minor), 10–20 SBU (serious). Fines are calculated per Res. 2025-0022-R.
+- **Registro Nacional (Art. 51; Reglamento Arts. 84–86).** The operator reports its processing (the nine items of Art. 51, generated from the RAT), its DPO and transfers (if any). The report is due **within ten (10) *días término* from the day after processing starts** (Reglamento Art. 86). Real pilot users start at gate G1a (Fri 2026-11-06, [12](./12-roadmap-team-budget.md)), so the filing for PA-01–PA-06 is due by **2026-11-20**, which is the target (owner DPO). LC confirms by 2026-10-16 whether internal test tenants from M0.4 (2026-10-16) already start the clock; if they do, file by **2026-10-30**. Each tenant, as controller of its workspace (PA-04–PA-07), files its own report within ten *días término* of connecting; the compliance pack (NFR-014) includes a pre-filled draft.
+- **Sanctions (Arts. 71–72).** Private entities and public companies: 0.1–0.7% of prior-year turnover (minor), 0.7–1% (serious); turnover is net of IVA (Art. 73). Public servants: 1–10 SBU (minor), 10–20 SBU (serious), without prejudice to the State's extra-contractual liability. Processors have their own list of infractions (Arts. 69–70). Fines are calculated per Res. 2025-0022-R.
 - **AI systems.** Res. 2026-0009-R as amended by 2026-0037-R regulates personal data in AI systems; its text was not read. Until LC reviews it (by 2026-11-13), the AI layer follows the strictest reading: no personal data in prompts or states (DLP first), human review for every public output, logging of model versions and probabilities (D16–D18), and DPIA-02 before PA-08 starts.
 
 ---
@@ -457,7 +475,7 @@ Execution is RB-17 in [11](./11-operations-runbook.md) with templates T-07 and T
 
 | Source | Instrument (version) | Counterparty for Ecuador | Permitted use | Redistribution | Commercial tenants | Attribution | Warranty and liability | Change and termination | `licence_class` | Twin control |
 |---|---|---|---|---|---|---|---|---|---|---|
-| **WeatherNext 3/2 real-time** (<1 h old or future) | GDM Real-Time Weather Forecasting Experimental Data Terms of Use, last modified 3 Sep 2026 ([ToU](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) | Google LLC | Any internal purpose; Value Added Services; sharing with Subsidiaries, Contractors, and identified third parties for education | NRVA: anyone, including publication. Retrievable VAS: identified third parties for internal use only. Unmodified data (incl. recoloured, subset): internal, Subsidiaries, Contractors only | Allowed within these rules; "not intended for consumer use" | D4 citation; D5 bundle for data/RVAS | "As is"; Google liability capped at **US$500**; legal-entity users indemnify Google | Terms change after 14 days (immediately for legal reasons); fees possible with 1 month's notice; termination → delete, notify recipients, **no re-application** | `wn_nrva` (published) | LP-05, G-03, G-04, §3.2 |
+| **WeatherNext 3/2 real-time** (<1 h old or future) | GDM Real-Time Weather Forecasting Experimental Data Terms of Use, last modified 3 Sep 2026 ([ToU](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) | Google LLC | Any internal purpose; Value Added Services; sharing with Subsidiaries, Contractors, and identified third parties for education | NRVA: anyone, including publication. Retrievable VAS: identified third parties for internal use only. Unmodified data (incl. recoloured, subset): internal, Subsidiaries, Contractors only | Allowed within these rules; "not intended for consumer use" | D4 citation; D5 bundle for data/RVAS | "As is"; Google liability capped at **US$500**; legal-entity users indemnify Google to the extent allowed by law (entities legally exempt from indemnities are not bound) | Terms change 14 days after posting (immediately for functionality or legal reasons); fees possible with at least 1 month's written notice; termination → delete, notify recipients, **no re-application** | `wn_nrva` (published) | LP-05, G-03, G-04, §3.2 |
 | **WeatherNext historic** (≥1 h old) | CC BY 4.0 | — | Any | Yes, with attribution | Yes | CC BY attribution + D4 | CC BY disclaimer | Licence irrevocable for data received | `wn_historic_ccby` | G-03 |
 | WeatherNext 2 **weights and code** | Code Apache-2.0; weights and other materials CC BY 4.0; commercial use permitted since 2026-08-06 ([repo](https://github.com/google-deepmind/weathernext)) | — | Self-run scenarios (D11) | Outputs of self-run WN2: our own model output (legal review: are they "WeatherNext data"? **to confirm**) | Yes | CC BY attribution | Per licence | — | `open` (weights) | §6.4 |
 | **Flood Forecasting API** | Pilot API; access by waitlist; per project; CC BY 4.0 per FAQ (search summary); "primarily limited to non-commercial use" (**unverified**) ([Access](https://support.google.com/flood-hub/answer/16364306?hl=en), [FAQ](https://support.google.com/flood-hub/answer/16364606?hl=en)) | Google (entity unverified) | Snapshots and derived river status | Unclear for commercial re-serving | **Pending** | "Google Flood Hub" | Unverified; assume no warranty, not a warning | Pilot; breaking changes announced in advance | `pending_review` → `commons_pub_nc` | G-02, §3.3 |
@@ -465,9 +483,9 @@ Execution is RB-17 in [11](./11-operations-runbook.md) with templates T-07 and T
 | **Earth Engine** | Noncommercial tiers (Community 150, Contributor 1,000, Partner 100,000 EECU-h/month; enforced from 2026-04-27; annual re-verification) or commercial plans ([pricing](https://cloud.google.com/earth-engine/pricing), [tiers](https://developers.google.com/earth-engine/guides/noncommercial_tiers)) | Google LLC (GCP terms) | Per registration | Per dataset terms | Must register commercially | Per dataset | GCP terms | Tier quotas; re-verification yearly | n/a (platform) | LP-07, §3.4 |
 | **GloFAS / CEMS** (`cems-glofas-*` via EWDS) | Dataset licence accepted once on the EWDS page; states that GloFAS output is not a flood warning and only national authorities issue warnings | ECMWF on behalf of the EU **(entity to confirm)** | Derived products | **To confirm** | **To confirm** | "Copernicus Emergency Management Service / GloFAS" **(exact text to confirm)** | Not a warning | — | `pending_review` | G-12, §3.5 |
 | GloFAS flood hazard maps (EE `JRC/CEMS_GLOFAS/FloodHazard/v2_1`) | JRC, "no restriction" (EE catalogue) | — | Any | Yes | Yes | JRC/CEMS | — | — | `open` | G-01 |
-| **C3S seasonal** (`seasonal-monthly-single-levels`) | Copernicus licence ([CDS](https://cds.climate.copernicus.eu/datasets/seasonal-monthly-single-levels)); per-centre conditions **(to confirm)** | ECMWF on behalf of the EU **(to confirm)** | Canton terciles | To confirm | Likely yes (unverified) | "Copernicus Climate Change Service" | — | — | `pending_review` | G-12 |
+| **C3S seasonal** (`seasonal-monthly-single-levels`) | CDS catalogue lists the seasonal datasets as `license: other` [VS] ([CDS](https://cds.climate.copernicus.eu/datasets/seasonal-monthly-single-levels)); Copernicus licence terms and per-centre conditions (NCEP, JMA, BoM, ECCC) **(to confirm)** | ECMWF on behalf of the EU **(to confirm)** | Canton terciles | To confirm | Likely yes (unverified) | "Copernicus Climate Change Service" | — | — | `pending_review` | G-12 |
 | ECMWF IFS/AIFS open data | CC BY 4.0 | — | Any | Yes | Yes | ECMWF | — | — | `open` | G-01 |
-| ERA5 / ARCO-ERA5 | Copernicus C3S licence (unverified wording); code Apache-2.0 | — | Climatology, analogs | Derived yes (to confirm) | Likely yes | C3S | — | — | `open` (to confirm) | G-12 |
+| ERA5 / ARCO-ERA5 | CDS catalogue lists ERA5 as `CC-BY-4.0` [VS]; ARCO-ERA5 code Apache-2.0 | — | Climatology, analogs | Yes, with attribution | Yes | "Copernicus Climate Change Service (C3S)" | CC BY disclaimer | — | `open` (as in [05 §5.1](./05-data-catalog.md#51-licence-classes)) | G-01 |
 | **GEOGloWS v2** forecasts | CC BY 4.0 + mandatory ECMWF copyright and disclaimer (`s3://geoglows-v2/licenses.md`) | — | Any | Yes | Yes | ECMWF/GEOGloWS text | Disclaimer | — | `open` | G-01 |
 | GEOGloWS river network (TDX-Hydro) | CC BY-SA 4.0 | — | Any | Share-alike | Yes | Per licence | — | — | `sa` | G-06 |
 | **GEOGloWS return periods** | CC BY-NC-SA 4.0 | — | Non-commercial | NC + SA | **No** | GEOGloWS | — | — | `nc` | G-02; GRRR substitute |
@@ -490,21 +508,21 @@ Source: the terms text of 3 Sep 2026 ([ToU](https://storage.googleapis.com/weath
 
 | Clause | What it says | Consequence for GDE-Niño | Control |
 |---|---|---|---|
-| Scope | Real-time terms cover data relating to a time <1 h ago or in the future; older data is CC BY 4.0 | Every WeatherNext value carries `valid_time`; the licence class is computed per row (`valid_time < now − 1 h` → historic). Older EE catalogue text for WN2/Graph used 48 h; apply the **stricter 48 h** to WN2 until Google confirms **(to confirm)** | Publish-step check |
-| §1 Eligibility | Restricted Countries: Japan, South Korea, Indonesia, Cuba, Iran, North Korea, Crimea, "DPR" and "LPR"; Google may ask for verification of identity and entity | Ecuador is not restricted. Tenants outside Ecuador (future regional extension) are checked at onboarding; the Peru/Colombia extension (Phase 4) is unaffected | Onboarding country field |
-| §2 Permitted uses | (a) any internal purpose; (b) VAS per §3; (c) sharing with (i) identified third parties via controlled distribution solely for educational purposes, (ii) majority-controlled Subsidiaries, (iii) **Contractors** that contract to provide services requiring access | The Commons licensee (the sponsor or the operator's Commons entity) may let the operator run pipelines as its **Contractor**. A tenant with its own approval may do the same with the operator's broker | Contractor clause in the operator–sponsor and operator–tenant contracts (§12.3) |
+| Scope | Real-time terms cover data relating to a time <1 h ago or in the future; older data is CC BY 4.0. Counterparty is Google LLC (Google Ireland only for EEA/Switzerland users) | Every WeatherNext value carries `valid_time`; the licence class is computed per row (`valid_time < now − 1 h` → historic). Older EE catalogue text for WN2/Graph used 48 h; apply the **stricter 48 h** to WN2 until Google confirms **(to confirm)** | Publish-step check |
+| §1 Eligibility | Restricted Countries: Japan, South Korea, Indonesia, Cuba, Iran, North Korea, Crimea, "DPR" and "LPR", unless Google agrees otherwise in writing (email suffices); Google may ask for verification of name, legal entity and other identifying information | Ecuador is not restricted. Tenants outside Ecuador (future regional extension) are checked at onboarding; the Peru/Colombia extension (Phase 4) is unaffected | Onboarding country field |
+| §2 Permitted uses | Subject to the terms and Google's Generative AI Prohibited Use Policy: (a) any internal purpose; (b) VAS per §3; (c) sharing with (i) clearly identified third parties via controlled distribution that does not enable onward sharing, solely for educational purposes, (ii) Subsidiaries in which the licensee holds a majority of voting rights, (iii) **Contractors** that contract to provide services requiring access | The Commons licensee (the sponsor or the operator's Commons entity) may let the operator run pipelines as its **Contractor**. A tenant with its own approval may do the same with the operator's broker | Contractor clause in the operator–sponsor and operator–tenant contracts (§12.3) |
 | §2 Licence | Non-exclusive, royalty-free, revocable, non-transferable, non-sublicensable | The operator cannot sub-license WeatherNext to tenants; each tenant needs its own approval for raw access | D8 onboarding guidance ([04 §9](./04-identity-tenancy-byo-gcp.md)) |
 | §3 VAS definition | Material derived from the data for a purpose that cannot be achieved with the data alone. **Not** a VAS: mere access or download; colouring, formatting, compressing, percentage adjustment, geometric transformation, subsetting, or custom combinations of time steps, parameters or runs | A coloured precipitation map clipped to Ecuador is **unmodified data**, not a VAS. Parish exceedance probabilities against INAMHI thresholds, risk levels and impact indices are VAS | G-03 allow-list |
 | §3 NRVA | A VAS from which the data cannot be retrieved or reverse-engineered "without significant technical effort or expense" may be shared with anyone, including publication | T0 publication of parish probabilities relies on this. **Risk:** probabilities at many thresholds per cell could allow partial reconstruction of the distribution. Rule: publish at most **3 thresholds per variable per parish**, aggregated to parish polygons (not grid cells), with rounding to 1% | NRVA design rule N-1…N-4 below |
-| §3 RVAS | Retrievable VAS only via controlled transmission to clearly identified and known third parties, for their own internal purposes, no onward sharing, no further VAS; allowed to Subsidiaries and Contractors | Fan charts and member series are shown only inside tenants with their **own** approval (spine decision). The gap brief's reading that signed-in T1 users are "identified third parties" is **not** used (tension noted in [03 §14](./03-architecture.md#14-open-questions)) | Broker checks tenant `weathernext_3` linked dataset before serving RVAS |
+| §3 RVAS | Retrievable VAS only via controlled transmission to clearly identified and known third parties, for their own internal purposes, no onward sharing, no further VAS; allowed to Subsidiaries and Contractors | Fan charts and member series are shown only inside tenants with their **own** approval (spine decision). The user-needs brief's reading that signed-in users without a project (its "Tier 1", which is T0 in this plan) are "identified third parties" who may receive a Retrievable VAS is **not** used (tension noted in [03 §14](./03-architecture.md#14-open-questions)) | Broker checks tenant `weathernext_3` linked dataset before serving RVAS |
 | §4(a) Sharing requirements | Copy of terms; "Legally Binding Terms of Use" text file; "Copyright 2024-6 Google LLC"; notice of modifications; no conflicting terms | D5 export bundle | G-04 |
 | §4(b) Findings and NRVA | Must cite the Google product and the © 2024-6 citation with "not intended, validated, or approved for real world use" | D4 on every NRVA surface, including PDFs and WhatsApp cards (short form on the card with a link to the full text **(to confirm acceptable)**) | AC-2 |
-| §4 Use restrictions | No use against the terms or Google's Generative AI Prohibited Use Policy; not in Restricted Countries; not in violation of law | AUP (§8.3) incorporates these | AUP |
-| §5 Termination | Google may suspend or terminate; the user must delete data and VAS, **notify all third-party recipients** of the VAS, and may **not re-apply** | The operator keeps a **recipient register** of every RVAS export (tenant, recipient organisation, date, product) in tenant `audit_events` and a Commons register of NRVA channels, so it can notify within 5 business days | Register + runbook step in RB for WeatherNext withdrawal ([11](./11-operations-runbook.md)) |
-| §6(a) Disclaimers | Approximate, informational, "as is", not for consumer use; not endorsed by any meteorological agency; "in no way replaces official alerts"; no representation implying official status | Aligns with LP-01 and D1–D3; no marketing claim of accuracy beyond verification scores | Vocabulary guard |
-| §6(b) Liability | Legal entities indemnify Google for third-party claims from unlawful use or breach; Google's total liability capped at **US$500** | The operator and tenants absorb downstream risk (§12) | Insurance (§12.4) |
-| §7 Changes | Terms change 14 days after posting (immediately for functionality or legal reasons); data may change or stop; **fees** possible with ≥1 month's written notice; if the user rejects changes, it must stop but may continue a VAS built from data accessed before the change, except after termination | Weekly hash check of the terms PDF (G-11); fallback to IFS/AIFS open data and self-run WN2 (open weights) | Risk R03 |
-| §8 Law and forum | California law; Santa Clara County courts; local courts where local law requires | Contract risk accepted; no negotiation expected | — |
+| §4 Use restrictions (the terms number this section "4" a second time) | No use against the terms or Google's Generative AI Prohibited Use Policy; not in, or made available in, Restricted Countries; not in violation of law; Google may restrict use it reasonably believes breaches the terms | AUP (§8.3) incorporates these | AUP |
+| §5 Termination | Google may suspend or terminate; the user must delete data and VAS, **notify all third-party recipients** of the VAS that they must stop using it, and may **not re-apply** | The operator keeps a **recipient register** of every RVAS export (tenant, recipient organisation, date, product) in tenant `audit_events` and a Commons register of NRVA channels, so it can notify within 5 business days | Register + RB-02 step 5 "access lost or terms changed" in [11](./11-operations-runbook.md) |
+| §6(a) Disclaimers | Approximate, informational, "as is", not for consumer use; not endorsed by any meteorological agency; "in no way replaces official alerts"; no representation to third parties incompatible with the terms; no claim of official status or Google endorsement | Aligns with LP-01 and D1–D3; no marketing claim of accuracy beyond verification scores | Vocabulary guard |
+| §6(b) Liability | Legal entities indemnify Google for third-party proceedings (including by government authorities) arising from unlawful use or breach, "to the extent allowed by applicable law", except where caused by Google's breach, negligence or wilful misconduct; entities legally exempt from indemnities are not bound. Google's total liability, including for its own negligence, is capped at **US$500** | The operator and tenants absorb downstream risk (§12). Whether Ecuadorian public entities are "legally exempt" from the indemnity is for LC to confirm | Insurance (§12.4) |
+| §7 Changes | Terms change 14 days after posting (immediately for functionality or legal reasons); data may change or stop, with "reasonable notice" endeavoured; **fees** possible with ≥1 month's written notice; if the user rejects changes, it must stop but may continue a VAS built from data accessed before the change, except after termination | Weekly hash check of the terms PDF (G-11); fallback to IFS/AIFS open data and self-run WN2 (open weights) | Risk R03 |
+| §8 Law and forum | California law; exclusive jurisdiction of Santa Clara County courts; local courts, and local law, where local law so requires | Contract risk accepted; no negotiation expected | — |
 
 **NRVA design rules** (owner FL, reviewed by DPC):
 
@@ -513,7 +531,7 @@ Source: the terms text of 3 Sep 2026 ([ToU](https://storage.googleapis.com/weath
 - **N-3** At most 3 thresholds per variable, lead day and parish; round probabilities to 1%.
 - **N-4** No ensemble quantiles (p10–p90) of real-time WeatherNext variables in any Commons listing; those are RVAS and stay in tenants with their own approval.
 
-**Written confirmation request.** PA sends the following to weathernext@google.com by **2026-10-02** (answer tracked as A16 in [05 §6.1](./05-data-catalog.md#61-agreements-needed)):
+**Written confirmation request.** PA sends the following to weathernext@google.com together with the day-1 access requests (A16 in [05 §6.1](./05-data-catalog.md#61-agreements-needed) targets 2026-09-29) and no later than **2026-10-02**; the answer is tracked under A16:
 
 > Subject: GDE-Niño (Ecuador) – confirmation of Value Added Service use under the WeatherNext Terms of Use (3 Sep 2026)
 > 1. We will publish, to signed-in public users in Ecuador, parish-level probabilities of exceeding national meteorological thresholds (≤3 thresholds per variable, rounded to 1%) and 4-class risk levels derived from WeatherNext 3 and WeatherNext 2. Please confirm these are Non-Retrievable Value Added Services under Section 3.
@@ -521,6 +539,7 @@ Source: the terms text of 3 Sep 2026 ([ToU](https://storage.googleapis.com/weath
 > 3. Please confirm whether the 1-hour real-time threshold also applies to WeatherNext 2 (older catalogue text referred to 48 hours).
 > 4. Please confirm that a short citation with a link to the full §4(b) text is acceptable on 1080×1350 image cards shared on messaging apps.
 > 5. Are national public agencies (SNGR, INAMHI) permitted to use Value Added Services operationally, given that the data is "not intended… for real world use"?
+> 6. The platform will be handed over to a national public host in late 2027. Can the approved access be transferred to that host, or should the host apply now in parallel? (The licence is non-transferable, §2.)
 
 ### 3.3 Flood Forecasting API
 
@@ -530,7 +549,7 @@ Source: the terms text of 3 Sep 2026 ([ToU](https://storage.googleapis.com/weath
 
 ### 3.4 Earth Engine: commercial vs noncommercial registration
 
-EE registration is per Cloud project, is a browser step, and must match the use. Operational teams must register for commercial use; the Partner tier (100,000 EECU-h/month) is for "Nonprofits/NGOs, university research groups, government research groups" doing climate adaptation work ([tiers](https://developers.google.com/earth-engine/guides/noncommercial_tiers); [noncommercial page](https://earthengine.google.com/noncommercial/), search summary). Using EE inside a VPC-SC perimeter needs the Professional or Premium plan.
+EE registration is per Cloud project, is a browser step, and must match the use. Operational teams must register for commercial use; the Partner tier (100,000 EECU-h/month) is for "Nonprofits/NGOs, university research groups, government research groups" doing climate adaptation work, by application, and approval can take several weeks ([tiers](https://developers.google.com/earth-engine/guides/noncommercial_tiers); [noncommercial page](https://earthengine.google.com/noncommercial/), search summary). Using EE inside a VPC-SC perimeter needs the Professional or Premium plan ([access control](https://developers.google.com/earth-engine/guides/access_control)).
 
 | Tenant type | Typical use | EE registration (recommended) | Data `licence_profile` (§4.1) | Note |
 |---|---|---|---|---|
@@ -539,13 +558,13 @@ EE registration is per Cloud project, is a browser step, and must match the use.
 | Universities (ESPOL, EPN, USFQ, UCuenca: eligibility unverified) | Research, teaching | Community or Contributor; Partner for large projects | `noncommercial` | Annual re-verification |
 | NGOs, Red Cross, UN agencies | Anticipatory action | Partner (climate adaptation) or Contributor | `noncommercial` | Operational trigger monitoring may count as operational **(to confirm)** |
 | Insurers, banks, exporters | Portfolio exposure | Commercial | `commercial` | — |
-| Commons project | National public goods | Commercial Limited **(to confirm with Google)** | n/a | Sponsor pays |
+| Commons project | National public goods | Partner-tier application filed on day 1 as the spine's Phase 0 requires; operational production registered **Commercial – Limited** unless Google confirms in writing that the Partner tier covers it **(to confirm with Google)** | n/a | Sponsor pays; a research/verification project may hold the Partner registration if granted |
 
 Onboarding asks the question in plain Spanish («¿Usará Earth Engine para operaciones institucionales, investigación o fines comerciales?») and the preflight reads `registrationState` ([04 §5.7.4](./04-identity-tenancy-byo-gcp.md)). The operator does not register on behalf of a tenant; the tenant's representative clicks through and is responsible for the declaration.
 
 ### 3.5 Copernicus (GloFAS/CEMS and C3S) and ECMWF
 
-- **EWDS/CDS accounts** are personal; the Commons uses an institutional account held by DL, and each dataset licence is accepted once on the web page (OCHA pattern). Credentials sit in Commons Secret Manager.
+- **EWDS/CDS accounts**: EWDS uses the same CDS account and key, and each dataset licence is accepted once on its web page (OCHA pattern). Whether accounts must be personal is **(unverified)**; the Commons uses an account registered to a role mailbox and held by DL. Credentials sit in Commons Secret Manager.
 - **GloFAS:** the licence states that output is not a flood warning and that only national authorities issue warnings, which matches LP-01. Product labels say «GloFAS (Copernicus) – referencial, no es advertencia oficial».
 - **C3S seasonal:** redistribution of derived canton terciles for every contributing centre is **to confirm** ([03 §14](./03-architecture.md#14-open-questions)); until then `pending_review` (published in `commons_pub_nc`).
 - **ECMWF open data** (IFS, AIFS, EC46, SEAS5 open data since 2025-10-01, search summary) is CC BY 4.0 and is the legal fallback if WeatherNext terms change.
@@ -639,37 +658,42 @@ def decide(layer: dict, tenant: dict, action: str) -> Decision:
     cls = layer.get("licence_class")
     if not all(layer.get(k) for k in ("licence", "licence_class", "attribution")):
         return Decision(False, "G01_missing_licence_fields", None)
-    commercial = tenant["licence_profile"] == "commercial"
+    # Fail closed: a missing or unknown profile is treated as commercial (LP-06).
+    commercial = tenant.get("licence_profile") != "noncommercial"
     if cls in ("nc", "pending_review") and commercial:
         return Decision(False, "G02_nc_for_commercial", "D11")
     if cls == "wn_retrievable":
         if not tenant.get("has_own_weathernext"):
             return Decision(False, "LP05_rvas_without_approval", None)
-        b = ("WEATHERNEXT_TERMS.pdf", "LEGALLY_BINDING_TERMS_OF_USE.txt", "MODIFICATIONS.txt") if action == "export" else ()
+        b = ("WEATHERNEXT_TERMS.pdf", "LEGALLY_BINDING_TERMS_OF_USE.txt", "COPYRIGHT.txt", "MODIFICATIONS.txt") if action == "export" else ()
         return Decision(True, "LP05_rvas_internal", None, b)
-    if cls == "agreement" and action == "export" and "raw_export" not in layer.get("obligations", []):
-        return Decision(False, "G09_agreement_no_raw_export", None)
-    bundle = ("LICENSES.txt",) + (("SHARE_ALIKE_NOTICE.txt",) if cls == "sa" else ())
+    if cls == "agreement" and action == "export" and "export_permitted_by_agreement" not in (layer.get("obligations") or []):
+        return Decision(False, "G09_agreement_no_export", None)
+    bundle = ("LICENSES.txt",)
+    if cls == "sa":
+        bundle += ("SHARE_ALIKE_NOTICE.txt",)
+    if cls in ("wn_nrva", "wn_historic_ccby"):
+        bundle += ("WEATHERNEXT_CITATION.txt",)   # D4 text, WeatherNext ToU §4(b)
     return Decision(True, f"ok_{cls}", None, bundle if action == "export" else ())
 ```
 
-`wn_retrievable` is a broker-side class for tenant-internal WeatherNext data (fan charts, member series); it never appears in `layer_registry` rows of `commons_pub` (G-03). This refines the class list in [05 §5.1](./05-data-catalog.md#51-licence-classes).
+`wn_retrievable` is a broker-side class for tenant-internal WeatherNext data (fan charts, member series); it never appears in `layer_registry` rows of `commons_pub` (G-03). This refines the class list in [05 §5.1](./05-data-catalog.md#51-licence-classes). The flag `export_permitted_by_agreement` is a new value for `layer_registry.obligations`, set by the DPC only when the *convenio* annex allows export of that derived layer. The copy of the terms ships as the original PDF (`WEATHERNEXT_TERMS.pdf`); the G-04 test in [05 §5.3](./05-data-catalog.md#53-gating-rules) names `WEATHERNEXT_TERMS.txt` and should be aligned.
 
 ### 4.3 Clearance workflow for `pending_review` sources
 
 | Step | Who | SLA | Output |
 |---|---|---|---|
-| 1. Source added to `catalog/data-sources.yaml` with `licence_class: pending_review` | DL | — | CI passes (NC by default) |
-| 2. Collect the licence text, terms URL and a PDF snapshot into `legal/licences/<source_id>/` with SHA-256 | DPO | 3 business days | Evidence folder |
+| 1. Source added to `catalog/data-sources.yaml` with `licence_class: pending_review` | DL | — | CI passes; data may be ingested to `raw/` and `commons_internal`, but **nothing is published** yet |
+| 2. Collect the licence text, terms URL and a PDF snapshot into `legal/licences/<source_id>/` with SHA-256; record the G-12 **interim check** (terms do not forbid noncommercial redistribution) | DPO + PA | 3 business days | Evidence folder; interim-check entry in `layer_registry.review`, which allows publication in `commons_pub_nc` only |
 | 3. Legal reading: commercial use, redistribution, derivatives, attribution, SA, termination | LC | 5 business days | Memo (1 page) |
-| 4. DPC decision; update `layer_registry.review` = `{"by","at","basis","memo_uri"}` | DPC | Next weekly slot | New class |
-| 5. Re-publish in the right listing; notify tenants of newly visible layers | DL | 2 business days | Release note |
+| 4. DPC decision; update `layer_registry.review` = `{"by","at","basis","memo_uri"}` | DPC | Weekly slot, or written procedure (email vote of DPO, LC, DL, PA) within 2 business days of the memo, whichever is sooner | New class |
+| 5. Re-publish in the right listing; notify tenants of newly visible layers | DL | 2 business days after the decision | Release note |
 
-Total ≤10 business days (G-12). **Priority queue for Phase 1** (owner DPO, all by **2026-11-13**): `floodhub_api`, `glofas_*`, `c3s_seasonal`, `copernicus_dem_glo30`, `jrc_gsw`, `sngr_sitreps` figures, `msp_gacetas_*`, `mag_*`, `energy_system_ops`, Overture licence per theme.
+Clearance (steps 2–4) takes ≤10 business days (3 + 5 + 2), as G-12 requires; re-publication follows within 2 more business days. **Priority queue for Phase 1** (owner DPO, all by **2026-11-13**): `floodhub_api`, `glofas_*`, `c3s_seasonal`, `copernicus_dem_glo30`, `jrc_gsw`, `sngr_sitreps` figures, `msp_gacetas_*`, `mag_*`, `energy_system_ops`, Overture licence per theme.
 
 ### 4.4 Terms-change watch (G-11)
 
-A weekly Cloud Run job `legal-terms-watch` **(new name)** fetches each terms URL listed in `legal/licences/*/meta.yaml`, normalises the text and compares its hash with the stored one. A change opens a P3 ticket for DPO; for WeatherNext, the Flood API and Copernicus it opens a P2 and freezes affected publications within 24 h pending review (G-11). Sources that cannot be fetched from GCP (blocked pages) are checked manually each month by DPO.
+A weekly Cloud Run job `legal-terms-watch` **(new name)** fetches each terms URL listed in `legal/licences/*/meta.yaml`, normalises the text and compares its hash with the stored one. Any change freezes publication of the affected layers within 24 h pending review, as G-11 requires; DPO may lift the freeze early by recording in `layer_registry.review` that the change is not material. Severity: **P1** for WeatherNext (RB-02 step 5 in [11](./11-operations-runbook.md): freeze all WeatherNext products, fall back to IFS/AIFS and GEOGloWS), **P2** for the Flood API and Copernicus, **P3** for other sources. Sources that cannot be fetched from GCP (blocked pages) are checked manually each month by DPO.
 
 ### 4.5 Acceptance criteria
 
@@ -724,7 +748,7 @@ These clauses complement the technical checklist in [05 §6.2](./05-data-catalog
 3. **Datos y servicios.** «[INSTITUCIÓN] proveerá los datos detallados en el Anexo Técnico, con las características, frecuencia, mecanismo de entrega y niveles de servicio allí descritos. Cualquier cambio de formato, punto de acceso o esquema será notificado con al menos treinta (30) días de anticipación.»
 4. **Licencia de uso.** «[INSTITUCIÓN] otorga a [OPERADOR] y a la plataforma una licencia no exclusiva, gratuita y por el plazo de vigencia del convenio para (a) usar internamente los datos; (b) publicar productos derivados bajo licencia Creative Commons Atribución 4.0 (CC BY 4.0) con la atribución indicada en el Anexo; y (c) [permitir / no permitir] la consulta de los datos originales por entidades públicas usuarias de la plataforma. [La redistribución de los datos originales a usuarios comerciales queda excluida.] La titularidad de los datos permanece en [INSTITUCIÓN].»
 5. **Reciprocidad.** «[OPERADOR] pondrá a disposición de [INSTITUCIÓN], sin costo, los productos derivados, puntajes de verificación, capas en formatos OGC/ArcGIS compatibles y copias del archivo histórico de los datos provistos, así como capacitación a su personal técnico.»
-6. **Protección de datos personales.** «Las partes cumplirán la Ley Orgánica de Protección de Datos Personales y su Reglamento. El intercambio se limitará a datos agregados o anonimizados, salvo lo expresamente previsto en el Anexo de Protección de Datos. Cuando [OPERADOR] trate datos personales por cuenta de [INSTITUCIÓN], actuará como encargado del tratamiento conforme al artículo 34 de la Ley y al artículo 41 del Reglamento, exclusivamente según las instrucciones documentadas del responsable; notificará cualquier vulneración de seguridad al responsable dentro de las cuarenta y ocho (48) horas de conocida; asistirá en la atención de derechos de los titulares; y suprimirá o devolverá los datos al término del encargo. Se autoriza de forma general y por escrito la subcontratación de Google LLC como subencargado para servicios de nube, con obligación de informar cambios de subencargados.»
+6. **Protección de datos personales.** «Las partes cumplirán la Ley Orgánica de Protección de Datos Personales y su Reglamento. El intercambio se limitará a datos agregados o anonimizados, salvo lo expresamente previsto en el Anexo de Protección de Datos. Cuando [OPERADOR] trate datos personales por cuenta de [INSTITUCIÓN], actuará como encargado del tratamiento conforme al artículo 34 de la Ley y al artículo 41 del Reglamento, exclusivamente según las instrucciones documentadas del responsable; notificará cualquier vulneración de seguridad al responsable dentro de las cuarenta y ocho (48) horas de conocida y, en todo caso, dentro del término de dos (2) días previsto en el artículo 43 de la Ley; asistirá en la atención de derechos de los titulares (artículo 42 del Reglamento); permitirá la revisión de sus registros y procesos (artículo 47 del Reglamento); y suprimirá o devolverá los datos al término del encargo (artículo 46 del Reglamento). Se autoriza de forma general y por escrito la subcontratación de Google LLC como subencargado para servicios de nube, con obligación de informar cambios de subencargados.»
 7. **Seguridad de la información.** «Las partes aplicarán medidas técnicas y organizativas alineadas con el Esquema Gubernamental de Seguridad de la Información (EGSI) vigente y con la Ley Orgánica para el Fortalecimiento de la Ciberseguridad, según su esfera de control, incluyendo control de acceso de mínimo privilegio, autenticación multifactor, cifrado y registros de auditoría. La matriz de responsabilidades compartidas consta en el Anexo de Seguridad.»
 8. **Confidencialidad y clasificación.** «La información calificada como reservada o confidencial por [INSTITUCIÓN] será identificada en el Anexo, se tratará únicamente para los fines del convenio y no se publicará. Esta obligación subsistirá por [cinco (5)] años después de la terminación.»
 9. **Comunicación, vocería y uso de marcas.** «Ninguna parte usará logotipos o denominaciones de la otra sin autorización escrita. Los productos de la plataforma llevarán la leyenda "Apoyo a la decisión · Pronóstico experimental · No es una alerta oficial". Ante eventos en curso, las comunicaciones públicas de [OPERADOR] sobre la plataforma se coordinarán previamente con la SNGR.»
@@ -785,6 +809,7 @@ Until a *convenio* is signed, ingestion of public endpoints (INAMHI Visor, SNGR 
 | Not redistributable | Deltares Freeware SFINCS Docker images; HEC-HMS/HEC-RAS freeware; UCAR WRF-Hydro licence ("shall not sell, license or transfer for a fee") | Never in our images or paid bundles; tenants may bring their own |
 | No licence | e.g. `jms5151/EVP` (no LICENSE file found) | Not used until the authors grant a licence |
 | Weights and data | WN2 weights CC BY 4.0 (commercial since 2026-08-06); NeuralGCM weights CC BY-SA 4.0; Von Apache-2.0; OpenHydroNet Apache-2.0 | Follow the data licence rules (§4); SA weights make derived weights SA |
+| Code under a content licence | XRO (CC BY 4.0 applies even to the code) | Allowed; attribution in `NOTICE`; keep it in its own module because CC BY is not a software licence (no patent grant) |
 
 Licence facts are from the models brief (for example [SFINCS](https://github.com/Deltares/SFINCS), GPL-3.0; LISFLOOD-FP GPL-2.0 via a GitHub mirror; mHM LGPLv3; WRF-Hydro UCAR licence).
 
@@ -794,7 +819,7 @@ SFINCS source is GPL-3.0; the prebuilt Docker images are Deltares *Freeware*, wh
 
 1. **Build from source** in `containers/sfincs/Dockerfile` (CPU build; the GPU Docker version is documented as not fully functional and removed). Pin the release (v2.4.0 "Galibier", 2026-06-15) by commit hash.
 2. **Ship the licence**: the image contains `/usr/share/licenses/sfincs/LICENSE` (GPL-3.0) and a `SOURCE.txt` with the repository URL, commit and our patches.
-3. **Publish changes**: any patch (for example the Curve Number `storecumprcp = 1` workaround, if applied in code) goes to `containers/sfincs/patches/` under GPL-3.0; the image label `org.opencontainers.image.source` points to it.
+3. **Publish changes**: any source patch goes to `containers/sfincs/patches/` under GPL-3.0, and the image label `org.opencontainers.image.source` points to it. The known Curve Number bug in v2.3.0 and v2.4.0 is handled with the input setting `storecumprcp = 1`, which is a model-configuration choice and not a code change.
 4. **Keep the boundary clean**: Apache-2.0 pipeline code writes SFINCS input files and reads output files; it never links SFINCS. `hydromt_sfincs` (GPL-3.0, Python) is imported only inside a separate package `ectwin-sfincs-builder`, licensed **GPL-3.0**, and run in its own image.
 5. **Distribution to tenants** (Artifact Registry public images) counts as distribution: each GPL image carries its corresponding source offer. Running the image on Batch for Commons is not distribution, but we publish anyway (D20).
 6. **AGPL** components (Delft3D FM engines, if used in Phase 3) are never exposed as a network service to users without offering source; they run as batch jobs only.
@@ -821,7 +846,7 @@ SFINCS source is GPL-3.0; the prebuilt Docker images are Deltares *Freeware*, wh
 | **R-A Local Google Cloud reseller** | Entity runs a LOSNCP procedure (procedure type unverified: *régimen especial*, reverse auction or *catálogo electrónico*); reseller issues a *factura electrónica* in USD with 15% IVA and absorbs ISD | Default for ministries and large GADs | Procurement lead time (weeks to months) vs. El Niño peak; which partners are in the RUP is unverified |
 | **R-B T4 sponsored project** | Sponsor (SNGR with a multilateral, or Google.org/credits, to confirm) owns a folder; GAD gets a project with labels; billing can move later | GADs and COEs during the 2026-27 season | Sponsor funding continuity (R15) |
 | R-C Convenio (no fees) | The platform itself is free; the GAD uses T0/T1 (mostly free tiers) | Small municipalities | T1 free tiers still need a billing account (Firestore, Run) |
-| R-D GCP Marketplace (Phase 4) | Private offer drawn down from an existing GCP commitment ([integrated SaaS](https://docs.cloud.google.com/marketplace/docs/partners/integrated-saas)) | Ministries with existing GCP contracts | Revenue share and listing effort; SaaS model needs partner-managed infrastructure |
+| R-D GCP Marketplace (Phase 4) | SaaS listing billed by Google; a consumption-tracking label covers a data plane in the customer's project; pricing-model review up to 4 business days ([integrated SaaS](https://docs.cloud.google.com/marketplace/docs/partners/integrated-saas)). Private offers with government pricing, drawn down from an existing GCP commitment (unverified) | Ministries with existing GCP contracts | Revenue share (≈3% standard fee, unverified) and listing effort; SaaS model needs partner-managed infrastructure |
 | R-E Direct card payment to Google LLC | Institutional card | Not recommended for public entities | IVA/ISD collection by card issuers; possible 25% income-tax withholding on transfers (unverified) |
 
 **Procurement homework (owner PA, by 2026-10-23).** Query the SERCOP OCDS API for past purchases of Google Cloud by public entities ([VS] endpoint in the user-needs brief):
@@ -1140,7 +1165,7 @@ Totals: 2 critical (R02, R10 at 16), 14 high (R01 and R28 at 15; R03, R11, R14, 
 | Constitution Art. 11.9 | Objective liability of the State for deficient public services (unverified) | Public tenants relying on the twin carry their own exposure; they need to document their technical judgement (evidence packs, two signers) |
 | WeatherNext ToU §6(b) | Google liability capped at US$500; legal entities indemnify Google for unlawful use or breach | Upstream risk flows down to the operator and tenants |
 | GCP terms / CDPA | Standard cloud terms | Tenant–Google relationship; operator not a party |
-| LOPDP Arts. 71–72 | Administrative fines | Privacy failures |
+| LOPDP Arts. 71–72 | Administrative fines; for public servants, "sin perjuicio de la responsabilidad extracontractual del Estado" [VP] | Privacy failures; public tenants also carry State liability |
 
 ### 12.2 Allocation strategy
 
@@ -1205,10 +1230,10 @@ gantt
 | GOV-M1 | 2026-10-02 | Letters to INAMHI and SNGR; WeatherNext confirmation email; interim operating note | Letters acknowledged; email ticket id recorded (A16) | PA |
 | GOV-M2 | 2026-10-09 | LC engaged; GOV-D1 (operating entity) and GOV-D2 (*convenio* structure) decided | Engagement letter; decisions logged | PM |
 | GOV-M3 | 2026-10-16 | DPO named; risk appetite approved at the G0 gate (SC constituted on 2026-10-14, P0-05 in [12](./12-roadmap-team-budget.md)); DPIA-01 and DPIA-02 drafts | SC minutes; DPIA v0.1 files | PM, DPO |
-| GOV-M4 | 2026-10-30 | RAT v1; texts v1.0 submitted to LC; vocabulary list v1.0; MoU templates reviewed | Files in `legal/`; LC comments | DPO |
+| GOV-M4 | 2026-10-30 | RAT v1; texts v1.0 submitted to LC; vocabulary list v1.0; MoU templates reviewed; early Registro Nacional filing if LC found that internal test tenants started the 10-*día* clock (§2.13) | Files in `legal/`; LC comments; filing receipt if applicable | DPO |
 | GOV-M5 | 2026-11-06 | Tax and procurement memo; insurance quotes; exact GloFAS/GEOGloWS attribution texts | Memo signed by adviser | PM, DPO |
 | GOV-M6 | 2026-11-13 | Policy set approved; DPIA-01 signed; P1 licence clearances done; Adenda LOPDP and processor contract final; SPDP consultation letter sent | LG-4 met; signed documents | DPO, LC |
-| GOV-M7 | 2026-11-20 | Pen test with no open high findings; Registro Nacional filing; DR restore test | Reports | SRE, DPO |
+| GOV-M7 | 2026-11-20 | Pen test with no open high findings; Registro Nacional filing (legal deadline: 10 *días término* after pilot users start at G1a on 2026-11-06, Reglamento Art. 86); DR restore test | Reports; filing receipt | SRE, DPO |
 | GOV-M8 | 2026-11-27 | **Go-live legal gate** (part of M1.5) | Checklist §13.2 all green | PM |
 | GOV-M9 | 2027-01-15 | DPIA-02 signed and ZDR in place before any ECU 911 narrative flows | Signed DPIA; contract | DPO, AI |
 | GOV-M10 | 2027-05-15 | End-of-season governance review: risk register re-rated, verification report, grievances summary | Published report | PM |
@@ -1221,7 +1246,7 @@ gantt
 - [ ] WeatherNext: NRVA rules enforced (G-03 lint green); written answer from Google received, or SC accepts residual risk R04 explicitly.
 - [ ] Licence gating LG-1…LG-4 green; `pending_review` layers only in `commons_pub_nc`.
 - [ ] Privacy notice (es-EC) naming Chile and the United States, terms of use, AUP and processor contract published.
-- [ ] RAT v1, DPIA-01 signed, Registro Nacional filed (or filing receipt), DPO named, apoderado especial appointed if GOV-D1 = option B.
+- [ ] RAT v1, DPIA-01 signed (and filed with the SPDP if mandatory, Reglamento Art. 32), Registro Nacional filed within the Art. 86 deadline (filing receipt), DPO named and meeting Reglamento Arts. 55–56, apoderado especial appointed if GOV-D1 = option B.
 - [ ] Every public pilot tenant has a named DPO and a signed processor contract / Adenda LOPDP.
 - [ ] RB-17 breach drill done; T-07/T-08 templates reviewed by LC.
 - [ ] At least A1 or A2 signed, or SC approval to operate under the interim note with R10 accepted.
@@ -1236,17 +1261,19 @@ gantt
 
 - **Alert-exclusivity article.** Which article of the Ley Orgánica para la Gestión Integral del Riesgo de Desastres (RO 488) and of its Reglamento (Decree 394 per [01](./01-context-el-nino-ecuador.md); number unverified in the legal brief) reserves alert declaration to SNGR, and does it restrict how third parties present risk levels? This blocks final approval of D1–D3 and §1.2. Owner LC, by 2026-10-30.
 - **Current official alert state.** SNGR-193-2026 (*Alerta Naranja*, July 2026) vs a reported COE red alert on 2026-08-29; SNGR-238-2026 was not found. The official band must show whatever the verbatim feed says; LS to confirm the authoritative channel.
-- **WeatherNext.** NRVA status of parish probabilities for T0 publication; the operator as "Contractor"; 1 h vs 48 h threshold for WN2; card-size citation; operational use by agencies (§3.2 letter). The gap brief's more permissive reading (Retrievable VAS to signed-in T1 users) is not used, following the spine.
+- **WeatherNext.** NRVA status of parish probabilities for T0 publication; the operator as "Contractor"; 1 h vs 48 h threshold for WN2; card-size citation; operational use by agencies; transfer of the approval to the Phase 4 host (§3.2 letter). The user-needs brief's more permissive reading (Retrievable VAS to signed-in users without a project, T0 here) is not used, following the spine. Whether Ecuadorian public entities are "legally exempt" from the §6(b) indemnity is for LC.
 - **Flood Forecasting API** commercial wording and redistribution of snapshots to commercial tenants.
 - **Copernicus/C3S** redistribution terms for derived canton terciles per contributing centre; exact GloFAS and GEOGloWS attribution texts.
 - **LP-03 durability.** Oficio SPDP-IRD-2026-0300-O is an answer to one query; Res. 2026-0004-R Art. 65 registration might still be expected. SPDP consultation letter by 2026-11-13.
 - **SPDP AI resolution** (2026-0009-R as amended by 2026-0037-R) and **breach norm** (2026-0040-R): content not read; may add duties to DPIA-02 and RB-17.
-- **RAT fields.** The exact field list of Reglamento Art. 38 must be mapped into `legal/rat/rat.yaml`.
+- **RAT and registration.** The nine fields of Reglamento Art. 38 are now mapped in `legal/rat/rat.yaml` (§2.5); LC confirms the format the SPDP registry platform expects and whether internal test tenants start the 10-*día* registration clock of Reglamento Art. 86 (§2.13).
+- **DPO.** Whether Art. 48(2) and Reglamento Art. 53 make the operator's DPO mandatory, and whether combining the DPO with the security-officer role until Phase 2 is compatible with Reglamento Arts. 48 and 56 (§2.7).
 - **Retention for public tenants.** The 5-year default for audit logs and evidence packs depends on public-archive and audit rules not retrieved; FR-071 (400 days) in [02](./02-users-requirements-ux.md) should adopt the public/private split in §2.10.
 - **Operating entity and signatories** (GOV-D1, GOV-D2), including whether a free *convenio* keeps the platform outside SERCOP procedures.
 - **Procurement and tax.** SERCOP procedure for GCP consumption; Google partners in the RUP; ISD rate and exemptions; whether Google LLC is in the SRI digital-services registry; income-tax withholding on transfers.
-- **Earth Engine** classification of COE, Red Cross and NGO trigger monitoring (operational = commercial?), and the Commons registration.
+- **Earth Engine** classification of COE, Red Cross and NGO trigger monitoring (operational = commercial?), and the Commons registration. Tension with the spine: Phase 0 files a noncommercial Partner-tier application, while the Earth Engine guidance treats operational government use as commercial (LP-07); §3.4 files the Partner application as the spine requires but registers operational production commercially unless Google confirms otherwise.
 - **LOTAIP and Retrievable VAS** in public tenants (R33): does an access-to-information request override third-party licence restrictions? LC opinion needed.
 - **Cybersecurity law** designation of critical or essential services and the platform's position under Arts. 20-A, 20-I and 20-Q.
 - **EGSI v3 control catalogue**: the mapping in §10.3 uses the ISO 27002:2022 structure as a proxy; confirm against the MINTEL text.
-- **Naming extensions introduced here** (to adopt in [03](./03-architecture.md) and [05](./05-data-catalog.md)): the `legal` block in API responses and the `X-Ectwin-Official` header; the broker-side licence class `wn_retrievable`; jobs `legal-terms-watch` and `ectwin-account-sweeper`; the table `commons_ops.divergence_log`; the restricted prefix `raw/ecu911/`; the `legal/` repository folder (`texts/`, `vocabulary.yaml`, `rat/`, `licences/`, `decisions/`, `risk/`).
+- **Divergence criterion.** Which official alerts count as "covering" a canton for the divergence flag (§1.5) while an event-wide El Niño alert is in force; LS to confirm with SNGR.
+- **Naming extensions introduced here** (to adopt in [03](./03-architecture.md) and [05](./05-data-catalog.md)): the `legal` block in API responses and the `X-Ectwin-Official` header; the broker-side licence class `wn_retrievable`; the `layer_registry.obligations` value `export_permitted_by_agreement`; the export files `WEATHERNEXT_TERMS.pdf` (05's G-04 test names `WEATHERNEXT_TERMS.txt`), `COPYRIGHT.txt` and `WEATHERNEXT_CITATION.txt`; jobs `legal-terms-watch` and `ectwin-account-sweeper`; the table `commons_ops.divergence_log`; the restricted prefix `raw/ecu911/`; the `legal/` repository folder (`texts/`, `vocabulary.yaml`, `rat/`, `licences/`, `decisions/`, `risk/`).
