@@ -145,7 +145,7 @@ Durations are estimates to be replaced with measured p95 values after two weeks 
 | 14 | `ingest-geoglows-inamhi` | P2 / `southamerica-west1` | 00:30, 06:30, 12:30, 18:30 | 19:30, 01:30, 07:30, 13:30 | `inamhi.geoglows.org` / `services.geoglows.org` | `river_status` | 2 min | ≤3 h / 36 h | RB-06, RB-07; S3 `geoglows-v2-forecasts` direct |
 | 15 | `ingest-glofas` | P2 / `us-central1` | 12:00 | 07:00 | EWDS `cems-glofas-forecast` (one request per day, Ecuador area) | `river_status` | 10–40 min (queue) | ≤3 h after release / 36 h | RB-22 |
 | 16 | `ingest-enso` | P2 / `us-central1` | 14:00 daily; rerun 18:00 on CPC ENSO update days (second Thursday of the month, per a secondary source) | 09:00; 13:00 | CPC weekly SST (`wksst9120.for`, `rel_wksst9120.txt`) and `RONI.ascii.txt`, CPC RONI probabilities, ENFEN ICEN (`met.igp.gob.pe/datos/ICEN.txt`), IRI plume, OISST Niño boxes, BoM SOI | `enso_indices` | 2 min | ≤24 h / 10 days | RB-22 |
-| 17 | `ingest-seasonal` + CFSv2 daily | P2 / `us-central1` | CFSv2 09:00 daily; GloFAS seasonal days 6–10; C3S days 5–15 (official release the 13th 12 UTC **unverified**; [03 §7.2](./03-architecture.md) retries on days 13–16); NMME days 9–12 **(unverified)**; monthly polls at 14:00 | 04:00; 09:00 | CDS `seasonal-monthly-single-levels`, EWDS `cems-glofas-seasonal`, NMME (CPC FTP), `s3://noaa-cfs-pds` | `seasonal_canton` | 20–90 min | ≤48 h / 40 days | RB-22 |
+| 17 | `ingest-seasonal` + CFSv2 daily | P2 / `us-central1` | CFSv2 09:00 daily; SEAS5 ≈day 5 (if served); GloFAS seasonal days 6–10; C3S day 13, retries days 13–16 (official release the 13th 12 UTC **unverified**); NMME days 8–12 **(unverified)**; monthly polls at 14:00 in one Scheduler window `0 14 5-16 * *` ([03 §7.2](./03-architecture.md)) | 04:00; 09:00 | CDS `seasonal-monthly-single-levels`, EWDS `cems-glofas-seasonal`, NMME (CPC FTP), `s3://noaa-cfs-pds` | `seasonal_canton` | 20–90 min | ≤48 h / 40 days | RB-22 |
 | 18 | `exposure-refresh` | P2 / `us-central1` | first Monday of month 15:00; quarterly version bump | 10:00 | Open Buildings, WorldPop, INEC, MSP/MINEDUC facilities, SNGR Alístate layers (if machine-readable, **to confirm**) | `exposure_parish` (`snapshot_version`), static tiles | 30–60 min | on release / reviewed quarterly | Keep previous version |
 | 19 | `bulletins-text` (Phase 2, FR-048) | P2 / `us-central1` | submit 09:20; must be done by 10:45 | 04:20 → 05:45 | `facts.json` per province from the 00Z cycle (official alerts verbatim, levels, probabilities as code-held placeholders), style guide | Draft Spanish paragraphs (label D12); appended only after human approval in the report builder; the FR-044 canton PDF stays template-only ([08 §8.1](./08-ai-decision-layer-jev.md)) | batch, ≤85 min expected (turnaround **unverified**) | — | RB-10: template-only text |
 | 20 | `bulletins-canton` | P2 / `us-central1` | 11:00; ready ≤11:30 (N2+: second edition 22:00) | 06:00 → 06:30 (17:00) | Latest final cycle, official band, rivers, tide | `bulletins/<date>/canton=<dpa4>.pdf`, `cards/…png`, notification N4 | ≤30 min | 06:30 ECT on ≥97% of days | RB-20 |
@@ -268,6 +268,7 @@ Every change is written to `commons_ops.posture_log` (level, criteria met, decid
 | Jev national triage | batch | continuous, 8 workers | continuous; human-review queue staffed | same |
 | Change policy | normal windows | normal windows | **freeze** (§3.6) | **freeze** |
 | Status-page update cadence for P2 incidents (P1 is always 30 min, §5.1) | 60 min | 60 min | 30 min | 30 min |
+| Central budgets ([09 §9.3](./09-cost-model.md); Terraform, not `posture.sh`) | platform US$45, Commons US$450 | same | platform US$100, Commons US$650 (`posture_high=true`) | same |
 
 Apply the technical switches with `scripts/ops/posture.sh`:
 
@@ -299,6 +300,8 @@ bq query --use_legacy_sql=false --project_id=$C --parameter="lvl:STRING:$LEVEL" 
 ```
 
 Scheduler job names ending in `-cron` are the trigger objects for the jobs of §2.1 **(names to align with the Terraform in `infra/commons/`)**. The N2 Flood API cron `15 1-22/3 * * *` keeps the normal 01:15/07:15/13:15/19:15 slots and adds 04:15, 10:15, 16:15 and 22:15.
+
+**Budget step (SRE, separate from the script).** `posture.sh` does not change budgets. When N2 or N3 is declared, SRE also applies `infra/commons` with `-var posture_high=true`, which raises the `ectwin-platform-prod` budget to US$100 and the `ectwin-commons-prod` budget to US$650; on return to N0/N1, SRE applies it again with `-var posture_high=false` ([09 §9.3](./09-cost-model.md), [10 §3.6](./10-setup-and-deployment.md)).
 
 **Extra cost of N2 (estimate).** WN3 scans ≈0.07 GB per column-init ([03 §3](./03-architecture.md)). An interim run reading about 10 columns scans at most ≈0.7 GB (an upper bound: interim runs reach 48 h, about 13% of a 360-h main run's leads, if they share the table layout). There are 20 interim inits a day besides the 4 main ones: 20 × 0.7 GB ≈ 14 GB/day, ≈ 420 GB ≈ 0.38 TiB over 30 days. Main cycles at ≤1 GB each (M1.1) add 4 × 30 × 1 GB = 120 GB ≈ 0.11 TiB/month. Together ≈0.49 TiB/month, inside the 1 TiB free tier of the Commons billing account, but with limited headroom once verification and backfills run. Backfills are therefore paused in N2. The warm broker instance adds a small always-on charge (priced in [09](./09-cost-model.md)).
 
@@ -362,7 +365,7 @@ Budgets are not caps and several quotas default low. Request these in Phase 1 so
 | Gemini on Agent Platform request and token limits | commons | **(check in console)** | 2× the measured bulletin batch | 2026-11-13 | AI |
 | TypeSafe Jev | commons account | 1,200 requests/min, 250k tokens/s per account; no published SLA | higher limit via sales@typesafe.ai, or a second account for failover | 2026-11-06 | AI |
 | Flood Forecasting API | commons | 200 requests/min | unchanged (need <60 per run) | — | DL |
-| Earth Engine | commons | noncommercial tier | Partner tier (100,000 EECU-h/month) application, or commercial Limited plan (see RB-13) | Phase 0 | FL |
+| Earth Engine | commons | Commercial – Limited (operational, [13 LP-07](./13-governance-legal-risk.md)); Partner-tier application (100,000 EECU-h/month) pending | Partner tier only if Google confirms in writing that it covers operational use (see RB-13) | Phase 0 | FL |
 | BigQuery `QueryUsagePerDay` | commons | 200 TiB/day default | **lower** to 2 TiB/day as a guard | 2026-10-16 | DL |
 | Cloud Logging volume | platform, commons | 50 GiB/project/month free, then US$0.50/GiB ([pricing](https://cloud.google.com/stackdriver/pricing)) | exclusion filters for debug logs | 2026-11-06 | SRE |
 
@@ -404,7 +407,7 @@ The per-plane SLOs of [02 §6.3](./02-users-requirements-ux.md) are extended wit
 | SLO-06 | Main forecast cycles published ≤1 h after WN3 availability, or fallback published by init + 11 h | 95% of cycles | 6 of 120 cycles | FL |
 | SLO-07 | Scheduled Flood API snapshots succeeded | 95% | 6 of 120 runs | DL |
 | SLO-08 | INAMHI archive completeness: stored station-hours / station-hours served by the API in the 92-day window, checked daily | 99% (estimate) | — | DL |
-| SLO-09 | Official-alert notifications (types N1 and N2) sent ≤5 min after ingestion, p95 (estimate) | 95% | — | PL |
+| SLO-09 | Official-alert notifications ([02 §8.8](./02-users-requirements-ux.md) notification types N1 official alert change and N2 INAMHI advertencia; not posture levels) sent ≤5 min after ingestion, p95 (estimate) | 95% | — | PL |
 | SLO-10 | Tenant scheduled pipelines succeed after retries (NFR-008) | 98% | — | TA; platform alerts |
 | SLO-11 | Weekly verification scores published ≤24 h after the scheduled run | 90% of weeks | 1 week in 10 | FL |
 
@@ -588,7 +591,7 @@ ORDER BY is_stale DESC, age_min DESC;
 | OPS-A14 | `bulletins-text` not done by 10:45 UTC, or Gemini 429 | instant | P3 | RB-10 |
 | OPS-A15 | Commons bytes billed today >50 GiB (estimate), or a job hit `maximumBytesBilled` | daily / instant | P3 | RB-14 |
 | OPS-A16 | Batch task preempted >2 times, or queued >30 min in N2+ | per job | P3 | RB-15 |
-| OPS-A17 | Budget 50/90/100% (platform ≤US$45, Commons ≤US$300, NFR-017), or daily cost >2× 7-day baseline | budget / daily | P3; P2 at 100% | RB-18 |
+| OPS-A17 | Budget 50/90/100% actual + 100% forecast on the [09 §9.3](./09-cost-model.md) amounts (`ectwin-platform-prod` US$45 N0/N1, US$100 N2/N3; `ectwin-commons-prod` incl. Block D US$450 = ≤300 Commons proper ([NFR-017](./02-users-requirements-ux.md)) + ≤150 delivery, US$650 N2/N3), or daily cost >2× 7-day baseline | budget / daily | P3; P2 at 100% | RB-18 |
 | OPS-A18 | Security: user-managed SA key created; IAM change outside Terraform; public access outside the static prefixes of `ectwin-commons-prod-public` and `ectwin-platform-prod-web` (§11.1); token mint for a tenant not `active` | instant | P1/P2 page | §11 |
 | OPS-A19 | DR copy object count mismatch for yesterday's `ingest_date` | daily | P3 | §10 |
 | OPS-A20 | Source `final_host` changed, TLS fails or certificate expires within 21 days | per probe | P3 | RB-07 |
@@ -626,13 +629,15 @@ flowchart LR
   P --> F["Actions tracked in weekly ops review"]
 ```
 
-**Kill switch** (for wrong products; [03 §11.2](./03-architecture.md)): roll `national/latest/` back to the last good `init_time` and record a withdrawal that the API honours.
+**Kill switch** (for wrong products; [03 §11.2](./03-architecture.md)): roll `national/latest/` back to the last good `init_time` and record a withdrawal that the API honours. Forecast-derived objects (`national/`, `tiles/forecast/`, bulletins, cards) are in the private `ectwin-commons-prod-products` bucket; `ectwin-commons-prod-public` holds only static layers (`tiles/static/`, `cog/`) (bucket model per [10 §5.3](./10-setup-and-deployment.md), final decision M1.2).
 
 ```bash
 #!/usr/bin/env bash
 # scripts/ops/rollback-latest.sh <bad_init YYYYMMDDTHHMMZ> <good_init YYYYMMDDTHHMMZ> "<reason>"
 set -euo pipefail
-B=gs://ectwin-commons-prod-public
+# national/ and tiles/forecast/ live in the private products bucket; -public holds only tiles/static/ and cog/
+# (bucket model per 10 §5.3, final decision M1.2)
+B=gs://ectwin-commons-prod-products
 gcloud storage cp "$B/national/$2/*.json" "$B/national/latest/" --project=ectwin-commons-prod
 bq query --use_legacy_sql=false --project_id=ectwin-commons-prod \
   --parameter="bad:STRING:$1" --parameter="good:STRING:$2" --parameter="why:STRING:$3" \
@@ -890,7 +895,7 @@ Each runbook lists trigger, default severity, detection, steps, recovery check a
 - **Context.** Errors 429 (honour `retry-after`) and 529 (overloaded); SDK retries twice on 408/429/5xx with a 10-s timeout; limits 1,200 requests/min and 250k tokens/s per account; no published SLA; ≈8 concurrent workers per key.
 
 1. **429**: honour `retry-after`; reduce workers to 4; check for a runaway producer on the queue.
-2. **529 or 5xx >5% for 5 min**: the circuit breaker opens and `DecisionBackend` fails over to the other D17 backends in the order configured in [08](./08-ai-decision-layer-jev.md) (`typesafe → open_weight → gemini_adapter`): the open-weight Jev-compatible model (Von) on Cloud Run, then the System One Adapter on Gemini in the tenant's or Commons' project.
+2. **529 or 5xx >5% for 5 min**: the circuit breaker opens and `DecisionBackend` fails over to the other D17 backends in the order configured in [08 §5.3](./08-ai-decision-layer-jev.md) (`routing.yaml`): Commons `typesafe → open_weight` (Von, the open-weight Jev-compatible model on Cloud Run) `→ gemini_adapter` (the System One Adapter on Gemini); tenants `typesafe → gemini_adapter → open_weight`, in the tenant's own project; C3 templates (`incident_record`) `open_weight → gemini_adapter`; non-urgent templates are queued (`failover: false`).
 3. **While on a fallback backend**, widen the human-review band from 0.30–0.70 to **0.20–0.80** and raise the choice-abstain threshold to 0.70, because fallback probabilities are not calibrated like Jev's; log `backend` in `decision_log`.
 4. Non-urgent triage (catalogue classification, dedup) is queued, not failed over.
 5. Half-open the breaker every 10 min with 5 canary calls; restore when 5/5 succeed.
@@ -908,7 +913,7 @@ Each runbook lists trigger, default severity, detection, steps, recovery check a
 
 ### RB-11 Tenant budget exhausted
 
-- **Trigger.** Tenant budget at 100% → Pub/Sub topic `ectwin-budget` → the tenant's `ectwin-guard` function pauses its `ectwin-*` Cloud Scheduler jobs and sets `guard_state=paused` ([04 §8.3](./04-identity-tenancy-byo-gcp.md)); it never disables billing, which "might irretrievably delete" resources. At 90% the guard already warns Owners and cuts the 06Z and 18Z runs. The tenant shows `degraded` and a "Modo ahorro" banner; national T0 views keep working, and official-alert notifications continue if `ectwin-notify-eval` is marked *esencial* (default). Budget notifications lag actual spend.
+- **Trigger.** Tenant budget at 100% → Pub/Sub topic `ectwin-budget-alerts` (guard pull subscription `ectwin-budget-alerts-guard`) → the tenant's `ectwin-guard` function pauses its `ectwin-*` Cloud Scheduler jobs and sets `guard_state=paused` ([04 §8.3](./04-identity-tenancy-byo-gcp.md)); it never disables billing, which "might irretrievably delete" resources. At 90% the guard already warns Owners and cuts the 06Z and 18Z runs. The tenant shows `degraded` and a "Modo ahorro" banner; national T0 views keep working, and official-alert notifications continue if `ectwin-notify-eval` is marked *esencial* (default). Budget notifications lag actual spend.
 
 For the tenant admin:
 1. Open *Proyecto y costos* (`/v1/t/{tid}/costs`, FR-065) to see the top driver.
@@ -955,7 +960,7 @@ For the tenant admin:
 
 1. Jobs skip EE steps (feature flag `ee.enabled=false`) and use BigQuery paths where they exist. The nowcast degrades to INAMHI stations only, labelled.
 2. Tenant: the TA raises the cap, applies for the Partner tier (climate adaptation projects are eligible) or registers commercially (Limited plan, US$0.40/EECU-h). Private tenants must be commercial.
-3. Commons: FL decides between waiting for the monthly reset and moving to the commercial Limited plan. EE reductions for verification are estimated at 2–10 EECU-h/month (US$0.80–4 at US$0.40/EECU-h), so the switch is cheap; the Phase 2 30-min nowcast ingest (row 6 of §2.1) adds EECU use that must be measured in `-stg`. Note that operational government use in a non-LDC may require a commercial account anyway ([noncommercial terms](https://earthengine.google.com/noncommercial/), search summary; see §14).
+3. Commons (Commercial – Limited, [13 LP-07/§3.4](./13-governance-legal-risk.md)): FL raises the daily EECU cap within budget; if Google confirms Partner coverage, move research and verification jobs to the Partner project. EE reductions for verification are estimated at 2–10 EECU-h/month (US$0.80–4 at US$0.40/EECU-h), so a higher cap is cheap; the Phase 2 30-min nowcast ingest (row 6 of §2.1) adds EECU use that must be measured in `-stg`. Operational government use in a non-LDC counts as commercial ([noncommercial terms](https://earthengine.google.com/noncommercial/), search summary; see §14).
 
 ### RB-14 BigQuery quota and bytes-billed failures
 
@@ -1132,6 +1137,8 @@ The publish step of every Commons pipeline runs its `block` checks first and ref
 
 ### 8.2 Pipeline
 
+The deployment commands for platform, Commons and tenant releases are in [10 §9.1–9.2](./10-setup-and-deployment.md); this section sets the gates.
+
 1. Trunk-based; each merge builds images with provenance, pushes to Artifact Registry by digest and deploys to `-dev` ([03 §9.3](./03-architecture.md)).
 2. Contract tests, cross-tenant isolation tests, vocabulary guard, licence check and bundle budget must pass.
 3. Promote the **same digest** to `-stg`; soak 24 h with production-like schedules on stg data.
@@ -1190,9 +1197,9 @@ Operators cannot read tenant content (FR-064). Support uses:
 
 ### 9.4 Onboarding, turnover and offboarding
 
-- **Onboarding checklist** (TA): org-owned project (not personal, D7); billing account linked; bootstrap green; budget and quotas set; WeatherNext request submitted (T2+); EE registered with the right tier; at least 2 Owners with TOTP MFA; subscriptions for official alerts set.
-- **Staff and authority turnover.** Local elections on 2026-11-29 will change GAD authorities (take-office date **unverified**). Before the change, each GAD tenant: adds the successor's accounts as Owner in GCP IAM and in `members/{uid}`; confirms billing-account administrators; removes departing staff after hand-over; rotates tenant API keys (FR-069). Support runs an outreach campaign to all GAD tenants between 2026-11-02 and 2026-11-20.
-- **Offboarding** (FR-015): export, remove the Token Creator binding (or delete `ectwin-runner`), registry row deleted; access ends within one ≤15-min token.
+- **Onboarding checklist** (TA; the procedure is [10 §6](./10-setup-and-deployment.md), acceptance in 10 §6.14): org-owned project (not personal, D7); billing account linked; bootstrap green; budget and quotas set; WeatherNext request submitted (T2+); EE registered with the right tier; at least 2 Owners with TOTP MFA; subscriptions for official alerts set.
+- **Staff and authority turnover.** Local elections on 2026-11-29 will change GAD authorities (take-office date **unverified**). Before the change, each GAD tenant: adds the successor's accounts as Owner in GCP IAM and in `members/{uid}`; confirms billing-account administrators; removes departing staff after hand-over; rotates tenant API keys (FR-069); confirms that the WeatherNext-approved account is a role-based institutional account (e.g. `gde-datos@<gad>.gob.ec`) that survives the hand-over, because WeatherNext approval is per Google account ([04 §9](./04-identity-tenancy-byo-gcp.md)); if not, files a new request ≥10 business days before hand-over (approval takes ≈5–7 business days, [10 §6.8](./10-setup-and-deployment.md)). Support runs an outreach campaign to all GAD tenants between 2026-11-02 and 2026-11-20.
+- **Offboarding** (FR-015): export, remove the Token Creator binding (or delete `ectwin-runner`), registry row deleted; access ends within one ≤15-min token. Pause, disconnect and teardown commands are in [10 §9.4](./10-setup-and-deployment.md).
 
 ### 9.5 Canned reply example
 
@@ -1278,11 +1285,13 @@ Protection levels, RPO and RTO are defined in [03 §11.4](./03-architecture.md) 
 
 ### 11.3 Secret rotation
 
+The step-by-step commands are in [10 §9.3](./10-setup-and-deployment.md).
+
 | Secret | Location | Rotation | Procedure |
 |---|---|---|---|
 | Flood API key | Commons Secret Manager | 90 days, or immediately if exposed | Create new key restricted to the Flood Forecasting API → add secret version → run one snapshot → disable old key after 24 h |
 | TypeSafe API key | Commons Secret Manager (tenants hold their own) | 90 days | Same pattern; check `decision_call` logs show the new key id |
-| WIF issuer signing key (path C, Phase 2) | Platform KMS | 180 days, overlapping JWKS | Publish new `kid` in JWKS 7 days before use |
+| WIF issuer signing key (path C, Phase 2) | Platform KMS | 90 days, overlapping JWKS | Publish new `kid` in JWKS 14 days before first use ([04 §4.5](./04-identity-tenancy-byo-gcp.md)) |
 | Relay upload credentials | Partner-held; WIF or signed-URL handshake | Per partner agreement | **(to confirm)** |
 
 ### 11.4 Security incidents
@@ -1365,9 +1374,23 @@ Riesgos próximas 12 h: <p. ej. aguaje 18:40, advertencia INAMHI vigente>
 
 **Mid-season review — 2027-02-15**: verification so far; recalibration decision (WN3 has accumulated more history); threshold review with INAMHI; staffing fatigue check; cost vs forecast.
 
-**End-of-season — after CN-ERFEN declares the event over, or 2027-05-15 at the latest**: post-event verification report ([14](./14-verification-and-validation.md)); retrospective of all incidents; archive freeze and DR check of the season's raw data; lessons for the hand-over (Phase 4); readiness for the drought/La Niña side (energy pathway N2-E).
+**End-of-season — after CN-ERFEN declares the event over, or 2027-05-15 at the latest**: season data freeze and DR check of the season's raw data (VV-3.1 in [14](./14-verification-and-validation.md)); verification report drafting started (published by 2027-06-30, VV-3.2); retrospective of all incidents; lessons for the hand-over (Phase 4); readiness for the drought/La Niña side (energy pathway N2-E).
 
 **Annual**: Earth Engine noncommercial status re-verification; DPIA and RAT review; MoU and data-convenio renewals; licence audit of every layer; OAuth app verification status; this runbook's full review.
+
+### 12.5 Tenant administrator routine (TA)
+
+Under BYO-GCP each tenant runs and pays for its own pipelines, budgets, quotas, keys and registrations, so part of running the twin is the tenant administrator's job. The operator cannot see or change these settings (§9.2); support gives advice only.
+
+| When | Routine | Owner |
+|---|---|---|
+| Daily in N1/N2 | Check *Proyecto y costos* (FR-065) for spend against budget and the top driver; check failed runs (`runs/` status) and act on notification N7 (budget) and notification N8 (pipeline or connection failure) ([02 §8.8](./02-users-requirements-ux.md)) | TA |
+| Weekly | Member and role review (`members/{uid}`, GCP IAM Owners); notification health (subscriptions for official alerts active, last delivery received) | TA |
+| Monthly | Budget, BigQuery `QueryUsagePerDay` and Earth Engine daily EECU cap versus actual use ([04 §8.2](./04-identity-tenancy-byo-gcp.md)); adjust within the tier defaults or record why | TA |
+| Every 90 days | Rotate tenant TypeSafe and other API keys held in the tenant's Secret Manager (FR-069; §11.3) | TA |
+| Annually | Earth Engine noncommercial status re-verification (noncommercial registrations only; commercial registrations check the plan instead) | TA |
+| Before 2026-11-29 | Staff and authority turnover checklist (§9.4), including the WeatherNext-approved account | TA (GAD tenants) |
+| Pre-season (by 2026-11-27) | T3: raise the budget from US$1,000 to the peak figure of up to US$1,300 for the peak months ([04 §8.2](./04-identity-tenancy-byo-gcp.md)); confirm guard and budget alerts reach at least 2 Owners | TA (T3 tenants) |
 
 ---
 
@@ -1393,13 +1416,13 @@ Riesgos próximas 12 h: <p. ej. aguaje 18:40, advertencia INAMHI vigente>
 - **Liaison arrangements.** Named INAMHI and SNGR focal points, a WhatsApp liaison group, platform staff presence in *mesas técnicas*, and a manual two-person entry procedure for official alerts all need agreement under the conventions (priority 1 in [01 §8.2](./01-context-el-nino-ecuador.md)).
 - **Relay mechanism.** Partner, hosting and authentication for the geoblock relay are undecided ([03 §14](./03-architecture.md)); RB-06 depends on it.
 - **WN3 interim runs.** The Earth Engine catalogue lists hourly interim inits to 48 h in `weathernext_3_0_0_0p1deg`; whether the BigQuery tables carry them is unverified. `fc-interim` must use whichever carries them, and only for hourly intensity (quantile sums are invalid, ADR-29).
-- **Commons Earth Engine tier.** A search summary says operational government use in a non-LDC needs a commercial account; the Commons nowcast may have to run on the commercial Limited plan from the start (cost estimated at a few US$ per month). Decide in Phase 0.
+- **Commons Earth Engine tier.** A search summary says operational government use in a non-LDC needs a commercial account, so Commons operational production runs on Commercial – Limited from the start (cost estimated at a few US$ per month; [13 LP-07/§3.4](./13-governance-legal-risk.md)). Still open: whether Google confirms in writing that the pending Partner-tier application covers any of this use.
 - **Numeric posture thresholds** (≥20 parishes, ≥10 SNGR events, +20 cm sea-level anomaly) are estimates; tune by 2026-12-15 against the false-trigger rate. The +20 cm anomaly is already exceeded (+40 cm reported by ERFEN on 2026-08-20), so the sea-level criterion is combined with reported tidal flooding; confirm the rule with INOCAR and SNGR.
 - **Current SNGR resolution.** The nationwide escalation of 2026-08-29 is reported as Resolution SNGR-238-2026 with conflicting colours, and a second search found no trace of that number. LS must confirm the resolution text before MVP go-live; the platform only ever shows the ingested `level_verbatim`.
 - **Severity of model incidents.** [13](./13-governance-legal-risk.md) sets a wrong published product at P2 minimum; this runbook raises it to P1 when thresholds or levels have reached users in N1+. Confirm the rule with the MRC and DPO.
 - **Tenant support access** (§11.2) is a proposal; the IAM-condition mechanism and the audit record must be agreed with [04](./04-identity-tenancy-byo-gcp.md) owners and the DPO.
 - **INAMHI backfill assumption.** RB-08 assumes one Visor request can return a station's full missing range for one variable group; confirm with INAMHI, or the recovery time grows with the outage length.
-- **Staffing.** An N2 rota needs about 8 trained people; reconcile with [12](./12-roadmap-team-budget.md).
+- **Staffing.** [12 §4.3](./12-roadmap-team-budget.md) plans a pool of 9 in the full variant, but the minimum variant has 7.5 trained people, short of the 8 an N2 rota needs (§1.3); N2 beyond 14 days then needs a second INAMHI secondee (to confirm in the INAMHI convenio).
 - **Quota defaults** for Cloud Run job CPUs, C3D Spot CPUs, L4 GPUs and Gemini on Agent Platform were not verified; check in the console before filing requests.
 - **Billing export, BigQuery snapshots, container scanning and log retention pricing** were not in the research briefs; confirm before finalising [09](./09-cost-model.md). The billing export table name and its location per billing account (RB-18) must also be confirmed.
 - **LOPDP breach norm 2026-0040-R** and the CSIRT notification route under the 2026 cybersecurity law were read only through secondary sources; counsel must confirm T-07/T-08 wording and deadlines.
