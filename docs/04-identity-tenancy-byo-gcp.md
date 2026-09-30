@@ -34,7 +34,7 @@ Owner codes (PL, DL, FL, FE, AI, SRE, DPO, TA, PM) are those of [03-architecture
 | G2 | **An own GCP project is required to save** anything: sessions, AOIs, views, subscriptions, runs, reports, custom models (D7) | T0 users keep view state in `sessionStorage` only; every save goes to the tenant's Firestore, BigQuery or bucket | Code scan and integration test: no write path for T0; registry contains only the fields in §3.4 |
 | G3 | **Costs are decentralised**: whoever benefits pays | Tenant work is billed to the tenant through quota project = tenant, runner SA in the tenant, jobs inside the tenant (AP-02) | For a test tenant, 100% of BigQuery, EE, Firestore, Run and GCS usage from its routes appears on its own billing export; platform bill stays ≤US$45/month at pilot (NFR-017) |
 | G4 | **No standing secrets** held by the platform | ≤15-minute impersonated tokens; no service-account keys; OAuth access token used once; no refresh tokens (AP-06) | Automated scan: zero SA keys in platform projects; zero refresh tokens in any store (FR-006) |
-| G5 | **Institutions keep their workspace across staff and authority turnover** (29 Nov 2026 hand-over) | Org-owned projects; ≥2 Owners; ownership recoverable by whoever controls the GCP project (§3.7) | A test hand-over loses no data (FR-016) |
+| G5 | **Institutions keep their workspace across staff and authority turnover** (authority change after the 29 Nov 2026 local elections; take-office date unverified, V12 in [01](./01-context-el-nino-ecuador.md)) | Org-owned projects; ≥2 Owners; ownership recoverable by whoever controls the GCP project (§3.7) | A test hand-over loses no data (FR-016) |
 | G6 | **Works for secure-by-default and regulated organisations** | Admin exception note, WIF path C, self-deploy path D | Path C validated with one ministry test organisation by 2027-01-31 (FR-007) |
 
 ### 1.2 Principles
@@ -64,7 +64,7 @@ flowchart LR
   RUN --> TEE["Earth Engine - tenant registration"]
   SCH["Tenant Cloud Scheduler"] --> JOB["Tenant Cloud Run jobs as ectwin-runner"]
   AH["Commons Analytics Hub listing"] -->|"linked dataset ectwin_commons"| TBQ
-  BUD["Tenant budget"] -->|"Pub/Sub ectwin-budget"| GRD["ectwin-guard pauses Scheduler"]
+  BUD["Tenant budget"] -->|"Pub/Sub ectwin-budget-alerts"| GRD["ectwin-guard pauses Scheduler"]
 ```
 
 ---
@@ -167,7 +167,7 @@ Rule: **no roles or tenant ids in custom claims.** ID tokens live 1 h, so a clai
 | SMS | US$0.16 per SMS to Ecuador after 10/day free | Disabled | Disabled |
 | Blocking functions | Cloud Run request pricing, 2M requests/month free per billing account ([run pricing](https://cloud.google.com/run/pricing)) | ≈US$0 | ≈US$0 |
 
-Identity is the **only unavoidable central cost** that scales with users. Tier 1 stays at US$0 below 50,000 MAU (NFR-010); Tier 2 grows linearly with SSO users from the 51st.
+Identity (control plane) and T0 delivery Block D (Commons egress and CDN, [09 §1](./09-cost-model.md)) are the central costs that scale with users; Identity Tier 1 stays at US$0 below 50,000 MAU (NFR-010); Tier 2 grows linearly with SSO users from the 51st.
 
 ### 2.7 Session handling
 
@@ -239,7 +239,8 @@ Permission matrix (API routes from [03 §6.2](./03-architecture.md#62-endpoints)
 | National views `/v1/national/*`, tiles | ✔ | ✔ | ✔ | ✔ |
 | Read AOIs, views, runs, reports in tenant | ✔ | ✔ | ✔ | ✔ |
 | Save own session, subscriptions, devices | ✔ | ✔ | ✔ | ✔ |
-| Create/edit AOIs, views, rules; launch runs ≤ cost cap; saved queries (T2+); decisions; report drafts; exports | — | ✔ | ✔ | ✔ |
+| Create/edit AOIs, views, rules (AOI notification rules only); launch runs ≤ cost cap; saved queries (T2+); decisions; report drafts; exports | — | ✔ | ✔ | ✔ |
+| Edit trigger definitions (`ectwin.trigger_definition`, from FR-052 sector templates; [07 §6.7](./07-impact-modules-and-triggers.md#67-trigger-governance)) | — | — | ✔ | ✔ |
 | Launch runs above cap (FR-066) | — | — | — | ✔ |
 | Invite/remove Viewers and Analysts; integrations; retention | — | — | ✔ | ✔ |
 | Invite/remove Admins and Owners; transfer ownership | — | — | — | ✔ |
@@ -281,7 +282,7 @@ Rules: the broker writes both stores in the same request (registry first); `ectw
 
 ### 3.7 Ownership recovery and hand-over
 
-Authorities change after the local elections of 29 Nov 2026 ([01 §7.4](./01-context-el-nino-ecuador.md#74-compound-and-cascading-risk)). Two mechanisms:
+Authorities change after the local elections of 29 Nov 2026 ([01 §7.4](./01-context-el-nino-ecuador.md#74-compound-and-cascading-risk); take-office date unverified, V12). The operator's turnover checklist is in [11 §9.4](./11-operations-runbook.md#94-onboarding-turnover-and-offboarding). Two mechanisms:
 
 1. **Planned hand-over (FR-016).** Outgoing Owner invites the successor as Owner, successor accepts with MFA, outgoing Owner reviews members and re-confirms the org profile; the broker produces a checklist PDF to the tenant bucket.
 2. **Reclaim (no Owner left).** A person who can modify the tenant project (project Owner, or the roles in §5.3.3) starts *Recuperar propiedad* in the wizard, receives a fresh one-time connection code, and re-runs the idempotent bootstrap with it (`scripts/bootstrap-tenant.sh --project <TENANT_PROJECT> --connection-code <CODE>`, or `connection_code` in Terraform). The re-run is idempotent, so on a healthy project it changes only the connection label (§4.2 step 6); the broker verifies it exactly as at first connection and makes that person an Owner, notifying all previous Owners by email. No separate reclaim flag is needed. Rationale: whoever controls the GCP project already controls the data (IT-01).
@@ -528,7 +529,7 @@ Run at connection, daily at 05:00 ECT, and on demand from *Proyecto y costos*. R
 | PF-06 | Commons linked dataset | Dry run on `ectwin_commons.parish_exceedance` with partition filter | Not found / denied | Re-subscribe (§5.4) |
 | PF-07 | Firestore | Write + read + delete `health/{random}` | Error; wrong mode (Datastore) | See §13 |
 | PF-08 | Bucket | Write/read/delete `scratch/preflight/…`; public access prevention on | Error or public | Re-run; enforce PAP |
-| PF-09 | Budget | Budget exists for project with Pub/Sub topic `ectwin-budget` | Missing (amber) | Owner creates budget (§5.7.1) |
+| PF-09 | Budget | Budget exists for project with Pub/Sub topic `ectwin-budget-alerts` (and pull subscription `ectwin-budget-alerts-guard`; `verify-tenant.sh` VT-15/VT-16) | Missing (amber) | Owner creates budget (§5.7.1) |
 | PF-10 | Guard | `ectwin-guard` function deployed and subscribed | Missing (amber) | Re-run bootstrap |
 | PF-11 | BigQuery custom quota | `QueryUsagePerDay` preference present and ≤ tier default (optional in v0.1.0, so often set by hand) | Missing (amber) | Apply quota (§5.7.2) |
 | PF-12 | Earth Engine | `GET v1/projects/{p}/config` → `registrationState` | `NOT_REGISTERED` (amber for T1, red for T2+) | Register at `https://code.earthengine.google.com/register?project=<ID>` ([access](https://developers.google.com/earth-engine/guides/access)) |
@@ -607,10 +608,10 @@ No keys are ever created for either (§11.1). The guard has its own identity so 
 | `ectwin-guard@` | `roles/cloudscheduler.admin` (pause/resume; Scheduler has no per-job IAM **(to confirm)**) | Project |
 | `ectwin-guard@` | `roles/datastore.user` | Project (writes `settings/tenant.guard_state`) |
 | `ectwin-guard@` | `roles/pubsub.publisher` | Topic `ectwin-notify` only (Owner warnings at 90% and 100%) |
-| `ectwin-guard@` | `roles/run.invoker` | The `ectwin-guard` function only, as identity of its Pub/Sub (Eventarc) trigger on `ectwin-budget` **(trigger wiring to confirm)** |
+| `ectwin-guard@` | `roles/run.invoker` | The `ectwin-guard` function only, as identity of its Pub/Sub (Eventarc) trigger on `ectwin-budget-alerts`; alternatively the guard reads the v0.1.0 pull subscription `ectwin-budget-alerts-guard` (then `roles/pubsub.subscriber` on that subscription instead) **(trigger wiring to confirm, IT-M6)** |
 | `ectwin-broker@ectwin-platform-prod.iam.gserviceaccount.com` | `roles/iam.serviceAccountTokenCreator` | **SA resource `ectwin-runner` only** (paths A/B/C1) |
 | WIF pool principal `…/subject/ectwin-broker` | `roles/iam.serviceAccountTokenCreator` | SA resource `ectwin-runner` only (path C2) |
-| Budget notifications | Publisher on `ectwin-budget` is the billing budget service (granted automatically when the budget is linked **(to confirm)**) | Topic |
+| Budget notifications | Publisher on `ectwin-budget-alerts` is the billing budget service (granted automatically when the budget is linked **(to confirm)**) | Topic |
 
 #### 5.3.3 Humans who run the bootstrap
 
@@ -622,7 +623,7 @@ All in location **`US`** (D10): every dataset in a job must share the job's loca
 
 | Dataset | Kind | Created by | Settings |
 |---|---|---|---|
-| `ectwin` | Native | Bootstrap | No default expiry; tables per [03 §5.4](./03-architecture.md#54-tenant-table-schemas-ddl); `run`, `session` partitions expire at 400 days |
+| `ectwin` | Native | Bootstrap | No default expiry; tables per [03 §5.4](./03-architecture.md#54-tenant-table-schemas-ddl), plus the tenant-side verification tables of [14 §6.6](./14-verification-and-validation.md#66-tenant-side-verification); `run`, `session` partitions expire at 400 days |
 | `ectwin_scratch` | Native | Bootstrap | `default_table_expiration = 604800` s (7 days) |
 | `ectwin_commons` | Linked (Commons listing `ectwin_commons_v1`) | Bootstrap with `--subscribe-commons` / `listing_subscriptions` once the listing is live (M1.2, 2026-11-06), or later by the broker as the runner | Read-only; subscriber pays queries, publisher pays storage ([BigQuery pricing](https://cloud.google.com/bigquery/pricing)) |
 | `ectwin_commons_nc` | Linked (`ectwin_commons_nc_v1`) | Bootstrap, **noncommercial profiles only** | Licence gating by construction (D15) |
@@ -642,7 +643,7 @@ curl -sS -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H
 
 ### 5.5 Bucket
 
-`gs://<TENANT_PROJECT>-ectwin` in `us-central1` (co-located with ARCO-ERA5; BigQuery `US` reads it without transfer charge; inside the GCS Always Free zone, [storage pricing](https://cloud.google.com/storage/pricing)). Uniform bucket-level access, **public access prevention enforced**, soft delete 7 days, no versioning by default, CORS limited to the app origins for signed-URL range reads (`app_origins`). Prefixes and lifecycle per [03 §5.1](./03-architecture.md#51-gcs-buckets-and-prefixes): `scratch/` deleted at **7 days** (v0.1.0 defaults `scratch_retention_days` to 30; set it to 7, §5.8.4); cold prefixes to Nearline at 90 days. 03 names only `runs/`; v0.1.0 also ages `reports/`, `evidence/`, `exports/` and `raw/`, and keeps the often-read `tiles/`, `curated/` and `catalog/` in Standard to avoid Nearline retrieval fees (US$0.01/GiB, [storage pricing](https://cloud.google.com/storage/pricing)); this document adopts that list. Lifecycle file (JSON wrapper accepted by `gcloud storage buckets update --lifecycle-file` **to confirm**: `{"rule": […]}` or `{"lifecycle": {"rule": […]}}`):
+`gs://<TENANT_PROJECT>-ectwin` in `us-central1` (co-located with ARCO-ERA5; BigQuery `US` reads it without transfer charge; inside the GCS Always Free zone, [storage pricing](https://cloud.google.com/storage/pricing)). Uniform bucket-level access, **public access prevention enforced**, soft delete 7 days, no versioning by default, CORS limited to the app origins for signed-URL range reads (`app_origins`). Prefixes and lifecycle per [03 §5.1](./03-architecture.md#51-gcs-buckets-and-prefixes): `scratch/` deleted at **7 days** (v0.1.0 default `scratch_retention_days` = 7); cold prefixes to Nearline at 90 days. 03 names only `runs/`; v0.1.0 also ages `reports/`, `evidence/`, `exports/` and `raw/`, and keeps the often-read `tiles/`, `curated/` and `catalog/` in Standard to avoid Nearline retrieval fees (US$0.01/GiB, [storage pricing](https://cloud.google.com/storage/pricing)); this document adopts that list. Lifecycle file (JSON wrapper accepted by `gcloud storage buckets update --lifecycle-file` **to confirm**: `{"rule": […]}` or `{"lifecycle": {"rule": […]}}`):
 
 ```json
 {"rule": [
@@ -665,8 +666,8 @@ curl -sS -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H
 
 #### 5.7.1 Budget and Pub/Sub
 
-- Topic `ectwin-budget` (budget notifications; v0.1.0 names it `ectwin-budget-alerts` and adds a never-expiring pull subscription `ectwin-budget-alerts-guard`, §5.8.4) and topic `ectwin-notify` ([03 §4.5](./03-architecture.md#45-notification-flow)).
-- Budget named `ectwin-<TENANT_PROJECT>`, scoped to the project, monthly calendar period, all credits included, amount by tier (§8.2), threshold rules 50%, 90%, 100% (current spend) and 100% (forecasted spend), `all_updates_rule.pubsub_topic = ectwin-budget`, project Owners also e-mailed. Budgets **do not cap spending** ([budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets)); the guard does the reacting (§8.3). Up to 50,000 budgets per billing account ([budget API](https://docs.cloud.google.com/billing/docs/how-to/budget-api-overview)), so T4 sponsor folders with many GADs are fine.
+- Topic `ectwin-budget-alerts` (budget notifications) with the never-expiring pull subscription `ectwin-budget-alerts-guard` (7-day message retention; guard input, §8.3), and topic `ectwin-notify` ([03 §4.5](./03-architecture.md#45-notification-flow)).
+- Budget named `ectwin-<TENANT_PROJECT>`, scoped to the project, monthly calendar period, all credits included, amount by tier (§8.2), threshold rules 50%, 90%, 100% (current spend) and 100% (forecasted spend), `all_updates_rule.pubsub_topic = ectwin-budget-alerts`, project Owners also e-mailed. Budgets **do not cap spending** ([budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets)); the guard does the reacting (§8.3). Up to 50,000 budgets per billing account ([budget API](https://docs.cloud.google.com/billing/docs/how-to/budget-api-overview)), so T4 sponsor folders with many GADs are fine.
 
 #### 5.7.2 BigQuery custom quotas
 
@@ -710,7 +711,7 @@ Both artefacts are maintained by the setup section ([10-setup-and-deployment.md]
 | `firestore_location` | `--firestore-location` | `southamerica-west1` (plan-time warning outside `southamerica-*`) | The wizard maps region profile `scl`/`gru`/`us` (§12.3) to this value |
 | `monthly_budget_usd`, `budget_thresholds`, `budget_forecast_alert` | `--budget-usd` | 20; `[0.5, 0.9, 1.0]`; true | The wizard passes the §8.2 tier value |
 | `bq_query_usage_per_day_mib` | — | unset | Optional Cloud Quotas preference (§5.7.2) |
-| `scratch_retention_days`, `nearline_after_days`, `nearline_prefixes`, `soft_delete_retention_days`, `scratch_table_expiration_days` | env vars `SCRATCH_RETENTION_DAYS`, `NEARLINE_AFTER_DAYS`, `SOFT_DELETE_DAYS` (others fixed in the script) | 30 (**set 7**), 90, five prefixes, 7, 7 | §5.5 |
+| `scratch_retention_days`, `nearline_after_days`, `nearline_prefixes`, `soft_delete_retention_days`, `scratch_table_expiration_days` | env vars `SCRATCH_RETENTION_DAYS`, `NEARLINE_AFTER_DAYS`, `SOFT_DELETE_DAYS` (others fixed in the script) | 7, 90, five prefixes, 7, 7 | §5.5 |
 | `listing_subscriptions`, `linked_dataset_ids` | `--subscribe-commons` | empty | Linked datasets and the runner's `dataViewer` on them (§5.4) |
 | `notifier_push_endpoint`, `app_origins`, `secret_ids` | `--app-origins` (push subscription: Terraform only; secret names fixed in the script) | empty; empty; `typesafe-api-key`, `floodforecasting-api-key` | Push subscription to `ectwin-notifier`; bucket CORS; secret placeholders |
 | — | `--dry-run`, `--yes`, `--log-file`, `--revoke-broker` | flags | Print commands only; no prompt; log path; remove the broker grant and exit (offboarding, §10.1) |
@@ -730,20 +731,20 @@ Terraform outputs `bootstrap_version`, `project_number`, `runner_service_account
 | Item | This document | v0.1.0 artefacts | Resolution |
 |---|---|---|---|
 | Connection proof | One-time code, hash in registry, bound to `connect_uid`, 24 h | Label `ectwin-connection` on dataset `ectwin` | **Aligned**: this document adopted the label mechanism |
-| Budget topic | `ectwin-budget` (also used by [09](./09-cost-model.md) and [11](./11-operations-runbook.md)) | `ectwin-budget-alerts` + pull subscription `ectwin-budget-alerts-guard` | Artefacts rename the topic (or all docs adopt the artefact name) — **decide by IT-M3** |
+| Budget topic | `ectwin-budget-alerts` + pull subscription `ectwin-budget-alerts-guard` (also used by [10](./10-setup-and-deployment.md) and [11](./11-operations-runbook.md)) | `ectwin-budget-alerts` + pull subscription `ectwin-budget-alerts-guard` | **Aligned**: docs adopt the artefact name (IT-M3 decision closed) |
 | Guard identity and trigger | `ectwin-guard` SA; Cloud Run function triggered by the topic; runner never holds `cloudscheduler.admin` | No guard SA or function; runner gets `cloudscheduler.admin` + `pubsub.editor` only with `enable_managed_pipelines` | Artefacts add `ectwin-guard`, its roles (§5.3.2) and the function deployment **(IT-M6, 2026-10-30)** |
-| `scratch/` retention | 7 days (03 §5.1) | 30 days default | Artefacts change the default to 7 (artefact README open question) |
+| `scratch/` retention | 7 days (03 §5.1) | 7 days default (`scratch_retention_days`, `SCRATCH_RETENTION_DAYS`) | **Aligned** |
 | Runner `run.invoker` | Per job | Project level | Narrow to job-level bindings when jobs are deployed |
 | Runner EE role at T1 | `earthengine.viewer` would suffice | `earthengine.writer` for all tiers | **Aligned**: `writer` in Phase 1 (§5.3.1); revisit with the custom role |
 | BigQuery quotas and EE daily cap | Set per tier by the bootstrap | Project quota optional; per-user quota and EE cap are manual post-steps | Automate once the Cloud Quotas unit is confirmed; PF-11 checks meanwhile |
 | Licence profile and `ectwin_commons_nc` | Subscribed only for noncommercial profiles | Generic `listing_subscriptions` | Wizard passes the NC listing only for `licence_profile = noncommercial` |
-| Tier budgets | T1 20, T2 80, T3 1,000 (§8.2) | Variable description suggests T1 20, T2 75, T3 800 (default 20) | Wizard passes §8.2 values; artefact description to be updated |
+| Tier budgets | T1 20, T2 80, T3 1,000 (§8.2) | `monthly_budget_usd` description states T1 20, T2 80, T3 1000 (raise to 1300 in peak months), T4 sponsor-set (default 20) | **Aligned**; wizard passes §8.2 values |
 | WIF (path C2) | Pool, provider, binding behind `enable_wif` | Not present | Phase 2 |
 | Path B | Job runs the same artefact | Same (README §6.4) | Aligned |
 
 ### 5.9 gcloud bootstrap sketch
 
-Illustrative only, to show the order of operations and the single cross-project grant; the maintained, idempotent implementation is `scripts/bootstrap-tenant.sh` v0.1.0 (≈900 lines, with retries, permission prechecks and the exit codes of §5.8.2). It uses this document's names (`ectwin-budget`, `ectwin-guard`), not v0.1.0's (§5.8.4). Flags marked in comments are **to confirm** against current gcloud.
+Illustrative only, to show the order of operations and the single cross-project grant; the maintained, idempotent implementation is `scripts/bootstrap-tenant.sh` v0.1.0 (≈900 lines, with retries, permission prechecks and the exit codes of §5.8.2). It uses the v0.1.0 Pub/Sub names (`ectwin-budget-alerts`, `ectwin-budget-alerts-guard`) and adds this design's `ectwin-guard` identity, which v0.1.0 does not yet create (§5.8.4). Flags marked in comments are **to confirm** against current gcloud.
 
 ```bash
 #!/usr/bin/env bash
@@ -806,13 +807,15 @@ gcloud firestore databases create --location="$FS_LOC" --type=firestore-native -
 gcloud firestore fields ttls update expire_at --collection-group=sessions --enable-ttl --async || true
 
 # 8. Topics, budget (syntax to confirm), quota preference (syntax and units to confirm)
-gcloud pubsub topics create ectwin-budget ectwin-notify || true
+gcloud pubsub topics create ectwin-budget-alerts ectwin-notify || true
+gcloud pubsub subscriptions create ectwin-budget-alerts-guard --topic=ectwin-budget-alerts \
+  --expiration-period=never --message-retention-duration=7d --ack-deadline=60 || true
 gcloud pubsub topics add-iam-policy-binding ectwin-notify --member="serviceAccount:$RUNNER" --role=roles/pubsub.publisher
 gcloud billing budgets create --billing-account="${BA#billingAccounts/}" --billing-project="$TP" \
   --display-name="ectwin-$TP" --budget-amount="${BUDGET_USD}USD" --filter-projects="projects/$PN" \
   --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0 \
   --threshold-rule=percent=1.0,basis=forecasted-spend \
-  --notifications-rule-pubsub-topic="projects/$TP/topics/ectwin-budget"
+  --notifications-rule-pubsub-topic="projects/$TP/topics/ectwin-budget-alerts"
 gcloud beta quotas preferences create --project="$TP" --service=bigquery.googleapis.com \
   --quota-id=QueryUsagePerDay --preferred-value=1048576 --preference-id=ectwin-bq-daily   # 1 TiB if unit is MiB
 
@@ -826,7 +829,7 @@ if [ -n "${DRS:-}" ]; then exit 3; fi
 
 ### 5.10 Terraform core (abridged from `infra/tenant-bootstrap/main.tf` v0.1.0)
 
-Abridged: `depends_on`, labels, descriptions, CORS, the Commons subscription, the notify topic, secrets and the optional quota preference are left out. Resource and variable names are those of v0.1.0, except the two items this design adds or renames (§5.8.4), marked in comments.
+Abridged: `depends_on`, labels, descriptions, CORS, the Commons subscription, the notify topic, secrets and the optional quota preference are left out. Resource and variable names are those of v0.1.0, except the one item this design adds (the `ectwin-guard` service account, §5.8.4), marked in a comment.
 
 ```hcl
 resource "google_service_account" "runner" {
@@ -877,7 +880,7 @@ resource "google_storage_bucket" "ectwin" {
   }
   lifecycle_rule {
     condition {
-      age            = var.scratch_retention_days # set to 7 (03 section 5.1); v0.1.0 default is 30
+      age            = var.scratch_retention_days # 7 (03 section 5.1); v0.1.0 default is 7
       matches_prefix = ["scratch/"]
     }
     action {
@@ -909,7 +912,19 @@ resource "google_firestore_database" "default" {
 
 resource "google_pubsub_topic" "budget_alerts" {
   project = var.project_id
-  name    = "ectwin-budget" # this design; v0.1.0 uses "ectwin-budget-alerts"
+  name    = "ectwin-budget-alerts"
+}
+
+# Pull subscription read by the budget guard; never expires (section 8.3)
+resource "google_pubsub_subscription" "budget_guard" {
+  project                    = var.project_id
+  name                       = "ectwin-budget-alerts-guard"
+  topic                      = google_pubsub_topic.budget_alerts.id
+  ack_deadline_seconds       = 60
+  message_retention_duration = "604800s"
+  expiration_policy {
+    ttl = ""
+  }
 }
 
 resource "google_billing_budget" "tenant" {
@@ -1140,7 +1155,7 @@ Rule of thumb: **the project that owns the resource, runs the job, or is named a
 | Prevent | EE `daily_eecu_usage_time` cap | Tenant project | Approximate |
 | Prevent | Cloud Run job `--tasks`, `--parallelism`, `--task-timeout`; any tenant service `--max-instances=3` | Tenant | Hard |
 | Prevent | Batch job `maxRunDuration` and VM count caps; Spot only unless Owner approves on-demand | Tenant (T3) | Hard |
-| Detect | Budget alerts 50/90/100% and forecast 100% → Pub/Sub `ectwin-budget` | Tenant | Budgets lag and do not cap spend |
+| Detect | Budget alerts 50/90/100% and forecast 100% → Pub/Sub `ectwin-budget-alerts` (guard subscription `ectwin-budget-alerts-guard`) | Tenant | Budgets lag and do not cap spend |
 | Detect | *Proyecto y costos*: month-to-date, bytes today vs quota, EECU vs cap, projected month end (FR-065) | Broker | — |
 | Respond | Guard pauses Scheduler jobs and sets `guard_state=paused` (§8.3) | Tenant | Soft stop |
 | Recover | Owner raises budget or waits for month start; "Reanudar" resumes jobs | Tenant | — |
@@ -1170,7 +1185,7 @@ Arithmetic check for T2: 1 TiB/day is ≈30 TiB/month ceiling (≈US$181 at US$6
 sequenceDiagram
   autonumber
   participant BB as Cloud Billing budget
-  participant PS as Tenant topic ectwin-budget
+  participant PS as Tenant topic ectwin-budget-alerts
   participant G as ectwin-guard function
   participant SC as Tenant Cloud Scheduler
   participant FS as Tenant Firestore
@@ -1191,8 +1206,9 @@ sequenceDiagram
 
 ```python
 # pipelines/tenant/guard/main.py  (Cloud Run function, runs as ectwin-guard)
-# Entry points: on_budget (Pub/Sub trigger on ectwin-budget, CloudEvent) and resume (HTTP,
-# invoker = ectwin-runner only). Budget message field names are **to confirm**.
+# Entry points: on_budget (Pub/Sub trigger on ectwin-budget-alerts, CloudEvent) and resume (HTTP,
+# invoker = ectwin-runner only). A pull-based variant reads subscription ectwin-budget-alerts-guard
+# instead (wiring to confirm, IT-M6). Budget message field names are **to confirm**.
 import base64, json, os
 from datetime import datetime, timezone
 import functions_framework
@@ -1267,11 +1283,11 @@ Nothing in this table blocks onboarding: Commons products work without any of it
 
 | Access | Granted to | How | Typical time | Who needs it | What the Commons provides instead |
 |---|---|---|---|---|---|
-| **WeatherNext** (WN3, WN2 in BigQuery/EE/GCS) | **Each Google account** that submits the WeatherNext Data Request form; the platform cannot re-share it | [Form](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform) (via third-party repo); contact weathernext@google.com | ≈5–7 business days | T2+ wanting fan charts, percentiles, point series, full members | Parish exceedance probabilities, *nivel de riesgo*, indices (Non-Retrievable Value-Added), and CC BY 4.0 historic (>1 h old for WN3) aggregates ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) |
+| **WeatherNext** (WN3, WN2 in BigQuery/EE/GCS; access steps and terms in [06 §3.3–3.4](./06-forecast-model-stack.md#33-access-steps)) | **Each Google account** that submits the WeatherNext Data Request form; the platform cannot re-share it | [Form](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform) (via third-party repo); contact weathernext@google.com | ≈5–7 business days | T2+ wanting fan charts, percentiles, point series, full members | Parish exceedance probabilities, *nivel de riesgo*, indices (Non-Retrievable Value-Added), and CC BY 4.0 historic (>1 h old for WN3) aggregates ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) |
 | WN2 on-demand runs (Vertex) | Project allowlist; GPU quota (H100/A100) starts at 0 and must be requested; no per-forecast price, the tenant pays compute and storage | Allowlist request via the WeatherNext access guide/contact **(to confirm)** | Unknown | T3 scenario users | Commons scenario library (Phase 3 perturbed-SST engine) |
-| **Flood Forecasting API** | **Per GCP project**, via waitlist; reply to approval email with the project ID; API key on that project | [Waitlist](http://sites.research.google/gr/floodforecasting/api-waitlist/) | "might take several months" | Optional for T2/T3 (own gauges or higher cadence) | Central snapshots 4×/day under the Commons key, CC BY 4.0 with attribution; commercial-use wording **unverified** → may land in `ectwin_commons_nc` |
+| **Flood Forecasting API** ([06 §4.1–4.3](./06-forecast-model-stack.md#41-flood-forecasting-api-surface)) | **Per GCP project**, via waitlist; reply to approval email with the project ID; API key on that project | [Waitlist](http://sites.research.google/gr/floodforecasting/api-waitlist/) | "might take several months" | Optional for T2/T3 (own gauges or higher cadence) | Central snapshots 4×/day under the Commons key, CC BY 4.0 with attribution; commercial-use wording **unverified** → may land in `ectwin_commons_nc` |
 | **Earth Engine registration** | Per project | Browser registration; tier choice (§5.7.4) | Minutes (Partner: weeks) | T2+ (T1 optional) | Commons EE-derived layers (exposure, flood history) in `ectwin_commons` and tiles |
-| **TypeSafe Jev key** | Per TypeSafe account; limits 1,200 requests/min and 250k tokens/s **per account** | `console.typesafe.ai` → keys; store in tenant Secret Manager as `typesafe-api-key` | Minutes | Tenants running their own triage | National Jev triage in Commons; Gemini adapter on the tenant's own GCP bill (D17) |
+| **TypeSafe Jev key** (key custody in [08 §6](./08-ai-decision-layer-jev.md#6-where-keys-live-and-who-pays)) | Per TypeSafe account; limits 1,200 requests/min and 250k tokens/s **per account** | `console.typesafe.ai` → keys; store in tenant Secret Manager as `typesafe-api-key` | Minutes | Tenants running their own triage | National Jev triage in Commons; Gemini adapter on the tenant's own GCP bill (D17) |
 | **CDS / EWDS** (C3S seasonal, GloFAS) | Per person; personal access token from the CDS profile; accept each dataset licence on the web first | `~/.cdsapirc` with `url: https://cds.climate.copernicus.eu/api` (EWDS: `https://ewds.climate.copernicus.eu/api`) | Minutes | Research tenants doing own seasonal work | Seasonal canton tables and GloFAS river status in Commons |
 | Copernicus Marine | Free account **(unverified)** | `copernicusmarine` toolbox | Minutes | Coastal research | Sea-level anomaly inputs in Commons coastal products |
 | NASA Earthdata login | Per person | Earthdata registration | Minutes | Users of LHASA v2 raw data | Daily Ecuador LHASA subset in Commons |
@@ -1295,7 +1311,8 @@ Tracker states: *no solicitado / enviado / aprobado / rechazado*, with date and 
 | Path B leftovers | None: no token stored; the OAuth grant can also be removed by the user in their Google Account third-party access page | — | — |
 | Account deletion (FR-005) | User → `DELETE /v1/me` (recent auth) | Delete Identity Platform user and registry memberships/invites; tenants keep their own records of that uid (controller decision) | Within the statutory term **(to confirm)** |
 | Project deleted by tenant | Project shut down | Mint fails → as unilateral revocation | — |
-| Platform shuts down or hands over (Phase 4) | Operator | Tenants keep everything; pipelines keep running inside tenants; path D docs let them self-host the control plane | — |
+| T4 graduates or sponsorship ends (FR-010) | GAD asks to take over its sponsored project, or the sponsor ends support | (1) 60-day notice to the tenant's Owners; (2) the GAD links its own billing account: `gcloud billing projects link <TENANT_PROJECT> --billing-account=<GAD_BA>` (needs Billing Account User on the GAD account and Project Billing Manager on the project); (3) optionally `gcloud projects move <TENANT_PROJECT> --organization=<GAD_ORG_ID>` out of the sponsor folder `ectwin-sponsored`, which needs resource-manager move rights on both sides and, across organisations, the export/import org-policy settings **(to confirm)**; (4) update the registry `tier` and project labels (drop `ectwin-sponsor`, `ectwin-dpa`; set `ectwin-tier`) and reset the budget on the new billing account (re-run the bootstrap with `--billing-account` and the §8.2 tier value; delete the sponsor's budget); (5) if nobody takes the project, export (§10.2) and the members fall back to T0 before the sponsor closes the project. This is the billing-move procedure required by [02 FR-010](./02-users-requirements-ux.md); T4 creation is in [10 §6.2](./10-setup-and-deployment.md#62-create-the-project-if-needed) | 60 days' notice; billing switch takes effect at once |
+| Platform shuts down or hands over (Phase 4) | Operator | Tenants keep everything; pipelines keep running inside tenants; path D docs let them self-host the control plane; transfer checklist in [12 §10.3](./12-roadmap-team-budget.md#103-transfer-checklist) | — |
 
 The platform never deletes tenant resources. `--revoke-broker` removes only the broker grant (v0.1.0); removing the guard trigger and, optionally, the Scheduler jobs is a tenant decision. Datasets, bucket and Firestore stay; even `terraform destroy` leaves `ectwin` (fails while tables exist), the bucket (fails while objects exist) and Firestore (abandoned) in place and deletes only `ectwin_scratch`, the budget, topics, subscriptions, secrets and IAM bindings.
 
@@ -1395,6 +1412,10 @@ Rules: never use tenant AOIs or logs for platform purposes (that would make the 
 |---|---|---|---|---|
 | uid, email, MFA enrolment | Identity Platform (platform) | No location commitment | Yes | Operator |
 | uid, email, tenant ids, role, status | Registry Firestore (platform) | `southamerica-west1` | Yes | Operator |
+| ToU/privacy acceptance (`accounts/{uid}`: `tou_version`, `privacy_version`, `accepted_at`; [13](./13-governance-legal-risk.md) L-14) | Registry Firestore (platform) | `southamerica-west1` | Yes | Operator |
+| RUM and funnel events (NFR-016; [02 §10](./02-users-requirements-ux.md) funnel metrics) | Platform Cloud Monitoring / BigQuery | `us-central1` (Cloud Monitoring has no location commitment, §12.3) | Pseudonymous, aggregated | Operator |
+| LOPDP rights requests (FR-005), grievances ([13 §8.4](./13-governance-legal-risk.md#84-grievance-and-feedback-mechanism)), support tickets | Operator tracker | — (tool to select) | Yes | Operator |
+| Notification delivery logs (recipient email, status) of `ectwin-notifier` | Email provider (to select, [03](./03-architecture.md)) | Provider's **(to confirm)** | Yes | Tenant (operator as processor, provider as sub-processor, §12.1) |
 | Members, sessions, devices, AOIs, subscriptions, notifications, reports | Tenant Firestore | Profile (§12.3) | Yes | Tenant |
 | `session`, `audit_events`, `decision_log`, `aoi.created_by` | Tenant BigQuery `ectwin` | `US` | Pseudonymous (uid) | Tenant |
 | Files, reports, uploads | Tenant bucket | `us-central1` | Possibly | Tenant |
@@ -1470,8 +1491,8 @@ Notes: there is no GCP region in Ecuador. BigQuery stays `US` because WeatherNex
 ## 15. Open questions
 
 - **Role storage.** This document keeps a coarse `role` in the registry `memberships` (authoritative) and mirrors it plus `signer`/`auditor` flags in tenant `members/{uid}`. [02 §3.4](./02-users-requirements-ux.md#34-roles-within-a-tenant) says roles are stored in the tenant and [03 §5.5–§6.3](./03-architecture.md#55-firestore--platform-registry-ectwin-platform-prod-southamerica-west1) reads them from the tenant; NFR-013's field list also needs `role`. Reconcile the three documents.
-- **Naming additions** to the spine: `ectwin-guard@<TENANT_PROJECT>` SA, topics `ectwin-budget`/`ectwin-notify` in the tenant, dataset label `ectwin-connection`, secret ids `typesafe-api-key`/`floodforecasting-api-key`, `org_type=personal`, registry fields `connect_code_sha256`/`connect_code_expires_at`/`connect_uid`/`sso_idp`, groups `ectwin-tenants@`/`ectwin-tenants-nc@<DOMAIN>`. Confirm with PL and the setup section.
-- **Artefact reconciliation** (§5.8.4): budget topic name (`ectwin-budget` here, [09](./09-cost-model.md) and [11](./11-operations-runbook.md) vs `ectwin-budget-alerts` in v0.1.0), the missing `ectwin-guard` identity and function, `scratch/` retention (7 vs 30 days), automated BigQuery and EE quotas. Decide by IT-M3 (2026-10-09).
+- **Naming additions** to the spine: `ectwin-guard@<TENANT_PROJECT>` SA, topics `ectwin-budget-alerts` (aligned with the v0.1.0 artefacts, with pull subscription `ectwin-budget-alerts-guard`)/`ectwin-notify` in the tenant, dataset label `ectwin-connection`, secret ids `typesafe-api-key`/`floodforecasting-api-key`, `org_type=personal`, registry fields `connect_code_sha256`/`connect_code_expires_at`/`connect_uid`/`sso_idp`, groups `ectwin-tenants@`/`ectwin-tenants-nc@<DOMAIN>`. Confirm with PL and the setup section.
+- **Artefact reconciliation** (§5.8.4): the budget topic name is aligned (all documents use the artefact name `ectwin-budget-alerts`). Still open: the missing `ectwin-guard` identity and function (IT-M6, 2026-10-30), including whether it is triggered through Eventarc or reads `ectwin-budget-alerts-guard`, and automated BigQuery and EE quotas. Decide the quotas by IT-M3 (2026-10-09).
 - **Signer and auditor.** Flags here vs `role` values in [03 §5.6](./03-architecture.md#56-firestore--tenant-tenant_project-default-southamerica-west1-by-default); reconcile with the role-storage question above.
 - **No-billing onboarding.** The gap brief proposes a zero-cost tier on the BigQuery sandbox plus the EE Community tier; this design requires a billed project (Cloud Run, Scheduler, budgets) and offers T4 sponsored projects instead. Confirm with pilot universities and NGOs.
 - **Commons access grants.** Whether Analytics Hub listings and Commons Pub/Sub topics can be granted to a Google group containing external service accounts, and how the operator's own secure-by-default org policy treats those grants; fall back to per-SA grants with a Commons-side exception.
