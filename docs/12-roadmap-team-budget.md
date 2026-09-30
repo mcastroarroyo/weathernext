@@ -134,7 +134,7 @@ gantt
 | AR-07 | Copernicus Marine account (sea-level `zos`, waves) | Commons | Account registration | Same day (estimate) | EE copies of CMEMS assets ([05](./05-data-catalog.md)) | DL |
 | AR-08 | NASA Earthdata login (IMERG, LHASA inputs) | Commons | Account registration | Same day (estimate) | EE `NASA/GPM_L3/IMERG_V07` | DL |
 | AR-09 | OAuth sensitive-scope verification for path B | Platform | Google Auth Platform console; submit **2026-10-05** (IT-M2) | Days to weeks (unverified) | Path A covers all pilots | PL, DPO |
-| AR-10 | Google Cloud credits: research credits for university partners (up to US$5,000) and startup or nonprofit programmes where eligible | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup); nonprofit route (unverified) | Weeks | None needed: no credits are assumed (B10, §5.2); credits obtained reduce lines C1–C8 | PM |
+| AR-10 | Google Cloud credits: research credits for university partners (up to US$5,000) and startup or nonprofit programmes where eligible | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup); nonprofit route (unverified) | Weeks | None needed: no credits are assumed (B10, §5.1); credits obtained reduce lines C1–C8 (§5.2) | PM |
 | AR-11 | Quota increases ([11 §3.7](./11-operations-runbook.md)) | Commons, platform | Console requests | Days | Posture-based throttling | DL, FL, SRE |
 
 **Deliverables**
