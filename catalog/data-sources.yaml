@@ -1,11 +1,13 @@
 # GDE-Nino (Ecuador El Nino Digital Twin) - source registry
 # Human-readable companion: docs/05-data-catalog.md (tables use the same ids).
 # CI checks: unique ids, allowed enum values, licence metadata complete (FR-019),
-# every `job` defined in infra/commons/, nc/pending_review never published to commons_pub (G-02).
+# every `job` defined in infra/commons/, nc/pending_review never published to commons_pub (G-02),
+# and a currency warning when `last_checked` is null or older than 90 days (30 days for P1 sources
+# that are not static).
 # All .gob.ec / .mil.ec endpoints are secondary-verified only (third-party live probes Aug-Sep 2026);
 # re-probe from southamerica-west1 in Phase 0 (milestone M0.3, 2026-10-09) before relying on them.
 
-version: "1.0.1"
+version: "1.1.0"
 updated: "2026-09-30"
 
 fields_doc:
@@ -28,6 +30,8 @@ fields_doc:
   priority: "P1 (MVP) | P2 (peak-season operations) | P3 (later/optional)."
   phase: "0-4 per design spine section 7 (0 Mobilise, 1 MVP, 2 Peak season, 3 Learn and extend, 4 Institutionalise)."
   verified: "true = identifier/endpoint confirmed in the research briefs (primary catalogue/bucket read or third-party live probe Aug-Sep 2026); false = prior knowledge or not confirmed."
+  vintage: "Release, version or data date currently in hand (e.g. 'CPV 2022', 'Global2 R2025A v1', 'v3 (inference May 2023)', 'GHSL P2023A'). 'live feed' / 'live ...' marks sources with no versioned release; their freshness is tracked per poll in commons_ops.source_health. 'not held' = no copy yet (agreement pending)."
+  last_checked: "ISO date (YYYY-MM-DD) the endpoint and vintage were last confirmed current, or null if never confirmed. 2026-09-29 = research-brief check; for .gob.ec/.mil.ec entries that date rests on third-party probe records, and the M0.3 re-probe overwrites it. CI warns when null or older than 90 days (30 days for P1 sources that are not static). Updated at the quarterly source-currency review (docs/11 section 12.3; exposure layers 'reviewed quarterly' per docs/02 section 6.2) and whenever a job detects a new release."
   job: "Optional. Commons job that ingests or builds from this source (names from docs/03 section 7.2 and docs/11 section 2.1, or new ones listed in docs/05 section 4.4)."
   region: "Optional. GCP region where the job runs (southamerica-west1 for .gob.ec; us-central1 otherwise; us-east1 for WN3 members)."
   owner: "Optional. Role code: DL, FL, PL, FE, AI, SRE, DPO, PM, PA."
@@ -58,6 +62,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "live feed (no versioned release)"
+    last_checked: "2026-09-29"
     job: ingest-sngr-alerts
     region: southamerica-west1
     owner: DL
@@ -84,6 +90,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "live archive; latest event series 'Epoca Lluviosa 2026' (lluvias 2025-2026)"
+    last_checked: "2026-09-29"
     job: ingest-sngr-sitreps
     region: southamerica-west1
     owner: DL
@@ -109,6 +117,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "live feed (COE2 current events only)"
+    last_checked: "2026-09-29"
     job: ingest-sngr-alerts
     region: southamerica-west1
     owner: DL
@@ -135,6 +145,8 @@ sources:
     priority: P3
     phase: 2
     verified: true
+    vintage: "unversioned document library (about 1,660 documents); record each document date at download"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "About 1,660 documents in 19 categories; some links 404. Vector susceptibility layers must be requested (agreement A2)."
 
@@ -157,6 +169,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "live feed (no versioned release)"
+    last_checked: "2026-09-29"
     job: ingest-inamhi-advertencias
     region: southamerica-west1
     owner: DL
@@ -182,6 +196,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "live feed; latest bulletin seen No. 181 (2026-09-25)"
+    last_checked: "2026-09-29"
     job: ingest-inamhi-bulletins
     region: southamerica-west1
     owner: DL
@@ -207,6 +223,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "latest report seen 009-2026 (2026-09-19)"
+    last_checked: "2026-09-29"
     job: ingest-cnerfen-inocar
     region: southamerica-west1
     owner: DL
@@ -233,6 +251,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "live index files; RONI official since 2026-02-01"
+    last_checked: "2026-09-29"
     job: ingest-enso
     region: us-central1
     owner: FL
@@ -258,6 +278,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "live communiques; ICEN on ERSSTv5, 1991-2020 base, percentile categories since Dec 2024"
+    last_checked: "2026-09-29"
     job: ingest-enso
     region: us-central1
     owner: FL
@@ -283,6 +305,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "monthly issue (ensofcst_ALLtoMMYY); latest issue recorded at first ingest"
+    last_checked: "2026-09-29"
     job: ingest-enso
     region: us-central1
     owner: FL
@@ -307,6 +331,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "OISST v2.1 (daily from 1981-09)"
+    last_checked: "2026-09-29"
     job: ingest-enso
     region: us-central1
     owner: FL
@@ -331,6 +357,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "ANFC physics (cmems_mod_glo_phy_anfc_0.083deg_P1D-m) and BGC 001_028 in a rolling two-year EE window; waves ANFC 0.083deg; ocean colour V6"
+    last_checked: "2026-09-29"
     job: ingest-ocean
     region: us-central1
     owner: FL
@@ -355,6 +383,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "SEALEVEL_GLO_PHY_L4_NRT_008_046 (DUACS NRT, daily)"
+    last_checked: "2026-09-29"
     job: ingest-ocean
     region: us-central1
     owner: FL
@@ -379,6 +409,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "live gauge feeds (IOC gyer/puna/lali; UHSLC 091/091a)"
+    last_checked: "2026-09-29"
     job: ingest-ocean
     region: us-central1
     owner: FL
@@ -403,6 +435,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "quarterly tide tables, 2022 to current year"
+    last_checked: "2026-09-29"
     job: ingest-cnerfen-inocar
     region: southamerica-west1
     owner: DL
@@ -430,6 +464,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "live API (rolling 92-day window)"
+    last_checked: "2026-09-29"
     job: ingest-inamhi-stations
     region: southamerica-west1
     owner: DL
@@ -455,6 +491,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "normals 1985-2015; about 180 daily anomaly layers; WRF grids live"
+    last_checked: "2026-09-29"
     job: ingest-inamhi-geoserver
     region: southamerica-west1
     owner: DL
@@ -480,6 +518,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "IMERG V07 (V08 transition; no Final after 2025-09-30)"
+    last_checked: "2026-09-29"
     job: ingest-imerg-gsmap
     region: us-central1
     owner: FL
@@ -504,6 +544,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "GSMaP v8 operational"
+    last_checked: "2026-09-29"
     job: ingest-imerg-gsmap
     region: us-central1
     owner: FL
@@ -528,6 +570,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "global_estimation asset (from 2004); model version not stated in the asset path"
+    last_checked: "2026-09-29"
     job: ingest-imerg-gsmap
     region: us-central1
     owner: FL
@@ -552,6 +596,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "CHIRPS v3.0 (primary; EE presence to confirm) and CHIRPS v2.0 (EE to 2026-08-31)"
+    last_checked: "2026-09-29"
     job: verification-weekly
     region: us-central1
     owner: FL
@@ -576,6 +622,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "ERA5/ERA5-Land with ERA5T about 6 days behind; ARCO store full_37-1h-0p25deg-chunk-1.zarr-v3"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Climatology, analog composites (1982-83, 1997-98, 2015-16, 2017, 2023-24). Do not use ECMWF/ERA5/DAILY (ends 2020-07-09). No verified ERA5 BigQuery table. Never the sole verification truth for AI models (D12)."
 
@@ -598,6 +646,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "SPL4SMGP version 008; SPL3SMP_E version 006"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Input to LHASA 2.1.1 re-runs and antecedent-wetness indices (docs/07)."
 
@@ -621,6 +671,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "WeatherNext 3 v3.0.0 (weathernext_3_0_0, 0p1deg and 0p05deg); archive from 2026-01-01"
+    last_checked: "2026-09-29"
     job: forecast-cycle
     region: us-central1
     owner: FL
@@ -645,6 +697,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "WeatherNext 2 v2.0.0 (weathernext_2_0_0); archive from 2022-01-01"
+    last_checked: "2026-09-29"
     job: forecast-cycle
     region: us-central1
     owner: FL
@@ -669,6 +723,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "IFS cycle 50r1 (06/18 UTC runs in oper/wave since 2026-05-12); AIFS Single and AIFS ENS"
+    last_checked: "2026-09-29"
     job: forecast-cycle
     region: us-central1
     owner: FL
@@ -693,6 +749,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "GEFSv12 operational; GEFSv12 reforecasts"
+    last_checked: "2026-09-29"
     job: ingest-seasonal
     region: us-central1
     owner: FL
@@ -717,6 +775,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "CFSv2 operational"
+    last_checked: "2026-09-29"
     job: ingest-seasonal
     region: us-central1
     owner: FL
@@ -741,6 +801,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "system per originating centre resolved at run time (e.g. ECMWF SEAS5.1, system=51); hindcasts 1993-2016"
+    last_checked: "2026-09-29"
     job: ingest-seasonal
     region: us-central1
     owner: FL
@@ -765,6 +827,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "NMME realtime; contributing models vary by month (recorded per initialisation)"
+    last_checked: "2026-09-29"
     job: ingest-seasonal
     region: us-central1
     owner: FL
@@ -790,6 +854,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "API v1 (discovery revision 20260921)"
+    last_checked: "2026-09-29"
     job: ingest-floodhub-status
     region: us-central1
     owner: DL
@@ -815,6 +881,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "model_id_8583a5c2_v0 (reanalysis 1980-01-01 to 2023-12-23; reforecast 2016-01-01 to 2023-06-30)"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: us-central1
     owner: DL
@@ -839,6 +907,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "single release (GLAD-derived, 1999-2020)"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: us-central1
     owner: DL
@@ -863,6 +933,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "GEOGloWS v2 (forecast archive from 2024-07-01; retrospective from 1940)"
+    last_checked: "2026-09-29"
     job: ingest-geoglows-inamhi
     region: us-central1
     owner: FL
@@ -887,6 +959,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "revision 2026-06-10"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: us-central1
     owner: FL
@@ -911,6 +985,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "live app (no versioned release)"
+    last_checked: "2026-09-29"
     job: ingest-geoglows-inamhi
     region: southamerica-west1
     owner: DL
@@ -936,6 +1012,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "GloFAS v4.4 (2025-09-10; v4.5 of 2026-04-16 is viewer-only); v5.0 operational date unknown"
+    last_checked: "2026-09-29"
     job: ingest-glofas
     region: us-central1
     owner: FL
@@ -960,6 +1038,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "GloFAS v4.x (v4.3 seasonal changes 2025-06-04), SEAS5-driven; reforecast 1981 to 2023-07"
+    last_checked: "2026-09-29"
     job: ingest-seasonal
     region: us-central1
     owner: FL
@@ -984,6 +1064,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "version served by cems-glofas-historical to confirm (v5.0, 1980-2025, announced); reforecasts 1999 to 2023-11"
+    last_checked: "2026-09-29"
     job: ingest-glofas
     region: us-central1
     owner: FL
@@ -1008,6 +1090,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "live ORDS modules (no versioned release)"
+    last_checked: "2026-09-29"
     job: ingest-celec-cenace
     region: southamerica-west1
     owner: DL
@@ -1033,6 +1117,8 @@ sources:
     priority: P3
     phase: 3
     verified: true
+    vintage: "MultiMet v1.1"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "No Ecuador Caravan extension exists; build one from INAMHI discharge (agreements A1, A15)."
 
@@ -1055,6 +1141,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "live daily product (no versioned release)"
+    last_checked: "2026-09-29"
     job: ingest-imerg-gsmap
     region: us-central1
     owner: FL
@@ -1079,6 +1167,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "continuous acquisitions (COPERNICUS/S1_GRD)"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Mask permanent water with jrc_gsw; inundation_history as prior. Tenants run AOI flood maps in their own EE project."
 
@@ -1102,6 +1192,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "GLO-30 2024_1 release (2010-2020 acquisitions)"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: us-central1
     owner: FL
@@ -1126,6 +1218,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "sat-io mirror; FABDEM release to record at first ingest"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Blocked for commercial tenants (D15). Noncommercial hydraulic runs only."
 
@@ -1148,6 +1242,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "MERIT DEM v1.0.3; MERIT Hydro v1.0.1"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Upstream area for dim_hydro_xwalk matching; flow direction for HAND and SFINCS builds."
 
@@ -1170,6 +1266,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "HydroSHEDS v1 (HydroBASINS, 03CONDEM, 03DIR, 15ACC); HydroATLAS v1 and RiverATLAS"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: us-central1
     owner: FL
@@ -1194,6 +1292,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "global HAND hand-100 (users/gena asset; version not stated)"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Fast terrain screening tier (quick_hand) before 2D runs (docs/07, docs/08 gate)."
 
@@ -1216,6 +1316,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "DeltaDTM v1.1"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Coastal compound-flood terrain for Guayaquil/Duran, Machala, Esmeraldas SFINCS builds."
 
@@ -1238,6 +1340,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "GSW v1.4 (1984-2021)"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Permanent-water mask for S1/GOES flood maps."
 
@@ -1260,6 +1364,8 @@ sources:
     priority: P3
     phase: 2
     verified: true
+    vintage: "IGM 1:50k elevation; orthophoto dates vary by sheet (recorded per tile)"
+    last_checked: "2026-09-29"
     owner: DL
     allowed_hosts: ["www.geoportaligm.gob.ec"]
     notes: "Publish derived indicators only (G-09). Orthophoto WMS usable as a basemap overlay for GAD users. Agreement A14."
@@ -1283,6 +1389,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "FloodHazard v2.1 (2024)"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Use spurious_depth_category band. Not designed for backwater-dominated Guayas lowlands."
 
@@ -1305,6 +1413,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "2024 edition (1:25,000)"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: southamerica-west1
     owner: DL
@@ -1331,6 +1441,8 @@ sources:
     priority: P3
     phase: 2
     verified: true
+    vintage: "Aqueduct Floods V2 (baseline, 2030, 2050, 2080)"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "EE advises against use for flat lowland rivers with backwater effects (Guayas)."
 
@@ -1353,6 +1465,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "NASA nowcast v2.0.0; local re-runs use LHASA 2.1.1 (2025-09-15)"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Not in EE. NASA feed is best-effort; docs/07 runs LHASA 2.1.1 with user-supplied rain/soil moisture."
 
@@ -1376,6 +1490,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "CPV 2022; population projections rev. 2024"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: southamerica-west1
     owner: DL
@@ -1402,6 +1518,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "Global2 R2025A v1 (2015-2030); EE GP/100m 2000-2020"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: us-central1
     owner: DL
@@ -1426,6 +1544,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "GHSL P2023A (SMOD V2-0)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "SMOD as informal-settlement / urbanisation proxy (no MIDUVI layer found)."
 
@@ -1448,6 +1568,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "v3 (inference May 2023); 2.5D Temporal v1 (2016-2023)"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: us-central1
     owner: DL
@@ -1472,6 +1594,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "monthly Overture release in bigquery-public-data (release id recorded at each materialisation)"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: us-central1
     owner: DL
@@ -1496,6 +1620,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "planet snapshot in bigquery-public-data (snapshot date recorded at each materialisation)"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: us-central1
     owner: DL
@@ -1520,6 +1646,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "AMIE registers 2009-2024 (files modified 2026-04/05)"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: southamerica-west1
     owner: DL
@@ -1545,6 +1673,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "sat-io snapshot (catalogue entry updated 2025-06-07)"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: us-central1
     owner: DL
@@ -1569,6 +1699,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "GRIP4 and Microsoft Roads as mirrored in sat-io (release dates to record at first ingest)"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: us-central1
     owner: DL
@@ -1593,6 +1725,8 @@ sources:
     priority: P2
     phase: 2
     verified: false
+    vintage: "not held (agreements A2 and A8 pending)"
+    last_checked: null
     owner: PA
     rename_history: "obraspublicas.gob.ec (TLS mismatch) -> mit.gob.ec"
     notes: "SNGR analysis: 3,113 km of state roads highly exposed (1,870 km flood, 1,243 km landslide) and 94 transport structures (press). Agreements A2 and A8."
@@ -1616,6 +1750,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "LULC lulc/v1 (annual 1985-2024; Collection 3 content per brief, to confirm); water Collection 3 v1"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: us-central1
     owner: DL
@@ -1640,6 +1776,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "WorldCover v200 (2021); Dynamic World V1 (near real time)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Cropland share and post-event land-cover change."
 
@@ -1662,6 +1800,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "GMW v3 (1996-2020); GMW v4.0.19 (2020)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Context for shrimp-pond and coastal exposure."
 
@@ -1684,6 +1824,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "unversioned layers (dates recorded per layer at harvest)"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: southamerica-west1
     owner: DL
@@ -1710,6 +1852,8 @@ sources:
     priority: P2
     phase: 2
     verified: false
+    vintage: "not held (agreement A10 pending)"
+    last_checked: null
     owner: PA
     notes: "ENOS 2026 report: 3,431 farms, 2,977 (86.8%) flood-susceptible (press). Fallback: MapBiomas class 31. Agreement A10."
 
@@ -1732,6 +1876,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "GDW reservoirs v1.0; Global Power Plant Database v1.3"
+    last_checked: "2026-09-29"
     job: exposure-refresh
     region: us-central1
     owner: DL
@@ -1756,6 +1902,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "unversioned per-GAD layers (last-edit date recorded per layer at harvest)"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: southamerica-west1
     owner: DL
@@ -1781,6 +1929,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "ESPAC files to 2025; latest ENEMDU quarter recorded at harvest"
+    last_checked: "2026-09-29"
     job: ingest-ckan-inec
     region: southamerica-west1
     owner: DL
@@ -1807,6 +1957,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "sat-io mirror of Meta RWI (single release)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Proxy for socio-economic vulnerability where census indicators are coarse."
 
@@ -1829,6 +1981,8 @@ sources:
     priority: P3
     phase: 2
     verified: true
+    vintage: "INFORM Risk 2026 (WorkflowId 505)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "WorkflowId 505 = INFORM Risk 2026. INFORM Subnational LAC unverified."
 
@@ -1851,6 +2005,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "2019 (friction surface 2019_v5_1)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Loss-of-access metric for health-service disruption (docs/07)."
 
@@ -1873,6 +2029,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "unversioned layers (dates recorded per layer at harvest)"
+    last_checked: "2026-09-29"
     owner: DL
     allowed_hosts: ["geonode.ciifen.org"]
     notes: "About 1,660 layers; select via CSW. Agreement A13."
@@ -1896,6 +2054,8 @@ sources:
     priority: P3
     phase: 2
     verified: true
+    vintage: "BCE export indices to 2026-06"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Shrimp, banana, cacao export indices 1990-01 to 2026-06; prices for loss valuation (docs/07). SIPA Tableau dashboards not scrapable."
 
@@ -1919,6 +2079,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "inventory ECU-1250695011; coverage end date to confirm (third-party reuse to 2025)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Reused for Ecuador 2010-2025 by a third-party portal; coverage to confirm. Unified into impact_events."
 
@@ -1941,6 +2103,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "groundsource_2026 (Zenodo 10.5281/zenodo.18647054)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "2,646,302 records; about 82% precision; about 64% of events in 2020-2025 (recency bias); non-peer-reviewed preprint. Validation ground truth."
 
@@ -1963,6 +2127,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "MODIS_EVENTS V1 (2000-02-17 to 2018-12-10)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Does not cover 1997-98. Bands flooded, duration, jrc_perm_water. commons_pub_nc only."
 
@@ -1985,6 +2151,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "latest Ecuador activation seen EMSR870 (2026-03-02)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "EMSR870 + 'Epoca Lluviosa 2026' SITREPs = first full-stack verification case (docs/14). Pre-2023 activations unverified."
 
@@ -2007,6 +2175,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "1970-2019 (closed catalogue)"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Landslide threshold calibration with SNGR events (docs/07)."
 
@@ -2029,6 +2199,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "monthly CKAN resources (latest month recorded at harvest)"
+    last_checked: "2026-09-29"
     job: ingest-ckan-inec
     region: southamerica-west1
     owner: DL
@@ -2055,6 +2227,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "live daily reports (no versioned release)"
+    last_checked: "2026-09-29"
     job: ingest-celec-cenace
     region: southamerica-west1
     owner: DL
@@ -2081,6 +2255,8 @@ sources:
     priority: P3
     phase: 3
     verified: false
+    vintage: "CEPAL 1998 and CAF 2000 reports (not yet retrieved)"
+    last_checked: null
     owner: FL
     notes: "1997-98 total about US$2.87-2.88 bn and sector split unconfirmed; 1982-83 about US$640 M infrastructure damage (secondary). Loss calibration targets."
 
@@ -2104,6 +2280,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "2026 series to gaceta 35 (ETV_Gaceta_35.pdf); CSV mirror 2019-2025"
+    last_checked: "2026-09-29"
     job: ingest-msp-gacetas
     region: southamerica-west1
     owner: DL
@@ -2129,6 +2307,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "live weekly series (ETAS 2024-2026)"
+    last_checked: "2026-09-29"
     job: ingest-msp-gacetas
     region: southamerica-west1
     owner: DL
@@ -2154,6 +2334,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "V1.3"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Rows: 45 annual, 453 national weekly, 2,051 provincial weekly (25 provinces). PAHO 1988 row 420,025 vs Tycho 25: quarantine (DQ-14)."
 
@@ -2176,6 +2358,8 @@ sources:
     priority: P2
     phase: 2
     verified: true
+    vintage: "LST_Day v061 (MODIS collection 6.1)"
+    last_checked: "2026-09-29"
     owner: FL
     notes: "Dengue model covariates alongside ERA5-Land and CHIRPS (docs/07)."
 
@@ -2199,6 +2383,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "Clasificador Geografico 2024"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: southamerica-west1
     owner: DL
@@ -2224,6 +2410,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "census 2022 cartography"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: southamerica-west1
     owner: DL
@@ -2250,6 +2438,8 @@ sources:
     priority: P2
     phase: 1
     verified: true
+    vintage: "Organizacion Territorial Provincial 2025"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "Check of province boundaries; CONALI official parish limits unverified."
 
@@ -2272,6 +2462,8 @@ sources:
     priority: P1
     phase: 0
     verified: true
+    vintage: "COD-AB 2024"
+    last_checked: "2026-09-29"
     job: build-static-layers
     region: us-central1
     owner: DL
@@ -2296,6 +2488,8 @@ sources:
     priority: P2
     phase: 0
     verified: true
+    vintage: "geoBoundaries 600 (ADM2 built 2023-12-12)"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "ADM3/ADM4 return HTTP 404 (no parishes). Consistency check only; INEC codes win."
 
@@ -2318,6 +2512,8 @@ sources:
     priority: P3
     phase: 1
     verified: true
+    vintage: "GAUL 2025"
+    last_checked: "2026-09-29"
     owner: DL
     notes: "No 2025 level0 asset (use UN/Geodata/BNDA_simplified/current). FAO/GAUL/2015 deprecated. Global/regional context only."
 
@@ -2341,6 +2537,8 @@ sources:
     priority: P1
     phase: 1
     verified: true
+    vintage: "own build v<ver> (OSM snapshot date in build metadata)"
+    last_checked: "2026-09-29"
     job: build-basemap
     region: us-central1
     owner: FE
@@ -2365,6 +2563,8 @@ sources:
     priority: P3
     phase: 2
     verified: true
+    vintage: "yearly composite (year recorded per build)"
+    last_checked: "2026-09-29"
     job: build-basemap
     region: us-central1
     owner: FE
@@ -2389,5 +2589,7 @@ sources:
     priority: P3
     phase: 3
     verified: true
+    vintage: "live service (no data release)"
+    last_checked: "2026-09-29"
     owner: FE
     notes: "2D Map Tiles: 100,000 free/month then US$0.60 per 1k; Photorealistic 3D (Enterprise SKU): 1,000 free root requests/month then US$6.00 per 1k, cap 10,000 root requests/day (costs brief, second-hand). Maps Weather API is not used as a data source."
