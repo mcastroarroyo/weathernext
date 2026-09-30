@@ -1,0 +1,2393 @@
+# GDE-Nino (Ecuador El Nino Digital Twin) - source registry
+# Human-readable companion: docs/05-data-catalog.md (tables use the same ids).
+# CI checks: unique ids, allowed enum values, licence metadata complete (FR-019),
+# every `job` defined in infra/commons/, nc/pending_review never published to commons_pub (G-02).
+# All .gob.ec / .mil.ec endpoints are secondary-verified only (third-party live probes Aug-Sep 2026);
+# re-probe from southamerica-west1 in Phase 0 (milestone M0.3, 2026-10-09) before relying on them.
+
+version: "1.0.0"
+updated: "2026-09-30"
+
+fields_doc:
+  id: "Unique snake_case key; referenced by docs/05-data-catalog.md, layer_registry.source_ids and commons_ops tables."
+  name: "Human-readable dataset name."
+  provider: "Institution or organisation that publishes the data."
+  category: "official_alerts | enso_ocean | atmosphere_obs | forecast | hydrology | terrain_hydrography | exposure | vulnerability | impacts | health | admin_boundaries | basemap"
+  url_or_id: "Exact endpoint, bucket path, Earth Engine asset id, BigQuery table or dataset id. Patterns use {placeholders}."
+  access_method: "Protocol and client (REST JSON, WFS, EE, BigQuery, GCS Zarr, cdsapi, PDF, etc.) plus auth notes."
+  spatial_resolution: "Grid spacing, feature type or administrative level."
+  temporal_resolution: "Time step of the data."
+  latency: "Delay between valid time and availability, as known."
+  update_cadence: "How often the source updates, and how often we poll it."
+  licence: "Licence name and key terms, as stated by the provider (or 'none published')."
+  licence_class: "Gating class (docs/05 section 5.1): open | sa | nc | wn_nrva | wn_historic_ccby | official_verbatim | agreement | pending_review. Unknown is gated as nc."
+  attribution: "Attribution line to show on maps and ship in LICENSES.txt."
+  commercial_use: "\"yes\" | \"no\" | \"unclear\" (unclear is gated as non-commercial until legal clears it)."
+  plane: "commons | tenant | both (both = Commons builds national products and tenants also query in place)."
+  ingestion: "pull | query_in_place | push | manual."
+  priority: "P1 (MVP) | P2 (peak-season operations) | P3 (later/optional)."
+  phase: "0-4 per design spine section 7 (0 Mobilise, 1 MVP, 2 Peak season, 3 Learn and extend, 4 Institutionalise)."
+  verified: "true = identifier/endpoint confirmed in the research briefs (primary catalogue/bucket read or third-party live probe Aug-Sep 2026); false = prior knowledge or not confirmed."
+  job: "Optional. Commons job that ingests or builds from this source (names from docs/03 section 7.2 and docs/11 section 2.1, or new ones listed in docs/05 section 4.4)."
+  region: "Optional. GCP region where the job runs (southamerica-west1 for .gob.ec; us-central1 otherwise; us-east1 for WN3 members)."
+  owner: "Optional. Role code: DL, FL, PL, FE, AI, SRE, DPO, PM, PA."
+  allowed_hosts: "Optional. Hosts the ingest job may contact or be redirected to (docs/11 RB-07)."
+  tls_quirks: "Optional. Known TLS/transport issues and the approved handling (never verify=False for official sources)."
+  rename_history: "Optional. Previous hosts/institution names."
+  notes: "Free text: caveats, known issues, tables written."
+
+sources:
+
+  # ---------------------------------------------------------------- official_alerts
+  - id: sngr_wp_alerts
+    name: "SNGR alert posts, resolutions and news (WordPress REST)"
+    provider: "Secretaria Nacional de Gestion de Riesgos (SNGR)"
+    category: official_alerts
+    url_or_id: "https://www.gestionderiesgos.gob.ec/wp-json/wp/v2/posts"
+    access_method: "REST JSON (WordPress), unauthenticated; paginate with per_page=100 and after=<last>"
+    spatial_resolution: "national; place names in text"
+    temporal_resolution: "event"
+    latency: "minutes after posting"
+    update_cadence: "poll every 10 min (5 min in N2+ posture)"
+    licence: "None published; verbatim republication with source, resolution number and link (legal basis to confirm under SNGR convenio)"
+    licence_class: official_verbatim
+    attribution: "Fuente: Secretaria Nacional de Gestion de Riesgos (SNGR)"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-sngr-alerts
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["www.gestionderiesgos.gob.ec"]
+    rename_history: "SGR/SNGRE renamed SNGR (Decreto 641, 2023; Ley Organica GIRD 2024)"
+    notes: "Writes commons_pub.official_alerts verbatim (D1). Only SNGR declares alerts; never paraphrase level text."
+
+  - id: sngr_sitreps
+    name: "SNGR situation reports (Informes de situacion / SITREPs), 54 events 2016-2026"
+    provider: "SNGR"
+    category: official_alerts
+    url_or_id: "https://www.gestionderiesgos.gob.ec/wp-content/uploads/... (event archive; PDFs)"
+    access_method: "Crawl WordPress event archive; download PDFs; PDF extraction pipeline (docs/05 section 4.5)"
+    spatial_resolution: "national, province, canton"
+    temporal_resolution: "per report (daily during emergencies)"
+    latency: "hours"
+    update_cadence: "crawl every 2 h; hourly in event mode"
+    licence: "None published"
+    licence_class: pending_review
+    attribution: "Fuente: SNGR, Informe de situacion <numero/fecha>"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-sngr-sitreps
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["www.gestionderiesgos.gob.ec"]
+    notes: "'Epoca Lluviosa 2026' alone has 700+ national/provincial/cantonal PDFs. Archive raw from Phase 0; extraction to commons_internal.sitrep_facts in Phase 1; every row keeps the PDF sha256."
+
+  - id: sngr_arcgis_events
+    name: "SNGR ArcGIS COE2 current events and EVENTOS_X_LLUVIAS"
+    provider: "SNGR"
+    category: official_alerts
+    url_or_id: "https://sgrportal.gestionderiesgos.gob.ec/server/rest/services/COE2/MapServer ; https://sgrportal.gestionderiesgos.gob.ec/server/rest/services/Hosted/EVENTOS_X_LLUVIAS/FeatureServer/0/query"
+    access_method: "ArcGIS REST; resolve COE2 layer id each run with ?f=pjson; query with f=geojson"
+    spatial_resolution: "point; fields Provincia, Canton, Parroquia, Evento, Causa, CategoriaDelEvento, EstadoDelEvento, FechaDelEvento (names, not DPA codes)"
+    temporal_resolution: "event"
+    latency: "near real time"
+    update_cadence: "poll every 10 min; COE2 is current-only, so history is built by archiving"
+    licence: "None published"
+    licence_class: pending_review
+    attribution: "Fuente: SNGR, COE2"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-sngr-alerts
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["sgrportal.gestionderiesgos.gob.ec"]
+    rename_history: "Old host srvportal.gestionderiesgos.gob.ec is dead"
+    notes: "Place names resolved to DPA with the gazetteer matcher (docs/05 section 3.2). Writes commons_pub.sngr_events."
+
+  - id: sngr_biblioteca
+    name: "SNGR Biblioteca (hazard maps by province, tsunami maps) and SAT tsunami stations"
+    provider: "SNGR"
+    category: official_alerts
+    url_or_id: "https://www.gestionderiesgos.gob.ec/biblioteca/ ; https://sgrportal.gestionderiesgos.gob.ec/server/rest/services/SAT/MapServer/0"
+    access_method: "Manual download of PDF/images; ArcGIS REST for SAT"
+    spatial_resolution: "province maps (PDF/images); points"
+    temporal_resolution: "static"
+    latency: "n/a"
+    update_cadence: "ad hoc"
+    licence: "None published"
+    licence_class: pending_review
+    attribution: "Fuente: SNGR"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: manual
+    priority: P3
+    phase: 2
+    verified: true
+    owner: DL
+    notes: "About 1,660 documents in 19 categories; some links 404. Vector susceptibility layers must be requested (agreement A2)."
+
+  - id: inamhi_advertencias
+    name: "INAMHI advertencias (hydromet warnings)"
+    provider: "Instituto Nacional de Meteorologia e Hidrologia (INAMHI)"
+    category: official_alerts
+    url_or_id: "https://inamhi.geoglows.org/apps/hydroviewer-ecuador/ (endpoint get-warnings-json; HydroShare WFS typeName=Advertencia)"
+    access_method: "HTTP JSON from the Tethys hydroviewer app"
+    spatial_resolution: "polygons / provinces"
+    temporal_resolution: "event"
+    latency: "minutes"
+    update_cadence: "poll every 15 min"
+    licence: "None published (to confirm under INAMHI convenio)"
+    licence_class: official_verbatim
+    attribution: "Fuente: INAMHI, Advertencia <numero>"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-inamhi-advertencias
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["inamhi.geoglows.org", "services.geoglows.org"]
+    notes: "Use INAMHI's word 'Advertencia'. Writes commons_pub.official_alerts."
+
+  - id: inamhi_forecast_bulletins
+    name: "INAMHI daily forecast API and Guayaquil-Duran daily rain bulletin"
+    provider: "INAMHI"
+    category: official_alerts
+    url_or_id: "https://inamhi.gob.ec/api_pronos/forecast/daily_forecast/list_by_date_now/?date= ; https://www.inamhi.gob.ec/guayaquil/registrodgy.pdf"
+    access_method: "REST JSON (undocumented); PDF extraction"
+    spatial_resolution: "city / about 25 gauges"
+    temporal_resolution: "daily"
+    latency: "same day"
+    update_cadence: "twice daily (INAMHI front end caches forecasts 6 h)"
+    licence: "None published"
+    licence_class: pending_review
+    attribution: "Fuente: INAMHI"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 1
+    verified: true
+    job: ingest-inamhi-bulletins
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["inamhi.gob.ec", "www.inamhi.gob.ec"]
+    notes: "Bulletin No. 181 dated 2026-09-25. No history kept by source: archive daily."
+
+  - id: cnerfen_bulletins
+    name: "CN-ERFEN technical reports and communiques"
+    provider: "Comite Nacional ERFEN (INOCAR presents; IPIAP hosts copies)"
+    category: official_alerts
+    url_or_id: "https://www.inocar.mil.ec/boletin/ERFEN/erfen_YYYYMMDD.pdf (pattern inferred from erfen_20260407.pdf) ; institutopesca.gob.ec/wp-content/uploads/..."
+    access_method: "PDF discovery and download; manual fallback"
+    spatial_resolution: "national / regional ocean"
+    temporal_resolution: "per report"
+    latency: "on publication"
+    update_cadence: "poll every 3 h; reports every 2-4 weeks (to confirm)"
+    licence: "None published"
+    licence_class: official_verbatim
+    attribution: "Fuente: Comite Nacional ERFEN / INOCAR"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-cnerfen-inocar
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["www.inocar.mil.ec", "institutopesca.gob.ec"]
+    notes: "E.g. report 007-2026 (28 Aug, El Nino declared active) and 009-2026 (19 Sep). Texts to official_alerts; stated index values to enso_indices with source='CN-ERFEN'."
+
+  # ---------------------------------------------------------------- enso_ocean
+  - id: cpc_enso
+    name: "NOAA CPC ENSO indices (Nino boxes, RONI, ONI, weekly SST) and RONI probabilities"
+    provider: "NOAA Climate Prediction Center"
+    category: enso_ocean
+    url_or_id: "https://www.cpc.ncep.noaa.gov/data/indices/sstoi.indices ; https://www.cpc.ncep.noaa.gov/data/indices/RONI.ascii.txt ; https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt ; https://www.cpc.ncep.noaa.gov/data/indices/wksst9120.for ; https://cpc.ncep.noaa.gov/products/analysis_monitoring/enso/roni/probabilities/ ; https://cpc.ncep.noaa.gov/products/analysis_monitoring/enso/roni/strengths/"
+    access_method: "HTTPS text files; HTML tables (parse table index 7)"
+    spatial_resolution: "index"
+    temporal_resolution: "weekly / monthly / seasonal"
+    latency: "days"
+    update_cadence: "daily poll at 14:00 UTC; probabilities on the second Thursday"
+    licence: "NOAA public domain (unverified for these files)"
+    licence_class: open
+    attribution: "NOAA Climate Prediction Center"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-enso
+    region: us-central1
+    owner: FL
+    allowed_hosts: ["www.cpc.ncep.noaa.gov", "cpc.ncep.noaa.gov"]
+    notes: "sstoi.indices verified via code; RONI.ascii.txt secondary; oni.ascii.txt and wksst9120.for unverified paths. RONI is CPC's official index since 2026-02-01."
+
+  - id: enfen_peru
+    name: "ENFEN Peru official communiques and ICEN coastal El Nino index"
+    provider: "ENFEN (IMARPE) / Instituto Geofisico del Peru (IGP)"
+    category: enso_ocean
+    url_or_id: "https://enfen.imarpe.gob.pe/comunicados/ ; http://met.igp.gob.pe/datos/ICEN.txt"
+    access_method: "HTML/PDF communiques; plain text index (URL is case-sensitive)"
+    spatial_resolution: "index (Nino 1+2)"
+    temporal_resolution: "monthly (3-month running mean)"
+    latency: "about 1 month"
+    update_cadence: "daily poll; monthly updates"
+    licence: "Communiques: official statements shown verbatim; ICEN values: terms unclear"
+    licence_class: official_verbatim
+    attribution: "ENFEN (Peru); ICEN: IGP/ENFEN"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-enso
+    region: us-central1
+    owner: FL
+    allowed_hosts: ["enfen.imarpe.gob.pe", "met.igp.gob.pe"]
+    notes: "ICEN uses ERSSTv5 with a 1991-2020 base; categories percentile-based since Dec 2024. Store base_period with every value."
+
+  - id: iri_enso_plume
+    name: "IRI ENSO forecast plume"
+    provider: "International Research Institute for Climate and Society (IRI)"
+    category: enso_ocean
+    url_or_id: "https://iri.columbia.edu/~forecast/ensofcst/Data/ensofcst_ALLtoMMYY"
+    access_method: "HTTPS text/JSON (years[].months[].models[])"
+    spatial_resolution: "index (Nino 3.4)"
+    temporal_resolution: "monthly, seasonal leads"
+    latency: "mid-month"
+    update_cadence: "monthly"
+    licence: "Unclear; IRI real-time products are licence-restricted"
+    licence_class: pending_review
+    attribution: "IRI, Columbia University"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 1
+    verified: true
+    job: ingest-enso
+    region: us-central1
+    owner: FL
+    notes: "Internal display only until licence confirmed. IRI real-time tercile probabilities are NOT ingested for redistribution."
+
+  - id: oisst_v21
+    name: "NOAA OISST v2.1 daily SST and anomaly"
+    provider: "NOAA NCEI (CDR)"
+    category: enso_ocean
+    url_or_id: "EE NOAA/CDR/OISST/V2_1 ; s3://noaa-cdr-sea-surface-temp-optimum-interpolation-pds/data/v2.1/avhrr/"
+    access_method: "Earth Engine (bands sst, anom, ice, err; property status provisional/permanent); AWS NetCDF mirror"
+    spatial_resolution: "0.25 deg"
+    temporal_resolution: "daily (from 1981-09)"
+    latency: "preliminary 1 day; final 14 days"
+    update_cadence: "daily"
+    licence: "NOAA CDR (EE tag 'proprietary'; public domain per NOAA terms, unverified)"
+    licence_class: open
+    attribution: "NOAA OISST v2.1"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-enso
+    region: us-central1
+    owner: FL
+    notes: "Daily Nino 1+2 computed over 0-10S, 90-80W from the anom band; cross-checked against CPC and ICEN (DQ-19)."
+
+  - id: cmems_ee
+    name: "CMEMS global physics analysis/forecast, waves, BGC and ocean colour (Earth Engine)"
+    provider: "Copernicus Marine Service (CMEMS)"
+    category: enso_ocean
+    url_or_id: "EE COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_PHY_DAILY ; COPERNICUS/MARINE/WAV/ANFC_0_083DEG_PT3H ; COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_BGC_001_028/BIO ; COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_BGC_001_028/PFT ; COPERNICUS/MARINE/SATELLITE_OCEAN_COLOR/V6"
+    access_method: "Earth Engine"
+    spatial_resolution: "1/12 deg (physics, waves); 0.25 deg (BGC); ocean colour per product"
+    temporal_resolution: "daily; waves 3-hourly; physics includes a 10-day forecast"
+    latency: "daily"
+    update_cadence: "daily reduction at 10:00 UTC"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "E.U. Copernicus Marine Service Information"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: ingest-ocean
+    region: us-central1
+    owner: FL
+    notes: "Bands zos (SSH), mlotst, sob/tob, currents. EE keeps only a rolling two-year window: archive derived coastal and Nino-box series daily."
+
+  - id: cmems_sealevel_l4_nrt
+    name: "CMEMS L4 sea surface height NRT (DUACS all-sat)"
+    provider: "Copernicus Marine Service (CMEMS)"
+    category: enso_ocean
+    url_or_id: "SEALEVEL_GLO_PHY_L4_NRT_008_046 / cmems_obs-sl_glo_phy-ssh_nrt_allsat-l4-duacs-0.125deg_P1D"
+    access_method: "copernicusmarine toolbox (2.5.0); free account (unverified)"
+    spatial_resolution: "0.125 deg"
+    temporal_resolution: "daily"
+    latency: "about 1 day (unverified)"
+    update_cadence: "daily"
+    licence: "CC BY 4.0 (unverified)"
+    licence_class: pending_review
+    attribution: "E.U. Copernicus Marine Service Information"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 1
+    verified: true
+    job: ingest-ocean
+    region: us-central1
+    owner: FL
+    notes: "Kelvin-wave tracking and coastal sea-level anomaly (SLA_GYE in enso_indices). Subset to seasonal_area box only."
+
+  - id: ioc_uhslc_sealevel
+    name: "Observed sea level: IOC gauges gyer, puna, lali; UHSLC 091 La Libertad"
+    provider: "IOC Sea Level Station Monitoring Facility / UHSLC (gauges operated with INOCAR)"
+    category: enso_ocean
+    url_or_id: "IOC service.php?query=data&code=gyer (also code=puna, code=lali); UHSLC station 091/091a (GLOSS 172)"
+    access_method: "HTTP JSON"
+    spatial_resolution: "tide gauge"
+    temporal_resolution: "minutes to hourly (unverified)"
+    latency: "near real time (unverified)"
+    update_cadence: "every 6 h"
+    licence: "IOC/UHSLC terms (to confirm)"
+    licence_class: pending_review
+    attribution: "IOC Sea Level Station Monitoring Facility; UHSLC"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: ingest-ocean
+    region: us-central1
+    owner: FL
+    notes: "La Libertad at -2.21, -80.90. Checks the reported +40 cm coastal anomaly (ERFEN 20 Aug, unverified). Writes commons_pub.sea_level_obs."
+
+  - id: inocar_tides
+    name: "INOCAR tide predictions (quarterly PDFs and HTML table)"
+    provider: "Instituto Oceanografico y Antartico de la Armada (INOCAR)"
+    category: enso_ocean
+    url_or_id: "https://www.inocar.mil.ec/mareas/TM/{anio}/trimestral/GUAYAQUIL_RIO_{trimestre}.pdf ; https://www.inocar.mil.ec/mareas/consultan.php"
+    access_method: "PDF extraction; HTML scrape"
+    spatial_resolution: "ports"
+    temporal_resolution: "high/low water events"
+    latency: "published ahead"
+    update_cadence: "quarterly"
+    licence: "None published; nautical products are sold (unverified); agreement needed"
+    licence_class: agreement
+    attribution: "Fuente: INOCAR"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-cnerfen-inocar
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["www.inocar.mil.ec"]
+    rename_history: "ArcGIS host maritime.inocar.mil.ec no longer resolves"
+    notes: "Parseable back to 2022. Input to compound tide calendar (docs/07). Internal use until agreement A3."
+
+  # ---------------------------------------------------------------- atmosphere_obs
+  - id: inamhi_visor_stations
+    name: "INAMHI Visor station network (automatic and conventional)"
+    provider: "INAMHI"
+    category: atmosphere_obs
+    url_or_id: "https://inamhi.gob.ec/api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh ; /api_visor/station_information/estaciones/parametros/?id_estacion= ; POST /api_visor/station_data_automaticas/get_data_hour/ ; /api_visor/station_data_automaticas/get_precipitation/ ; /api_visor/station_data_convencionales/..."
+    access_method: "Undocumented Django REST API; POST body {id_estacion, table_names[], fecha_desde, fecha_hasta}; request a variable's whole MAX/MIN/PROM group or HTTP 500"
+    spatial_resolution: "station (1,894 in viewer; 202 automatic transmitting on 2026-09-27; 43 level/flow)"
+    temporal_resolution: "hourly (automatic); daily (conventional)"
+    latency: "about 2.5 h; river levels 9-24 days late"
+    update_cadence: "continuous rotation at 1 request / 300 s; API keeps about 92 days"
+    licence: "None published; WMO core-data policy (unverified); redistribution needs agreement"
+    licence_class: agreement
+    attribution: "Fuente: INAMHI"
+    commercial_use: "no"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-inamhi-stations
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["inamhi.gob.ec", "www.inamhi.gob.ec"]
+    notes: "Timestamps UTC. ARCHIVE FROM DAY 1 (92-day window). Internal use for bias correction/verification; only derived scores published until MoU A1. Late river levels re-fetched at +10/+25 days (inamhi-archive-audit)."
+
+  - id: inamhi_geoserver
+    name: "INAMHI GeoServer/GeoNode and WIS2 box (normals, anomalies, WRF grids, basins, admin layers)"
+    provider: "INAMHI"
+    category: atmosphere_obs
+    url_or_id: "https://geoservicios.inamhi.gob.ec/geoserver (workspace geonode; WMS 1.3.0, WFS 2.0.0) ; /catalogue/csw ; /geoserver/gwc/service/wmts ; http://wis.inamhi.gob.ec/oapi/collections/?f=json"
+    access_method: "OGC WMS/WFS (outputFormat=application/json)/WMTS/CSW; GeoNode API /api/datasets/; pygeoapi OGC API"
+    spatial_resolution: "grids and vectors; 222 layers (199 WFS)"
+    temporal_resolution: "daily anomalies and WRF; monthly/annual normals 1985-2015"
+    latency: "daily"
+    update_cadence: "daily at 13:00 UTC"
+    licence: "None published"
+    licence_class: pending_review
+    attribution: "Fuente: INAMHI"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-inamhi-geoserver
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["geoservicios.inamhi.gob.ec", "wis.inamhi.gob.ec"]
+    notes: "Layers: enero1985_2015..anual_1985_2015_r, anomalias_DDmonYYYY (~180), wrf_tiempo_*, cuencas_inamhi, cuencas_maate, demarcaciones_hidrograficas, provincias, ecuador_cantones, ecuador_parroquias, hidroelectricasshape, geoglows_ecuador. No station-observation layer. WIS2 topics unverified."
+
+  - id: imerg_v07
+    name: "GPM IMERG V07 half-hourly precipitation"
+    provider: "NASA"
+    category: atmosphere_obs
+    url_or_id: "EE NASA/GPM_L3/IMERG_V07 ; NASA/GPM_L3/IMERG_MONTHLY_V07"
+    access_method: "Earth Engine"
+    spatial_resolution: "0.1 deg"
+    temporal_resolution: "30 min"
+    latency: "hours (Early/Late)"
+    update_cadence: "every 30 min (Phase 2 nowcast job)"
+    licence: "NASA open data"
+    licence_class: open
+    attribution: "NASA GPM IMERG"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: ingest-imerg-gsmap
+    region: us-central1
+    owner: FL
+    notes: "No 'permanent' (Final) products beyond 2025-09-30 during the V08 transition: provisional truth only."
+
+  - id: gsmap_v8
+    name: "GSMaP v8 operational hourly precipitation"
+    provider: "JAXA"
+    category: atmosphere_obs
+    url_or_id: "EE JAXA/GPM_L3/GSMaP/v8/operational"
+    access_method: "Earth Engine"
+    spatial_resolution: "0.1 deg"
+    temporal_resolution: "hourly"
+    latency: "near real time (status=provisional until gauge-adjusted run replaces it)"
+    update_cadence: "every 30 min"
+    licence: "JAXA terms; acknowledgement required"
+    licence_class: pending_review
+    attribution: "JAXA GSMaP"
+    commercial_use: "unclear"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    job: ingest-imerg-gsmap
+    region: us-central1
+    owner: FL
+    notes: "Nowcast ensemble member alongside IMERG and Oya."
+
+  - id: oya_precip
+    name: "Oya satellite-infrared precipitation estimation"
+    provider: "Google"
+    category: atmosphere_obs
+    url_or_id: "EE projects/global-precipitation-nowcast/assets/global_estimation"
+    access_method: "Earth Engine"
+    spatial_resolution: "5 km"
+    temporal_resolution: "30 min (from 2004)"
+    latency: "near real time"
+    update_cadence: "every 30 min"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "Google Oya global precipitation estimation"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    job: ingest-imerg-gsmap
+    region: us-central1
+    owner: FL
+    notes: "Uses GOES-16/18, Meteosat and Himawari; described as competitive with IMERG Final."
+
+  - id: chirps
+    name: "CHIRPS v3 daily/pentad precipitation (primary) with CHIRPS v2 fallback"
+    provider: "UCSB Climate Hazards Center (CHC)"
+    category: atmosphere_obs
+    url_or_id: "EE UCSB-CHC/CHIRPS/V3/DAILY_SAT ; UCSB-CHC/CHIRPS/V3/DAILY_RNL ; UCSB-CHC/CHIRPS/V3/PENTAD ; data.chc.ucsb.edu/products/CHIRPS/v3.0/daily/final/{rnl|sat}/cogs/YYYY/ ; EE UCSB-CHG/CHIRPS/DAILY (v2)"
+    access_method: "Earth Engine; COG download fallback"
+    spatial_resolution: "0.05 deg"
+    temporal_resolution: "daily / pentad (from 1981)"
+    latency: "preliminary about 2 days; final about 3 weeks after the month (unverified)"
+    update_cadence: "daily check"
+    licence: "Public domain / rights waived"
+    licence_class: open
+    attribution: "CHIRPS, UCSB Climate Hazards Center"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: verification-weekly
+    region: us-central1
+    owner: FL
+    notes: "Primary truth for verification and quantile mapping (D12). Briefs conflict on v3 presence in EE (catalogue source yes, STAC mirror no): confirm in Phase 0. v2 in EE runs to 2026-08-31."
+
+  - id: era5
+    name: "ERA5 and ERA5-Land reanalysis (ARCO Zarr and Earth Engine)"
+    provider: "ECMWF / Copernicus Climate Change Service (C3S); ARCO copy by Google"
+    category: atmosphere_obs
+    url_or_id: "gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3 ; EE ECMWF/ERA5/HOURLY ; ECMWF/ERA5/MONTHLY ; ECMWF/ERA5_LAND/HOURLY ; ECMWF/ERA5_LAND/DAILY_AGGR ; ECMWF/ERA5_LAND/MONTHLY_AGGR"
+    access_method: "GCS Zarr (anonymous, us-central1) via xarray; Earth Engine"
+    spatial_resolution: "0.25 deg (ERA5); 0.1 deg (ERA5-Land)"
+    temporal_resolution: "hourly"
+    latency: "ERA5T about 6 days; final about 3 months"
+    update_cadence: "daily (ERA5T); monthly final around the 9th"
+    licence: "CC BY 4.0 per CDS catalogue"
+    licence_class: open
+    attribution: "Contains modified Copernicus Climate Change Service information"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    owner: FL
+    notes: "Climatology, analog composites (1982-83, 1997-98, 2015-16, 2017, 2023-24). Do not use ECMWF/ERA5/DAILY (ends 2020-07-09). No verified ERA5 BigQuery table. Never the sole verification truth for AI models (D12)."
+
+  - id: smap_soil_moisture
+    name: "SMAP soil moisture L4 and L3 enhanced"
+    provider: "NASA"
+    category: atmosphere_obs
+    url_or_id: "EE NASA/SMAP/SPL4SMGP/008 ; NASA/SMAP/SPL3SMP_E/006"
+    access_method: "Earth Engine"
+    spatial_resolution: "9-11 km"
+    temporal_resolution: "3-hourly (L4); daily (L3E)"
+    latency: "about 3 days (L4)"
+    update_cadence: "daily"
+    licence: "NASA open data"
+    licence_class: open
+    attribution: "NASA SMAP"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "Input to LHASA 2.1.1 re-runs and antecedent-wetness indices (docs/07)."
+
+  # ---------------------------------------------------------------- forecast (methods in docs/06)
+  - id: weathernext_3
+    name: "WeatherNext 3 ensemble forecast (statistics in BigQuery/EE; members in GCS)"
+    provider: "Google DeepMind / Google Cloud"
+    category: forecast
+    url_or_id: "BigQuery linked dataset weathernext_3 (exchange projects/gcp-public-data-weathernext/locations/us/dataExchanges/weathernext_19397e1bcb7): tables weathernext_3_0_0_0p1deg, weathernext_3_0_0_0p05deg ; EE projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg ; gs://weathernext3_spatial/weathernext_3_0_0/zarr/"
+    access_method: "BigQuery (partition init_time, cluster geography); EE; GCS Zarr Requester Pays (us-east1); access by WeatherNext Data Request form"
+    spatial_resolution: "0.05 deg (2t/2d station head), 0.1 deg surface, 0.25 deg pressure levels"
+    temporal_resolution: "hourly steps to 15 days; 64 members"
+    latency: "main cycles in BigQuery about +8 h 10 min after init"
+    update_cadence: "hourly initialisation; main cycles 00/06/12/18Z"
+    licence: "GDM Real-Time Weather Forecasting Experimental Data Terms (data <1 h old or future); CC BY 4.0 for data >=1 h old"
+    licence_class: wn_nrva
+    attribution: "Copyright 2024-6 Google LLC; mandatory WeatherNext experimental-use citation"
+    commercial_use: "unclear"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: forecast-cycle
+    region: us-central1
+    owner: FL
+    notes: "Archive only from 2026-01-01. Commons publishes only NRVA derivatives (G-03). Member-level BigQuery availability conflicting in sources. Details in docs/06."
+
+  - id: weathernext_2
+    name: "WeatherNext 2 ensemble forecast (64 members)"
+    provider: "Google DeepMind / Google Cloud"
+    category: forecast
+    url_or_id: "BigQuery linked dataset weathernext_2: tables weathernext_2_0_0, weathernext_2_0_0_mean ; EE projects/gcp-public-data-weathernext/assets/weathernext_2_0_0 ; gs://weathernext/weathernext_2_0_0/zarr"
+    access_method: "BigQuery; EE; GCS Zarr; optional Vertex on-demand runs (allow-list)"
+    spatial_resolution: "0.25 deg"
+    temporal_resolution: "6-hourly steps to 15 days; 64 members"
+    latency: "about 7.5 h after init"
+    update_cadence: "00/06/12/18Z"
+    licence: "Same data terms as WeatherNext 3; weights licence permits commercial use since 2026-08-06"
+    licence_class: wn_nrva
+    attribution: "Copyright 2024-6 Google LLC; mandatory WeatherNext experimental-use citation"
+    commercial_use: "unclear"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: forecast-cycle
+    region: us-central1
+    owner: FL
+    notes: "Archive 2022 onward covers the 2023 coastal El Nino and 2023-24; used for skill in El Nino conditions and hindcast backfill."
+
+  - id: ecmwf_open_data
+    name: "ECMWF IFS and AIFS open data (fallback and benchmark)"
+    provider: "ECMWF"
+    category: forecast
+    url_or_id: "gs://ecmwf-open-data/YYYYMMDD/HHz/{ifs/0p25/{oper,enfo,wave,waef}, aifs-single, aifs-ens/0p25/{enfo,waef}} ; EE ECMWF/NRT_FORECAST/IFS/OPER"
+    access_method: "GCS GRIB2 (anonymous); Earth Engine"
+    spatial_resolution: "0.25 deg"
+    temporal_resolution: "to 360 h"
+    latency: "hours"
+    update_cadence: "twice daily (EE); 00/06/12/18 runs on the mirror"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "ECMWF open data, CC BY 4.0"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: forecast-cycle
+    region: us-central1
+    owner: FL
+    notes: "Fallback model when WeatherNext is late (fc-fallback-ifs). No seasonal (mmsf) folders on the mirror."
+
+  - id: gefs_v12
+    name: "NOAA GEFSv12 ensemble to 35 days"
+    provider: "NOAA NCEP"
+    category: forecast
+    url_or_id: "gs://gfs-ensemble-forecast-system/gefs.YYYYMMDD/00/atmos/pgrb2ap5/ (gec00, gep01-gep30, geavg, gespr; to f840)"
+    access_method: "GCS GRIB2 (anonymous)"
+    spatial_resolution: "0.5 deg"
+    temporal_resolution: "to 35 days"
+    latency: "hours"
+    update_cadence: "weekly aggregation in our pipeline"
+    licence: "NOAA public domain"
+    licence_class: open
+    attribution: "NOAA GEFS"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 2
+    verified: true
+    job: ingest-seasonal
+    region: us-central1
+    owner: FL
+    notes: "Fills sub-seasonal weeks 3-5. AWS mirror s3://noaa-gefs-pds; reforecasts s3://noaa-gefs-retrospective/GEFSv12/."
+
+  - id: cfsv2
+    name: "NOAA CFSv2 9-month forecasts"
+    provider: "NOAA NCEP"
+    category: forecast
+    url_or_id: "s3://noaa-cfs-pds/cfs.YYYYMMDD/{cycle}/monthly_grib_01/{flxf,pgbf,ocnf}.01.{init}.{YYYYMM}.avrg.grib.grb2"
+    access_method: "AWS S3 anonymous; byte-range reads via .idx sidecars"
+    spatial_resolution: "about 1 deg (unverified)"
+    temporal_resolution: "monthly means; 9 months (member 01)"
+    latency: "00 UTC monthly files at 07:31-08:52 UTC same day"
+    update_cadence: "daily at 09:00 UTC (lagged ensemble)"
+    licence: "NOAA public domain"
+    licence_class: open
+    attribution: "NOAA CFSv2"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 1
+    verified: true
+    job: ingest-seasonal
+    region: us-central1
+    owner: FL
+    notes: "EE NOAA/CFSV2/FOR6H is analysis-only and deprecated: do not use for forecasts. No GCS copy."
+
+  - id: c3s_seasonal
+    name: "C3S multi-system seasonal forecasts"
+    provider: "Copernicus Climate Change Service (C3S) / contributing centres"
+    category: forecast
+    url_or_id: "CDS seasonal-monthly-single-levels (DOI 10.24381/cds.68dd14c3) ; seasonal-original-single-levels ; seasonal-postprocessed-single-levels ; https://cds.climate.copernicus.eu/api"
+    access_method: "cdsapi 0.7.7 (ecmwf-datastores-client); personal access token; accept each dataset licence on the web first; asynchronous submit and poll"
+    spatial_resolution: "1 deg (unverified)"
+    temporal_resolution: "monthly; leads 1-6"
+    latency: "C3S release the 13th at 12 UTC (unverified)"
+    update_cadence: "monthly (retry window days 13-16)"
+    licence: "Catalogue lists 'other' / Copernicus licence (commercial redistribution of derived products unverified per centre)"
+    licence_class: pending_review
+    attribution: "Generated using Copernicus Climate Change Service information"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: ingest-seasonal
+    region: us-central1
+    owner: FL
+    notes: "Area [2,-92,-6,-75]. Hindcasts 1993-2016 backfilled per initialisation month. System codes change: resolve from CDS constraints at run time. Writes commons_pub.seasonal_canton."
+
+  - id: nmme
+    name: "North American Multi-Model Ensemble seasonal forecasts"
+    provider: "NOAA CPC / IRI Data Library"
+    category: forecast
+    url_or_id: "https://ftp.cpc.ncep.noaa.gov/International/nmme/netcdf/{mon}{yyyy}ic/{MODEL}/{MODEL}.{prate|tmp2m|tmpsfc}.{YYYYMM}.ENSMEAN.fcst.nc ; https://ftp.cpc.ncep.noaa.gov/NMME/realtime_anom/ ; IRI DL SOURCES/.Models/.NMME/"
+    access_method: "HTTPS NetCDF (no credentials); IRI DL subsetting"
+    spatial_resolution: "1 deg"
+    temporal_resolution: "monthly; leads 0-11 (unverified)"
+    latency: "issued about the 8th-9th (unverified)"
+    update_cadence: "monthly (days 9-12)"
+    licence: "Likely open (unverified)"
+    licence_class: pending_review
+    attribution: "NOAA NMME"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 1
+    verified: true
+    job: ingest-seasonal
+    region: us-central1
+    owner: FL
+    notes: "s3://noaa-nmme-pds holds only index.html (empty mirror)."
+
+  # ---------------------------------------------------------------- hydrology
+  - id: floodhub_api
+    name: "Google Flood Forecasting API v1 (gauges, forecasts, flood status, significant events, flash floods)"
+    provider: "Google Research"
+    category: hydrology
+    url_or_id: "https://floodforecasting.googleapis.com/v1 (gauges:searchGaugesByArea, gauges:queryGaugeForecasts, gaugeModels:batchGet, floodStatus:searchLatestFloodStatusByArea, floodStatus:queryLatestFloodStatusByGaugeIds, significantEvents:search, flashFloods:search, serializedPolygons/{id})"
+    access_method: "REST with API key only (?key=); access per GCP project via waitlist; quota 200 requests/min per project"
+    spatial_resolution: "gauges <source>_<id> and virtual hybas_<id>; KML polygons"
+    temporal_resolution: "forecasts daily to 7 days; flash floods 24 h"
+    latency: "status several times a day; flash floods issued about 06:33 UTC"
+    update_cadence: "status 4x/day (every 3 h in N2+); events daily"
+    licence: "CC BY 4.0; 'primarily non-commercial' wording unverified"
+    licence_class: pending_review
+    attribution: "Google Flood Hub"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-floodhub-status
+    region: us-central1
+    owner: DL
+    allowed_hosts: ["floodforecasting.googleapis.com"]
+    notes: "No history endpoint: snapshot daily. cutoffTime floor 2025-08-01; issuedTimeStart floor 2023-10-01. Batch 404 if any gauge not served (per-gauge fallback; floodhub_not_served). Use transboundary loops. Snapshots gated as nc until terms confirmed."
+
+  - id: grrr
+    name: "Google Runoff Reanalysis & Reforecast (GRRR) model_id_8583a5c2_v0"
+    provider: "Google Research"
+    category: hydrology
+    url_or_id: "gs://flood-forecasting/hydrologic_predictions/model_id_8583a5c2_v0/ (reanalysis/streamflow.zarr, reforecast/streamflow.zarr, return_periods.zarr, hybas_outlet_locations_UNOFFICIAL.zarr)"
+    access_method: "GCS Zarr v2, anonymous (token anon), not Requester Pays"
+    spatial_resolution: "HydroBASINS outlets (about 1,840 on mainland Ecuador; 39 in Galapagos box)"
+    temporal_resolution: "daily; reforecast leads 0-7 days"
+    latency: "static archive"
+    update_cadence: "one-off load (reanalysis 1980-01-01 to 2023-12-23; reforecast 2016-01-01 to 2023-06-30)"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "Google Runoff Reanalysis & Reforecast, CC BY 4.0"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: build-static-layers
+    region: us-central1
+    owner: DL
+    notes: "Ecuador subset about 118 MB (reanalysis) + 161 MB (reforecast). No units attribute (consistent with m3/s). Return-period index differs from reanalysis index: join on id string. Pick outlets by upstream area. Writes commons_pub.grrr_ecuador. Commercial substitute for GEOGloWS NC return periods."
+
+  - id: inundation_history
+    name: "Google inundation history (GLAD-derived, 1999-2020)"
+    provider: "Google Research"
+    category: hydrology
+    url_or_id: "gs://flood-forecasting/inundation_history/data/inundation_history_{minlat}_{minlng}_{maxlat}_{maxlng}.geojson"
+    access_method: "GCS GeoJSON tiles, anonymous"
+    spatial_resolution: "128 m"
+    temporal_resolution: "static (frequency wet 1999-2020)"
+    latency: "static"
+    update_cadence: "one-off"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "Google Flood Forecasting inundation history, CC BY 4.0"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: build-static-layers
+    region: us-central1
+    owner: DL
+    notes: "Layers High_risk (>=5% wet), Medium_risk (>=1%), Low_risk (>=0.5%). 12 tiles / 11.3 MB intersect the mainland bbox; Galapagos tiles exist. Feeds exposure_parish.flood_prone_share."
+
+  - id: geoglows_v2
+    name: "GEOGloWS ECMWF Streamflow v2 forecasts and retrospective"
+    provider: "GEOGloWS / ECMWF / BYU"
+    category: hydrology
+    url_or_id: "s3://geoglows-v2-forecasts/{YYYYMMDD}00.zarr ; s3://geoglows-v2/retrospective/{hourly,daily,monthly-timeseries,yearly-timeseries,fdc}.zarr ; https://geoglows.ecmwf.int/api/v2/{forecast|forecaststats|forecastensembles|forecastrecords|dates}/{river_id}"
+    access_method: "AWS S3 Zarr (anonymous); REST; PyPI geoglows 2.2.0"
+    spatial_resolution: "TDX-Hydro reach (river_id, 9 digits)"
+    temporal_resolution: "forecasts 52 members x 280 steps to 15 days; retrospective daily from 1940"
+    latency: "daily"
+    update_cadence: "daily (forecast archive from 2024-07-01)"
+    licence: "CC BY 4.0 with mandatory ECMWF copyright/disclaimer; TDX-Hydro river network CC BY-SA 4.0"
+    licence_class: open
+    attribution: "GEOGloWS ECMWF Streamflow Service; ECMWF copyright and disclaimer per licenses.md"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-geoglows-inamhi
+    region: us-central1
+    owner: FL
+    notes: "Show only bias-corrected (raw median KGE -0.57 over 182 Ecuador stations; 0.33 after FDC correction). River geometry is SA (gate per G-06). Writes commons_pub.river_status."
+
+  - id: geoglows_v2_return_periods
+    name: "GEOGloWS v2 return periods (Gumbel, 2-100 yr)"
+    provider: "GEOGloWS / BYU"
+    category: hydrology
+    url_or_id: "s3://geoglows-v2/retrospective/return-periods.zarr (revision 2026-06-10)"
+    access_method: "AWS S3 Zarr (anonymous)"
+    spatial_resolution: "reach"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "on revision"
+    licence: "CC BY-NC-SA 4.0"
+    licence_class: nc
+    attribution: "GEOGloWS, CC BY-NC-SA 4.0"
+    commercial_use: "no"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: build-static-layers
+    region: us-central1
+    owner: FL
+    notes: "commons_pub_nc only; commercial tenants get GRRR return periods instead."
+
+  - id: inamhi_hydroviewer
+    name: "INAMHI-GEOGloWS hydroviewer and Hydropower app"
+    provider: "INAMHI with GEOGloWS / SERVIR-Amazonia / Fundacion EcoCiencia"
+    category: hydrology
+    url_or_id: "https://inamhi.geoglows.org/apps/hydroviewer-ecuador/ (get-alerts, get-alerts-drought, get-rivers, get-data, get-forecast-xlsx, report, get-ffgs-json, get-warnings-json)"
+    access_method: "HTTP JSON (Tethys app); backend services.geoglows.org"
+    spatial_resolution: "reach"
+    temporal_resolution: "daily forecast; return-period classes"
+    latency: "hours"
+    update_cadence: "every 6 h"
+    licence: "Underlying GEOGloWS CC BY 4.0; INAMHI-specific content to confirm"
+    licence_class: pending_review
+    attribution: "INAMHI / GEOGloWS"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-geoglows-inamhi
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["inamhi.geoglows.org", "services.geoglows.org"]
+    notes: "Embed/link, do not rebuild (D2). Hydropower app gives bias-corrected forecasts for 8 plants. get-ffgs-json = flash-flood guidance (HydroShare WFS nwsaffds)."
+
+  - id: glofas_forecast
+    name: "GloFAS 30-day ensemble river discharge forecast"
+    provider: "Copernicus Emergency Management Service (CEMS) / JRC / ECMWF"
+    category: hydrology
+    url_or_id: "EWDS cems-glofas-forecast (DOI 10.24381/cds.ff1aef77) ; https://ewds.climate.copernicus.eu/api"
+    access_method: "cdsapi with url=EWDS; same CDS account/key; accept licence once; variable river_discharge_in_the_last_24_hours; area [N,W,S,E]"
+    spatial_resolution: "about 0.05 deg (unverified)"
+    temporal_resolution: "daily steps to 30 days; 51 members"
+    latency: "daily"
+    update_cadence: "one request per day at 12:00 UTC"
+    licence: "GloFAS Terms of Service; output is not a flood warning; commercial redistribution unverified"
+    licence_class: pending_review
+    attribution: "Copernicus Emergency Management Service - GloFAS"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-glofas
+    region: us-central1
+    owner: FL
+    notes: "Archive from 2019-11-05. v4.4 (2025-09-10) added AIFS forcing. Per-request cost limits apply (cost scales with time dims)."
+
+  - id: glofas_seasonal
+    name: "GloFAS seasonal river discharge outlook"
+    provider: "CEMS / JRC / ECMWF"
+    category: hydrology
+    url_or_id: "EWDS cems-glofas-seasonal ; cems-glofas-seasonal-reforecast"
+    access_method: "cdsapi with url=EWDS"
+    spatial_resolution: "0.05 deg"
+    temporal_resolution: "24-hourly steps; 123 days (web product shows 7 months)"
+    latency: "initialised 1st of month; published about the 6th-8th (sources disagree)"
+    update_cadence: "monthly (days 6-10)"
+    licence: "GloFAS Terms of Service (commercial redistribution unverified)"
+    licence_class: pending_review
+    attribution: "Copernicus Emergency Management Service - GloFAS"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: ingest-seasonal
+    region: us-central1
+    owner: FL
+    notes: "SEAS5-driven; reforecast 1981 to 2023-07 (25 members to 2016, 51 from 2017). Sub-seasonal outlook has no EWDS dataset."
+
+  - id: glofas_reanalysis
+    name: "GloFAS historical reanalysis (v5.0, 1980-2025) and reforecasts"
+    provider: "CEMS / JRC / ECMWF"
+    category: hydrology
+    url_or_id: "EWDS cems-glofas-historical ; cems-glofas-reforecast (product_type=ensemble_perturbed_reforecast)"
+    access_method: "cdsapi with url=EWDS; one year per request"
+    spatial_resolution: "0.05 deg"
+    temporal_resolution: "daily"
+    latency: "static / annual"
+    update_cadence: "backfill once; refresh on new version"
+    licence: "GloFAS Terms of Service"
+    licence_class: pending_review
+    attribution: "Copernicus Emergency Management Service - GloFAS"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 1
+    verified: true
+    job: ingest-glofas
+    region: us-central1
+    owner: FL
+    notes: "Fills 2024-2025 after GRRR ends (2023-12-23). v5.0 operational date unknown."
+
+  - id: celec_ords_reservoirs
+    name: "CELEC reservoir levels and inflows (ORDS) and Daule-Peripa notes (Hidronacion)"
+    provider: "Corporacion Electrica del Ecuador (CELEC EP)"
+    category: hydrology
+    url_or_id: "https://generacioncsr.celec.gob.ec:8443/ords/csr/ (modules repDiaHid12m, pointValuesMesH24; OpenAPI at open-api-catalog/<module>/) ; https://www.celec.gob.ec/hidronacion/wp-json/wp/v2/posts"
+    access_method: "Oracle ORDS REST, no authentication; WordPress REST"
+    spatial_resolution: "reservoir / plant"
+    temporal_resolution: "daily"
+    latency: "1 day"
+    update_cadence: "daily at 13:00 UTC"
+    licence: "None published; agreement advisable"
+    licence_class: pending_review
+    attribution: "Fuente: CELEC EP"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: ingest-celec-cenace
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["generacioncsr.celec.gob.ec", "www.celec.gob.ec"]
+    notes: "repDiaHid12m: Mazar, Amaluza, Minas San Francisco, Delsitanisagua from 2014-09-20; pointValuesMesH24: Mazar inflow from 2010-02-10. Paute mean flow 74.6 m3/s (2024) vs 163.6 (2025). Archive from Phase 0. Writes reservoir_daily."
+
+  - id: caravan_multimet
+    name: "Caravan MultiMet basin forcings (for OpenHydroNet training/fine-tuning)"
+    provider: "Caravan community (Kratzert et al.) / Google Research"
+    category: hydrology
+    url_or_id: "gs://caravan-multimet/v1.1/{CPC,IMERG,CHIRPS,ERA5_LAND,CHIRPS_GEFS,HRES,GRAPHCAST}/timeseries.zarr/"
+    access_method: "GCS Zarr, anonymous; UTC"
+    spatial_resolution: "basin"
+    temporal_resolution: "daily / forecast leads"
+    latency: "static archive"
+    update_cadence: "on release"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "Caravan MultiMet, CC BY 4.0"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: query_in_place
+    priority: P3
+    phase: 3
+    verified: true
+    owner: FL
+    notes: "No Ecuador Caravan extension exists; build one from INAMHI discharge (agreements A1, A15)."
+
+  - id: goes19_abi_flood
+    name: "GOES-19 ABI daily flood product"
+    provider: "NOAA"
+    category: hydrology
+    url_or_id: "gs://gcp-public-data-goes-19/ABI-Flood-Day-TIF/YYYY/MM/DD/ABI-Flood-DCOM-AOI00{3,4}_...tif (also ABI-Flood-Hourly*; mirror s3://noaa-goes19)"
+    access_method: "GCS GeoTIFF, anonymous"
+    spatial_resolution: "0.01 deg"
+    temporal_resolution: "daily"
+    latency: "files about 07:00 UTC next day"
+    update_cadence: "daily"
+    licence: "NOAA public data"
+    licence_class: open
+    attribution: "NOAA GOES-19 ABI flood product"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 2
+    verified: true
+    job: ingest-imerg-gsmap
+    region: us-central1
+    owner: FL
+    notes: "AOI003 covers 92.5-49W, 0-14.5N; AOI004 covers 81.5-34.5W, 50.5S-0. Mainland covered; Galapagos south of the equator NOT covered."
+
+  - id: sentinel1_grd
+    name: "Sentinel-1 GRD SAR (flood extent mapping)"
+    provider: "ESA / Copernicus"
+    category: hydrology
+    url_or_id: "EE COPERNICUS/S1_GRD"
+    access_method: "Earth Engine change detection"
+    spatial_resolution: "10 m"
+    temporal_resolution: "6-day revisit at best"
+    latency: "about 1 day (unverified)"
+    update_cadence: "on acquisition (event mode)"
+    licence: "Copernicus Sentinel data terms (free and open; unverified in briefs)"
+    licence_class: open
+    attribution: "Contains modified Copernicus Sentinel data"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "Mask permanent water with jrc_gsw; inundation_history as prior. Tenants run AOI flood maps in their own EE project."
+
+  # ---------------------------------------------------------------- terrain_hydrography (incl. static hazard)
+  - id: copernicus_dem_glo30
+    name: "Copernicus DEM GLO-30 (2024 release)"
+    provider: "ESA / Copernicus"
+    category: terrain_hydrography
+    url_or_id: "EE COPERNICUS/DEM/GLO30_2024_1 ; s3://copernicus-dem-30m"
+    access_method: "Earth Engine; COG on AWS"
+    spatial_resolution: "30 m"
+    temporal_resolution: "static (2010-2020 acquisitions)"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "Free GLO-30 licence (commercial terms to confirm)"
+    licence_class: pending_review
+    attribution: "Copernicus DEM GLO-30, ESA"
+    commercial_use: "unclear"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: build-static-layers
+    region: us-central1
+    owner: FL
+    notes: "COPERNICUS/DEM/GLO30 is deprecated. Terrain for CesiumJS 3D view (FR-022). Priority licence clearance in Phase 0."
+
+  - id: fabdem
+    name: "FABDEM (forests and buildings removed DEM)"
+    provider: "University of Bristol / Fathom (community EE copy)"
+    category: terrain_hydrography
+    url_or_id: "projects/sat-io/open-datasets/FABDEM"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "30 m"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "CC BY-NC-SA 4.0"
+    licence_class: nc
+    attribution: "FABDEM, CC BY-NC-SA 4.0"
+    commercial_use: "no"
+    plane: commons
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "Blocked for commercial tenants (D15). Noncommercial hydraulic runs only."
+
+  - id: merit_hydro
+    name: "MERIT DEM and MERIT Hydro"
+    provider: "University of Tokyo (Yamazaki et al.)"
+    category: terrain_hydrography
+    url_or_id: "EE MERIT/DEM/v1_0_3 ; MERIT/Hydro/v1_0_1"
+    access_method: "Earth Engine"
+    spatial_resolution: "about 90 m"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "ODbL-1.0 per EE tags (to confirm)"
+    licence_class: sa
+    attribution: "MERIT Hydro, Yamazaki et al."
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 1
+    verified: true
+    owner: FL
+    notes: "Upstream area for dim_hydro_xwalk matching; flow direction for HAND and SFINCS builds."
+
+  - id: hydrosheds
+    name: "HydroSHEDS / HydroBASINS levels 1-12, HydroATLAS and RiverATLAS"
+    provider: "WWF / McGill (HydroSHEDS)"
+    category: terrain_hydrography
+    url_or_id: "EE WWF/HydroSHEDS/v1/Basins/hybas_1 ... hybas_12 ; WWF/HydroSHEDS/03CONDEM ; WWF/HydroSHEDS/03DIR ; WWF/HydroSHEDS/15ACC ; WWF/HydroATLAS/v1/Basins/level03 ... level12 ; projects/sat-io/open-datasets/HydroAtlas/RiverAtlas_v10"
+    access_method: "Earth Engine"
+    spatial_resolution: "3 arc-seconds; basin polygons"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "HydroSHEDS licence (terms unverified); HydroATLAS CC BY 4.0"
+    licence_class: pending_review
+    attribution: "HydroSHEDS / HydroATLAS (WWF, McGill)"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: query_in_place
+    priority: P1
+    phase: 0
+    verified: true
+    job: build-static-layers
+    region: us-central1
+    owner: FL
+    notes: "hybas_ ids are canonical keys (D14). Builds dim_hydro_xwalk and the hydro_extended clip (transboundary Mira/Mataje, Puyango-Tumbes, Catamayo-Chira)."
+
+  - id: hand_100
+    name: "Height Above Nearest Drainage (global HAND)"
+    provider: "Community (Donchyts et al.)"
+    category: terrain_hydrography
+    url_or_id: "users/gena/global-hand/hand-100"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "30 m"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "CC BY-SA"
+    licence_class: sa
+    attribution: "Global HAND, CC BY-SA"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "Fast terrain screening tier (quick_hand) before 2D runs (docs/07, docs/08 gate)."
+
+  - id: deltadtm
+    name: "DeltaDTM coastal digital terrain model"
+    provider: "Deltares"
+    category: terrain_hydrography
+    url_or_id: "projects/sat-io/open-datasets/DELTARES/deltadtm_v1-1"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "about 30 m (unverified)"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "DeltaDTM, Deltares, CC BY 4.0"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "Coastal compound-flood terrain for Guayaquil/Duran, Machala, Esmeraldas SFINCS builds."
+
+  - id: jrc_gsw
+    name: "JRC Global Surface Water v1.4"
+    provider: "European Commission JRC"
+    category: terrain_hydrography
+    url_or_id: "EE JRC/GSW1_4/GlobalSurfaceWater ; JRC/GSW1_4/MonthlyHistory ; JRC/GSW1_4/YearlyHistory ; JRC/GSW1_4/MonthlyRecurrence"
+    access_method: "Earth Engine"
+    spatial_resolution: "30 m"
+    temporal_resolution: "1984-2021"
+    latency: "static"
+    update_cadence: "static"
+    licence: "JRC (terms unverified)"
+    licence_class: pending_review
+    attribution: "EC JRC Global Surface Water"
+    commercial_use: "unclear"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    owner: FL
+    notes: "Permanent-water mask for S1/GOES flood maps."
+
+  - id: igm_dtm_orto
+    name: "IGM elevation (1:50k) and orthophoto OGC services; free cartography"
+    provider: "Instituto Geografico Militar (IGM)"
+    category: terrain_hydrography
+    url_or_id: "https://www.geoportaligm.gob.ec/dtm/wms (layer igm:elevacion50k) ; /dtm/ows ; /orto/wms ; /geonetwork/srv/eng/csw"
+    access_method: "OGC WMS/OWS; CSW; 1:50k vectors behind a registration form"
+    spatial_resolution: "1:50,000"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "Per-product; some products restrict commercial use and redistribution"
+    licence_class: agreement
+    attribution: "Fuente: IGM"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: manual
+    priority: P3
+    phase: 2
+    verified: true
+    owner: DL
+    allowed_hosts: ["www.geoportaligm.gob.ec"]
+    notes: "Publish derived indicators only (G-09). Orthophoto WMS usable as a basemap overlay for GAD users. Agreement A14."
+
+  - id: glofas_flood_hazard
+    name: "GloFAS flood hazard maps (return periods 10-500 yr)"
+    provider: "European Commission JRC (CEMS)"
+    category: terrain_hydrography
+    url_or_id: "EE JRC/CEMS_GLOFAS/FloodHazard/v2_1"
+    access_method: "Earth Engine"
+    spatial_resolution: "90 m"
+    temporal_resolution: "static (2024)"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "JRC, no restriction (per EE catalogue)"
+    licence_class: open
+    attribution: "JRC CEMS GloFAS flood hazard maps"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    owner: FL
+    notes: "Use spurious_depth_category band. Not designed for backwater-dominated Guayas lowlands."
+
+  - id: mag_flood_susceptibility
+    name: "Mapa de Susceptibilidad a Inundaciones Ecuador Continental 1:25,000 (2024)"
+    provider: "Ministerio de Agricultura y Ganaderia (MAG)"
+    category: terrain_hydrography
+    url_or_id: "http://geoportal.agricultura.gob.ec (WMS/WFS; exact layer name to confirm)"
+    access_method: "OGC WMS/WFS over HTTP only"
+    spatial_resolution: "1:25,000"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "No licence stated"
+    licence_class: pending_review
+    attribution: "Fuente: MAG"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: build-static-layers
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["geoportal.agricultura.gob.ec"]
+    tls_quirks: "HTTPS handshake fails; HTTP only; sidecar transport_insecure=true; public non-personal layer only"
+    notes: "Main national flood susceptibility layer available as vectors."
+
+  - id: aqueduct_floods
+    name: "WRI Aqueduct flood hazard maps v2 (riverine and coastal)"
+    provider: "World Resources Institute (WRI)"
+    category: terrain_hydrography
+    url_or_id: "EE WRI/Aqueduct_Flood_Hazard_Maps/V2"
+    access_method: "Earth Engine"
+    spatial_resolution: "1 km"
+    temporal_resolution: "baseline, 2030, 2050, 2080"
+    latency: "static"
+    update_cadence: "static"
+    licence: "Attribution requested"
+    licence_class: pending_review
+    attribution: "WRI Aqueduct Floods"
+    commercial_use: "unclear"
+    plane: both
+    ingestion: query_in_place
+    priority: P3
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "EE advises against use for flat lowland rivers with backwater effects (Guayas)."
+
+  - id: lhasa_nowcast
+    name: "NASA LHASA global landslide nowcast v2"
+    provider: "NASA GES DISC"
+    category: terrain_hydrography
+    url_or_id: "GES DISC Global_Landslide_Nowcast v2.0.0"
+    access_method: "NASA Earthdata login; model re-run centrally with LHASA 2.1.1 (github.com/nasa/LHASA)"
+    spatial_resolution: "about 1 km"
+    temporal_resolution: "daily nowcast"
+    latency: ">= 5 h"
+    update_cadence: "daily"
+    licence: "NASA data; LHASA code licence (LICENSE.pdf) not read"
+    licence_class: pending_review
+    attribution: "NASA LHASA"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "Not in EE. NASA feed is best-effort; docs/07 runs LHASA 2.1.1 with user-supplied rain/soil moisture."
+
+  # ---------------------------------------------------------------- exposure
+  - id: inec_census_2022
+    name: "INEC Censo de Poblacion y Vivienda 2022 (block/sector/canton) and population projections (rev. 2024)"
+    provider: "Instituto Nacional de Estadistica y Censos (INEC)"
+    category: exposure
+    url_or_id: "https://www.ecuadorencifras.gob.ec/documentos/web-inec/bd-censo/manzana/BDD_CPV2022_MANLOC_CSV.zip ; index https://www.censoecuador.gob.ec/data-y-resultados/"
+    access_method: "Bulk ZIP (CSV/SPSS/REDATAM); geoblocked for US runners; relay if needed"
+    spatial_resolution: "block (manzana), sector, canton"
+    temporal_resolution: "census 2022; projections 1990-2035 by province"
+    latency: "static"
+    update_cadence: "static; projections by revision"
+    licence: "Aggregates may be used with citation; microdata research/statistical use only, no re-identification"
+    licence_class: open
+    attribution: "Fuente: INEC, Censo de Poblacion y Vivienda 2022"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: exposure-refresh
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["www.ecuadorencifras.gob.ec", "www.censoecuador.gob.ec"]
+    tls_quirks: "censoecuador.gob.ec certificate expired 2026-09-18; index page returns HTTP 404 but serves content"
+    notes: "Publish at parish level or above; suppress small cells (G-08). 2010 and 2001 censuses recoded to 2022 geography also available."
+
+  - id: worldpop
+    name: "WorldPop 100 m population (EE 2000-2020; Global2 R2025A 2015-2030 constrained)"
+    provider: "WorldPop (University of Southampton)"
+    category: exposure
+    url_or_id: "EE WorldPop/GP/100m/pop ; WorldPop/GP/100m/pop_age_sex ; https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/{yr}/ECU/v1/100m/constrained/"
+    access_method: "Earth Engine; HTTPS GeoTIFF download (R2025A not in EE)"
+    spatial_resolution: "100 m"
+    temporal_resolution: "annual"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "WorldPop, CC BY 4.0"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: us-central1
+    owner: DL
+    notes: "WorldPop/POP is deprecated. Population-in-footprint for exposure_parish.population_worldpop."
+
+  - id: ghsl_p2023a
+    name: "GHSL P2023A population, built surface/volume/height and settlement model"
+    provider: "European Commission JRC"
+    category: exposure
+    url_or_id: "EE JRC/GHSL/P2023A/GHS_POP ; GHS_BUILT_S ; GHS_BUILT_S_10m ; GHS_BUILT_V ; GHS_BUILT_H ; GHS_SMOD_V2-0"
+    access_method: "Earth Engine"
+    spatial_resolution: "100 m (SMOD 1 km; BUILT_S 10 m variant)"
+    temporal_resolution: "epochs 1975-2030"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "JRC (terms unverified)"
+    licence_class: pending_review
+    attribution: "GHSL, European Commission JRC"
+    commercial_use: "unclear"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 1
+    verified: true
+    owner: DL
+    notes: "SMOD as informal-settlement / urbanisation proxy (no MIDUVI layer found)."
+
+  - id: open_buildings
+    name: "Google Open Buildings v3 polygons and Open Buildings 2.5D Temporal"
+    provider: "Google Research"
+    category: exposure
+    url_or_id: "EE GOOGLE/Research/open-buildings/v3/polygons ; GOOGLE/Research/open-buildings-temporal/v1 ; gs://open-buildings-data/v3/{polygons_s2_level_4_gzip,points_s2_level_4_gzip,polygons_single_csv}"
+    access_method: "Earth Engine; GCS CSV by S2 level-4 cell"
+    spatial_resolution: "building footprint; temporal product effective about 4 m (0.5 m rasters)"
+    temporal_resolution: "v3 inference May 2023; temporal annual 2016-2023"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "Google Open Buildings, CC BY 4.0"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: us-central1
+    owner: DL
+    notes: "Counts and area per parish and H3 cell; heights from temporal product. VIDA combined Google+Microsoft (projects/sat-io/open-datasets/VIDA_COMBINED/ECU, CC BY-SA) is an optional P3 alternative."
+
+  - id: overture_maps_bq
+    name: "Overture Maps places and buildings (BigQuery public dataset)"
+    provider: "Overture Maps Foundation (BigQuery mirror maintained by CARTO)"
+    category: exposure
+    url_or_id: "bigquery-public-data.overture_maps.place ; bigquery-public-data.overture_maps.building"
+    access_method: "BigQuery; materialise Ecuador subset clustered on geometry"
+    spatial_resolution: "feature"
+    temporal_resolution: "monthly releases"
+    latency: "monthly"
+    update_cadence: "monthly materialisation"
+    licence: "Conflicting: ODbL (EE catalogue) vs CDLA-Permissive (unverified); treated as share-alike"
+    licence_class: sa
+    attribution: "Overture Maps Foundation"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: us-central1
+    owner: DL
+    notes: "Other tables (segment, division_area, address) unverified. Unclustered nearest-building join measured at about US$2.25/query by a third party: always materialise and dry-run."
+
+  - id: osm_bq
+    name: "OpenStreetMap planet features (BigQuery public dataset)"
+    provider: "OpenStreetMap contributors (Google BigQuery public data)"
+    category: exposure
+    url_or_id: "bigquery-public-data.geo_openstreetmap.planet_features ; bigquery-public-data.geo_openstreetmap.planet_features_multipolygons"
+    access_method: "BigQuery; Ecuador materialisation in commons_internal.osm_ecuador_features (dry-run first)"
+    spatial_resolution: "feature"
+    temporal_resolution: "snapshot"
+    latency: "refresh cadence unverified"
+    update_cadence: "monthly materialisation"
+    licence: "ODbL"
+    licence_class: sa
+    attribution: "(c) OpenStreetMap contributors"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: us-central1
+    owner: DL
+    notes: "Schools (amenity=school), hospitals/clinics, roads, bridge=yes, drainage. docs/07 derives commons_internal.osm_roads_ecu from the materialisation."
+
+  - id: minedec_schools
+    name: "MINEDEC school registers (AMIE) 2009-2024"
+    provider: "Ministerio de Educacion (MINEDEC)"
+    category: exposure
+    url_or_id: "educacion.gob.ec/datos-abiertos-minedec/ (XLSX 139 MB and 31 MB)"
+    access_method: "HTTPS XLSX download"
+    spatial_resolution: "school (coordinates unverified)"
+    temporal_resolution: "annual"
+    latency: "static"
+    update_cadence: "annual (files last modified 2026-04/05)"
+    licence: "Open data; licence unverified"
+    licence_class: pending_review
+    attribution: "Fuente: Ministerio de Educacion"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["educacion.gob.ec"]
+    notes: "Fallback: OSM schools. Request SNGR/MINEDEC list of 3,873 schools at risk (agreement A2)."
+
+  - id: healthsites
+    name: "Healthsites.io health facilities (nodes and ways)"
+    provider: "Healthsites.io / OpenStreetMap contributors"
+    category: exposure
+    url_or_id: "projects/sat-io/open-datasets/health-site-node ; projects/sat-io/open-datasets/health-site-way"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "point / polygon"
+    temporal_resolution: "snapshot (catalogue entry updated 2025-06-07)"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "ODbL"
+    licence_class: sa
+    attribution: "Healthsites.io, (c) OpenStreetMap contributors"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: us-central1
+    owner: DL
+    notes: "MSP facility registry with coordinates requested under agreement A5 (GeoSalud dead/geoblocked). 460+ facilities at risk reported (press)."
+
+  - id: roads_global
+    name: "GRIP4 roads (Central-South America) and Microsoft Roads (South America)"
+    provider: "GLOBIO/PBL (GRIP4); Microsoft (MS Roads)"
+    category: exposure
+    url_or_id: "projects/sat-io/open-datasets/GRIP4/Central-South-America ; projects/sat-io/open-datasets/MSRoads/SouthAmerica"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "segment"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "GRIP4 CC BY 4.0; MS Roads ODbL (gated as share-alike)"
+    licence_class: sa
+    attribution: "GRIP4 (Meijer et al.); Microsoft Roads (ODbL)"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: us-central1
+    owner: DL
+    notes: "Combined with OSM for road_km per parish; official MIT network pending agreement A8."
+
+  - id: mit_roads_bridges
+    name: "State road network, bridges and SNGR exposed-road inventory"
+    provider: "Ministerio de Infraestructura y Transporte (MIT, ex-MTOP); SNGR"
+    category: exposure
+    url_or_id: "Not public (MTOP geoportal geoportal.mtop.gob.ec inactive); request under MoU"
+    access_method: "Agency push under agreement"
+    spatial_resolution: "segment / structure"
+    temporal_resolution: "static with closures"
+    latency: "n/a"
+    update_cadence: "per agreement"
+    licence: "Agreement required"
+    licence_class: agreement
+    attribution: "Fuente: MIT / SNGR"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: push
+    priority: P2
+    phase: 2
+    verified: false
+    owner: PA
+    rename_history: "obraspublicas.gob.ec (TLS mismatch) -> mit.gob.ec"
+    notes: "SNGR analysis: 3,113 km of state roads highly exposed (1,870 km flood, 1,243 km landslide) and 94 transport structures (press). Agreements A2 and A8."
+
+  - id: mapbiomas_ecuador
+    name: "MapBiomas Ecuador land use/land cover and water (aquaculture classes)"
+    provider: "MapBiomas Ecuador"
+    category: exposure
+    url_or_id: "projects/mapbiomas-public/assets/ecuador/lulc/v1 ; projects/mapbiomas-public/assets/ecuador/collection1/mapbiomas_ecuador_collection1_integration_v1 ; projects/mapbiomas-public/assets/ecuador/water/collection3/mapbiomas_ecuador_collection3_water_surface_v1"
+    access_method: "Earth Engine"
+    spatial_resolution: "30 m"
+    temporal_resolution: "annual 1985-2024"
+    latency: "annual"
+    update_cadence: "on collection release"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "MapBiomas Ecuador, CC BY 4.0"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: us-central1
+    owner: DL
+    notes: "Class 31 = aquaculture (shrimp-pond proxy); water product class 5 = Acuicultura; also mangrove, banana, flooded Andean herbaceous. Collection 3 LULC asset path unverified."
+
+  - id: global_landcover
+    name: "ESA WorldCover 2021 and Google Dynamic World"
+    provider: "ESA; Google / World Resources Institute"
+    category: exposure
+    url_or_id: "EE ESA/WorldCover/v200 ; GOOGLE/DYNAMICWORLD/V1"
+    access_method: "Earth Engine"
+    spatial_resolution: "10 m"
+    temporal_resolution: "2021 (WorldCover); near real time (Dynamic World)"
+    latency: "days (Dynamic World)"
+    update_cadence: "static / continuous"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "ESA WorldCover 2021; Dynamic World (Google, WRI)"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 1
+    verified: true
+    owner: DL
+    notes: "Cropland share and post-event land-cover change."
+
+  - id: gmw_mangroves
+    name: "Global Mangrove Watch v3 and v4"
+    provider: "Global Mangrove Watch"
+    category: exposure
+    url_or_id: "projects/sat-io/open-datasets/GMW/extent/GMW_V3 ; projects/sat-io/open-datasets/GMW/annual-extent/GMW_MNG_2020 ; projects/sat-io/open-datasets/GMW/annual-extent/GMW_MNG_VEC_2020"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "10 m (v4 2020); 25 m (v3, unverified)"
+    temporal_resolution: "v3 1996-2020; v4 2020"
+    latency: "static"
+    update_cadence: "static"
+    licence: "CC BY-SA 4.0"
+    licence_class: sa
+    attribution: "Global Mangrove Watch, CC BY-SA 4.0"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: DL
+    notes: "Context for shrimp-pond and coastal exposure."
+
+  - id: mag_geoportal
+    name: "MAG geoportal layers (agro-ecological zoning E25k, riesgos agroclimaticos, SIGTIERRAS cover/geomorphology/geopedology)"
+    provider: "Ministerio de Agricultura y Ganaderia (MAG)"
+    category: exposure
+    url_or_id: "http://geoportal.agricultura.gob.ec/<categoria>/<store>/wms|wfs (discover via /geovisor/config/dataconfig.js); e.g. E25k:vw_hg000_zae_cafe_arabigo ; riesgos_agroclimaticos:vw_02c3_multiriesgo_forestal"
+    access_method: "OGC WMS/WFS over HTTP only; GeoNetwork CSW"
+    spatial_resolution: "1:25,000"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "No licence stated"
+    licence_class: pending_review
+    attribution: "Fuente: MAG / SIGTIERRAS"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 2
+    verified: true
+    job: build-static-layers
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["geoportal.agricultura.gob.ec"]
+    tls_quirks: "HTTPS handshake fails; HTTP only; WFS disabled on catastro_rural"
+    notes: "277 WMS / 257 WFS layers in 24 stores; 52 agroclimatic risk layers; E25k coffee zoning has 724,971 features."
+
+  - id: sigacua_shrimp_farms
+    name: "SIGACUA shrimp-farm register (farm polygons)"
+    provider: "Holder to confirm (MPCEIP / Camara Nacional de Acuacultura)"
+    category: exposure
+    url_or_id: "Not public; request under MoU"
+    access_method: "Agency push under agreement"
+    spatial_resolution: "farm polygon"
+    temporal_resolution: "register"
+    latency: "n/a"
+    update_cadence: "per agreement"
+    licence: "Agreement required"
+    licence_class: agreement
+    attribution: "Fuente: SIGACUA"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: push
+    priority: P2
+    phase: 2
+    verified: false
+    owner: PA
+    notes: "ENOS 2026 report: 3,431 farms, 2,977 (86.8%) flood-susceptible (press). Fallback: MapBiomas class 31. Agreement A10."
+
+  - id: energy_assets
+    name: "Energy assets: GDW reservoirs and Global Power Plant Database"
+    provider: "Global Dam Watch; WRI Global Power Plant Database"
+    category: exposure
+    url_or_id: "projects/sat-io/open-datasets/GDW/GDW_RESERVOIRS_V1_0 ; projects/sat-io/open-datasets/global_power_plant_DB_1-3"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "polygon / point"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "Global Dam Watch; WRI Global Power Plant Database, CC BY 4.0"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: query_in_place
+    priority: P2
+    phase: 1
+    verified: true
+    job: exposure-refresh
+    region: us-central1
+    owner: DL
+    notes: "Complemented by INAMHI hidroelectricasshape (inamhi_geoserver). Reservoir area tracking with S1/S2 for area-level-storage (docs/07)."
+
+  - id: gad_local_layers
+    name: "GAD local layers (Guayaquil/Segura EP flood zones, flood-prone roads, safe zones, high-tide points; Manabi GeoNode; Manta Hub; Quito)"
+    provider: "Municipal and provincial governments (GADs)"
+    category: exposure
+    url_or_id: "services1.arcgis.com/ESOnuLz5X3I3J4At/.../Zonas_Inundables/FeatureServer/28 ; .../Vias_Inundables/FeatureServer/5 ; .../Zonas_Seguras/FeatureServer/16 ; services7.arcgis.com/NWWHhu45fOJtCgG3/.../Puntos_vulnerables_por_marea_alta/FeatureServer/0 ; https://geovisor.manabi.gob.ec ; share-open-data-gadmanta.hub.arcgis.com/api/search/v1 ; geoquito.quito.gob.ec/server/rest/services ; geoportalcat.guayaquil.gob.ec/arcgis/rest/services"
+    access_method: "ArcGIS REST FeatureServer (GeoJSON); GeoNode OGC; ArcGIS Hub API"
+    spatial_resolution: "street / zone"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "monthly check"
+    licence: "Licences for derived products needed"
+    licence_class: pending_review
+    attribution: "Fuente: GAD (per layer)"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 1
+    verified: true
+    job: build-static-layers
+    region: southamerica-west1
+    owner: DL
+    notes: "Portoviejo 'Fenix Geoportal' URL not confirmed; Esmeraldas, Portoviejo, Machala have no CKAN. Agreement A13."
+
+  # ---------------------------------------------------------------- vulnerability
+  - id: inec_anda_surveys
+    name: "INEC surveys: ENEMDU (employment/poverty), ESPAC (planted/harvested area), agricultural census"
+    provider: "INEC"
+    category: vulnerability
+    url_or_id: "https://anda.inec.gob.ec/anda5/index.php/api/catalog/search ; https://redatam.inec.gob.ec/"
+    access_method: "NADA catalogue API; REDATAM; relay if blocked"
+    spatial_resolution: "province / canton (parish on request)"
+    temporal_resolution: "quarterly / annual"
+    latency: "months"
+    update_cadence: "on release (ESPAC files updated to 2025)"
+    licence: "ANDA click-through: statistical use only, no re-identification, cite source"
+    licence_class: pending_review
+    attribution: "Fuente: INEC"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 1
+    verified: true
+    job: ingest-ckan-inec
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["anda.inec.gob.ec", "redatam.inec.gob.ec"]
+    tls_quirks: "Host flaky; 403 to US runners (2026-09-18)"
+    notes: "Aggregated poverty indicators for vulnerability; ESPAC for crop exposure and 1998/2024 loss calibration."
+
+  - id: meta_rwi
+    name: "Meta Relative Wealth Index"
+    provider: "Meta (Data for Good)"
+    category: vulnerability
+    url_or_id: "projects/sat-io/open-datasets/facebook/relative_wealth_index"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "about 2.4 km tiles (unverified)"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "CC0"
+    licence_class: open
+    attribution: "Meta Relative Wealth Index"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: DL
+    notes: "Proxy for socio-economic vulnerability where census indicators are coarse."
+
+  - id: inform_risk
+    name: "INFORM Risk 2026 (country scores)"
+    provider: "European Commission JRC DRMKC"
+    category: vulnerability
+    url_or_id: "https://drmkc.jrc.ec.europa.eu/inform-index/API/InformAPI/countries/Scores/?WorkflowId=505&IndicatorId=INFORM"
+    access_method: "REST JSON"
+    spatial_resolution: "country"
+    temporal_resolution: "annual"
+    latency: "annual"
+    update_cadence: "annual"
+    licence: "JRC terms (unverified)"
+    licence_class: pending_review
+    attribution: "INFORM, European Commission JRC"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P3
+    phase: 2
+    verified: true
+    owner: DL
+    notes: "WorkflowId 505 = INFORM Risk 2026. INFORM Subnational LAC unverified."
+
+  - id: map_accessibility
+    name: "Travel time to healthcare and friction surface (2019)"
+    provider: "Malaria Atlas Project (Oxford)"
+    category: vulnerability
+    url_or_id: "projects/malariaatlasproject/assets/accessibility/accessibility_to_healthcare/2019 ; projects/malariaatlasproject/assets/accessibility/friction_surface/2019_v5_1"
+    access_method: "Earth Engine"
+    spatial_resolution: "about 1 km"
+    temporal_resolution: "static"
+    latency: "static"
+    update_cadence: "static"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "Malaria Atlas Project, CC BY 4.0"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: DL
+    notes: "Loss-of-access metric for health-service disruption (docs/07)."
+
+  - id: ciifen_geonode
+    name: "CIIFEN GeoNode climate risk and vulnerability layers"
+    provider: "Centro Internacional para la Investigacion del Fenomeno de El Nino (CIIFEN)"
+    category: vulnerability
+    url_or_id: "https://geonode.ciifen.org/geoserver/ows ; https://geonode.ciifen.org/api/layers/ ; https://geonode.ciifen.org/api/documents/"
+    access_method: "OGC WMS/WFS/WCS/CSW; GeoNode API"
+    spatial_resolution: "various"
+    temporal_resolution: "various"
+    latency: "static"
+    update_cadence: "ad hoc"
+    licence: "Per layer; licences for derived products needed"
+    licence_class: agreement
+    attribution: "Fuente: CIIFEN"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 2
+    verified: true
+    owner: DL
+    allowed_hosts: ["geonode.ciifen.org"]
+    notes: "About 1,660 layers; select via CSW. Agreement A13."
+
+  - id: economic_series
+    name: "Economic series: BCE export indices, MPCEIP FOB export prices, SIPA producer prices and indicators"
+    provider: "Banco Central del Ecuador; MPCEIP; MAG/SIPA"
+    category: vulnerability
+    url_or_id: "contenido.bce.fin.ec (BCEData id_grupo=134) ; MPCEIP ...PRECIO_FOB_EXPORTACIONES-<product>_<MON>_<YYYY>.xlsx ; sipa.agricultura.gob.ec (XLSX estadisticas-descargas; monthly Resumen de Indicadores PDFs)"
+    access_method: "HTTPS XLSX/CSV/PDF download"
+    spatial_resolution: "national / province"
+    temporal_resolution: "monthly"
+    latency: "1-3 months"
+    update_cadence: "monthly"
+    licence: "No licence stated"
+    licence_class: pending_review
+    attribution: "Fuentes: BCE, MPCEIP, MAG/SIPA"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P3
+    phase: 2
+    verified: true
+    owner: DL
+    notes: "Shrimp, banana, cacao export indices 1990-01 to 2026-06; prices for loss valuation (docs/07). SIPA Tableau dashboards not scrapable."
+
+  # ---------------------------------------------------------------- impacts
+  - id: desinventar_ecu
+    name: "DesInventar Ecuador disaster inventory"
+    provider: "DesInventar (UNDRR / community)"
+    category: impacts
+    url_or_id: "db.desinventar.org inventory ECU-1250695011"
+    access_method: "Manual export (XML/zip)"
+    spatial_resolution: "canton / parish (unverified)"
+    temporal_resolution: "event"
+    latency: "static / irregular"
+    update_cadence: "one-off, refresh yearly"
+    licence: "Licence unverified"
+    licence_class: pending_review
+    attribution: "DesInventar"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: manual
+    priority: P2
+    phase: 1
+    verified: true
+    owner: DL
+    notes: "Reused for Ecuador 2010-2025 by a third-party portal; coverage to confirm. Unified into impact_events."
+
+  - id: groundsource
+    name: "Groundsource flood-event catalogue (2000-present)"
+    provider: "Google Research"
+    category: impacts
+    url_or_id: "projects/sat-io/open-datasets/groundsource_2026 ; Zenodo DOI 10.5281/zenodo.18647054"
+    access_method: "Earth Engine FeatureCollection; Zenodo download"
+    spatial_resolution: "event polygon"
+    temporal_resolution: "event (start_date, end_date)"
+    latency: "static release"
+    update_cadence: "on release"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "Groundsource (Google), CC BY 4.0"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: query_in_place
+    priority: P1
+    phase: 1
+    verified: true
+    owner: DL
+    notes: "2,646,302 records; about 82% precision; about 64% of events in 2020-2025 (recency bias); non-peer-reviewed preprint. Validation ground truth."
+
+  - id: global_flood_db
+    name: "Global Flood Database (MODIS events 2000-2018)"
+    provider: "Cloud to Street / Tellman et al."
+    category: impacts
+    url_or_id: "EE GLOBAL_FLOOD_DB/MODIS_EVENTS/V1"
+    access_method: "Earth Engine (filter on cc)"
+    spatial_resolution: "250 m (EE gsd 30 m)"
+    temporal_resolution: "913 events, 2000-02-17 to 2018-12-10"
+    latency: "static"
+    update_cadence: "static"
+    licence: "CC BY-NC 4.0"
+    licence_class: nc
+    attribution: "Global Flood Database, CC BY-NC 4.0"
+    commercial_use: "no"
+    plane: commons
+    ingestion: query_in_place
+    priority: P2
+    phase: 1
+    verified: true
+    owner: DL
+    notes: "Does not cover 1997-98. Bands flooded, duration, jrc_perm_water. commons_pub_nc only."
+
+  - id: copernicus_ems
+    name: "Copernicus EMS rapid-mapping activations for Ecuador floods"
+    provider: "Copernicus Emergency Management Service"
+    category: impacts
+    url_or_id: "EMSR789, EMSR796 (2025-02-26), EMSR813 (2025-07-03), EMSR870 (2026-03-02); activation page URL pattern unverified"
+    access_method: "Manual download of vector products"
+    spatial_resolution: "event polygons"
+    temporal_resolution: "per activation"
+    latency: "days"
+    update_cadence: "on activation"
+    licence: "Licence unverified"
+    licence_class: pending_review
+    attribution: "Copernicus Emergency Management Service (EMSR<n>)"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: manual
+    priority: P2
+    phase: 1
+    verified: true
+    owner: DL
+    notes: "EMSR870 + 'Epoca Lluviosa 2026' SITREPs = first full-stack verification case (docs/14). Pre-2023 activations unverified."
+
+  - id: nasa_landslide_catalog
+    name: "NASA Global Landslide Catalog 1970-2019"
+    provider: "NASA"
+    category: impacts
+    url_or_id: "projects/sat-io/open-datasets/events/global_landslide_1970-2019"
+    access_method: "Earth Engine (community catalogue)"
+    spatial_resolution: "point"
+    temporal_resolution: "event"
+    latency: "static"
+    update_cadence: "static"
+    licence: "Custom licence"
+    licence_class: pending_review
+    attribution: "NASA Global Landslide Catalog"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "Landslide threshold calibration with SNGR events (docs/07)."
+
+  - id: ecu911_ckan
+    name: "ECU 911 monthly emergency statistics (CKAN) and road status page"
+    provider: "Servicio Integrado de Seguridad ECU 911"
+    category: impacts
+    url_or_id: "https://datosabiertos.gob.ec/api/3/action/package_search (organisation ecu-911) ; ecu911.gob.ec/consulta-de-vias/"
+    access_method: "CKAN API; HTML (road status)"
+    spatial_resolution: "canton (unverified)"
+    temporal_resolution: "monthly"
+    latency: "stale (to at least Feb 2025)"
+    update_cadence: "monthly check"
+    licence: "CKAN dataset pages show Creative Commons Attribution"
+    licence_class: open
+    attribution: "Fuente: ECU 911, datosabiertos.gob.ec"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 2
+    verified: true
+    job: ingest-ckan-inec
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["datosabiertos.gob.ec"]
+    tls_quirks: "403 'fuera de Latinoamerica' outside the region; relay fallback"
+    notes: "ecu911.gob.ec/Datos/ is Power BI only. Geolocated incident aggregates requested under agreement A9 (DLP pseudonymisation before any model call, D18)."
+
+  - id: energy_system_ops
+    name: "Electricity system operations: CENACE daily balance (SMEC), operations snapshot, CKAN; ARCONEL reports"
+    provider: "CENACE; ARCONEL"
+    category: impacts
+    url_or_id: "https://smec.cenace.gob.ec/SMEC/ResultadoInforme1.do?fecha=YYYY/MM/DD ; https://www.cenace.gob.ec/info-operativa/InformacionOperativa.htm ; reportes.arconel.gob.ec"
+    access_method: "HTML by date; snapshot page (Plotly blobs); SSRS report server"
+    spatial_resolution: "national / plant / distributor"
+    temporal_resolution: "daily"
+    latency: "1 day"
+    update_cadence: "daily at 13:00 UTC"
+    licence: "None published"
+    licence_class: pending_review
+    attribution: "Fuentes: CENACE, ARCONEL"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: ingest-celec-cenace
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["smec.cenace.gob.ec", "www.cenace.gob.ec", "reportes.arconel.gob.ec"]
+    tls_quirks: "CENACE certificate_verify_failed (incomplete chain): pin intermediate; sisdatbi.arconel.gob.ec times out without VPN (relay)"
+    notes: "SMEC from 2016-05-01, 0.40% of days missing. Snapshot page has no history: archive from Phase 0. Rationing periods from 2023-10-16. Writes energy_daily."
+
+  - id: cepal_caf_loss_reports
+    name: "Historical El Nino loss assessments (CEPAL 1997-98; CAF 2000; 1982-83 figures)"
+    provider: "CEPAL; CAF"
+    category: impacts
+    url_or_id: "CEPAL 'Ecuador: evaluacion de los efectos socioeconomicos del fenomeno El Nino 1997-1998'; CAF 'Las lecciones de El Nino: Ecuador' (2000) - documents to retrieve"
+    access_method: "Manual transcription of published figures"
+    spatial_resolution: "national / sector"
+    temporal_resolution: "per event"
+    latency: "static"
+    update_cadence: "one-off"
+    licence: "Cite published figures"
+    licence_class: pending_review
+    attribution: "CEPAL; CAF"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: manual
+    priority: P3
+    phase: 3
+    verified: false
+    owner: FL
+    notes: "1997-98 total about US$2.87-2.88 bn and sector split unconfirmed; 1982-83 about US$640 M infrastructure damage (secondary). Loss calibration targets."
+
+  # ---------------------------------------------------------------- health
+  - id: msp_gacetas_vectoriales
+    name: "MSP gacetas vectoriales (dengue, malaria, chikungunya) with 2019-2025 CSV mirror"
+    provider: "Ministerio de Salud Publica (MSP)"
+    category: health
+    url_or_id: "https://www.salud.gob.ec/wp-json/wp/v2/posts (slugs gacetas-vectoriales-2017 ... gacetas-vectoriales-2026) ; https://www.salud.gob.ec/gacetas-vectoriales/ ; mirror github.com/Wes2024/Predicting_dengue_outbreaks_in_Ecuador dataset/dataset_dengue_2019_2025-final.csv"
+    access_method: "WordPress REST discovery; PDF extraction (docs/05 section 4.5)"
+    spatial_resolution: "province"
+    temporal_resolution: "epidemiological week"
+    latency: "about 1 week"
+    update_cadence: "twice weekly check"
+    licence: "None published; mirror code MIT (data derived from MSP)"
+    licence_class: pending_review
+    attribution: "Fuente: MSP, Gaceta epidemiologica vectorial SE <n>"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: ingest-msp-gacetas
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["www.salud.gob.ec"]
+    notes: "2026 page had 35 PDFs (ETV_Gaceta_35.pdf). Filenames unstable; key on sha256 + /wp-content/uploads/YYYY/MM/. Archive from Phase 0; extractor Phase 1. Mirror: 8,016 rows, 24 provinces. Writes health_weekly."
+
+  - id: msp_gacetas_otras
+    name: "MSP other gazette series (ETAS, Gaceta General, IRAG, Brotes, Indicadores)"
+    provider: "Ministerio de Salud Publica (MSP)"
+    category: health
+    url_or_id: "https://www.salud.gob.ec/wp-json/wp/v2/posts"
+    access_method: "WordPress REST discovery; PDF extraction"
+    spatial_resolution: "province"
+    temporal_resolution: "epidemiological week"
+    latency: "about 1 week"
+    update_cadence: "weekly check"
+    licence: "None published"
+    licence_class: pending_review
+    attribution: "Fuente: MSP"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 2
+    verified: true
+    job: ingest-msp-gacetas
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["www.salud.gob.ec"]
+    notes: "ETAS (food/water-borne, diarrhoeal proxy) 2024-2026; leptospirosis probably in Gaceta General (unverified). Inmunoprevenibles filenames changed at least 5 times."
+
+  - id: opendengue
+    name: "OpenDengue V1.3 (Ecuador national and provincial series)"
+    provider: "OpenDengue project"
+    category: health
+    url_or_id: "https://github.com/OpenDengue/master-repo data/releases/V1.3/Spatial_extract_V1_3.zip ; figshare doi:10.6084/m9.figshare.24259573"
+    access_method: "Release file download (502 MB CSV); filter Ecuador"
+    spatial_resolution: "national / province (Admin1)"
+    temporal_resolution: "annual 1980-2024; weekly national 2013-12-29 to 2024-12-28; weekly provincial 2013-01-20 to 2020-10-10"
+    latency: "static release"
+    update_cadence: "on release"
+    licence: "CC BY 4.0"
+    licence_class: open
+    attribution: "OpenDengue, CC BY 4.0 (doi:10.6084/m9.figshare.24259573)"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    owner: DL
+    notes: "Rows: 45 annual, 453 national weekly, 2,051 provincial weekly (25 provinces). PAHO 1988 row 420,025 vs Tycho 25: quarantine (DQ-14)."
+
+  - id: map_lst_covariates
+    name: "Malaria Atlas Project land surface temperature and vegetation covariates"
+    provider: "Malaria Atlas Project"
+    category: health
+    url_or_id: "projects/malariaatlasproject/assets/LST_Day_v061/1km/Annual (also Monthly, 8-Daily; EVI, TCB, TCW)"
+    access_method: "Earth Engine"
+    spatial_resolution: "1 km"
+    temporal_resolution: "8-daily / monthly / annual"
+    latency: "static series"
+    update_cadence: "on release"
+    licence: "Licence to confirm"
+    licence_class: pending_review
+    attribution: "Malaria Atlas Project"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: query_in_place
+    priority: P2
+    phase: 2
+    verified: true
+    owner: FL
+    notes: "Dengue model covariates alongside ERA5-Land and CHIRPS (docs/07)."
+
+  # ---------------------------------------------------------------- admin_boundaries
+  - id: inec_dpa_classifier
+    name: "INEC Clasificador Geografico 2024 (DPA codes)"
+    provider: "INEC"
+    category: admin_boundaries
+    url_or_id: "https://www.ecuadorencifras.gob.ec/documentos/web-inec/Cartografia/Clasificador_Geografico/CLASIFICADOR_GEOGRAFICO_2024.zip"
+    access_method: "Bulk ZIP; relay if blocked"
+    spatial_resolution: "province (2), canton (4), parish (6 digits)"
+    temporal_resolution: "static (2024)"
+    latency: "static"
+    update_cadence: "on INEC update"
+    licence: "Official codes; cite INEC"
+    licence_class: open
+    attribution: "Fuente: INEC, Clasificador Geografico 2024"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: build-static-layers
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["www.ecuadorencifras.gob.ec"]
+    notes: "24 provinces, 226 canton codes, 1,041 parish codes (221 cantonal governments; extra codes probably non-delimited zones, unverified). Builds commons_pub.dim_dpa."
+
+  - id: inec_geoportal
+    name: "INEC GeoNode and GeoServer cartography (census sectors, parishes)"
+    provider: "INEC"
+    category: admin_boundaries
+    url_or_id: "https://geonode.inec.gob.ec (WMS/WFS/WCS) ; https://cartografia.inec.gob.ec/geoserver"
+    access_method: "OGC WFS/WMS/WCS"
+    spatial_resolution: "parish / census sector"
+    temporal_resolution: "census 2022"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "Cite INEC (to confirm)"
+    licence_class: pending_review
+    attribution: "Fuente: INEC"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: build-static-layers
+    region: southamerica-west1
+    owner: DL
+    allowed_hosts: ["geonode.inec.gob.ec", "cartografia.inec.gob.ec"]
+    rename_history: "geoinec host is dead"
+    notes: "First choice for parish geometry in dim_dpa. GeoServer has 7 layers."
+
+  - id: conali_igm_provinces
+    name: "Organizacion Territorial Provincial 2025 (24 provinces)"
+    provider: "IGM / CONALI"
+    category: admin_boundaries
+    url_or_id: "Shapefile 'Organizacion Territorial Provincial 2025' (EPSG:32717), via IGM/CONALI"
+    access_method: "Manual download"
+    spatial_resolution: "province"
+    temporal_resolution: "2025"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "IGM terms (per product)"
+    licence_class: pending_review
+    attribution: "Fuente: IGM / CONALI"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: manual
+    priority: P2
+    phase: 1
+    verified: true
+    owner: DL
+    notes: "Check of province boundaries; CONALI official parish limits unverified."
+
+  - id: hdx_cod_ab_ecu
+    name: "HDX COD-AB Ecuador administrative boundaries (levels 0-4)"
+    provider: "OCHA HDX (source INEC)"
+    category: admin_boundaries
+    url_or_id: "HDX dataset cod-ab-ecu"
+    access_method: "HDX download (shapefile/GeoJSON)"
+    spatial_resolution: "ADM0-ADM4"
+    temporal_resolution: "2024"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "cc-by-igo (second-hand check 2026-09-21)"
+    licence_class: open
+    attribution: "OCHA HDX COD-AB Ecuador (source INEC)"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 0
+    verified: true
+    job: build-static-layers
+    region: us-central1
+    owner: DL
+    notes: "Second choice for parish (ADM3) geometry; geoBoundaries has no ADM3."
+
+  - id: geoboundaries_ecu
+    name: "geoBoundaries Ecuador ADM0-ADM2"
+    provider: "William & Mary geoLab"
+    category: admin_boundaries
+    url_or_id: "EE WM/geoLab/geoBoundaries/600/ADM0 ; WM/geoLab/geoBoundaries/600/ADM1 ; WM/geoLab/geoBoundaries/600/ADM2"
+    access_method: "Earth Engine; GitHub release files"
+    spatial_resolution: "ADM1 (24 units), ADM2 (224 units)"
+    temporal_resolution: "ADM2 built 2023-12-12"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "ADM1 CC0; ADM2 CC BY 3.0 IGO (INEC + OCHA ROLAC)"
+    licence_class: open
+    attribution: "geoBoundaries (William & Mary geoLab)"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: query_in_place
+    priority: P2
+    phase: 0
+    verified: true
+    owner: DL
+    notes: "ADM3/ADM4 return HTTP 404 (no parishes). Consistency check only; INEC codes win."
+
+  - id: fao_gaul_2025
+    name: "FAO GAUL 2025 (levels 1-2)"
+    provider: "FAO"
+    category: admin_boundaries
+    url_or_id: "EE FAO/GAUL/2025/level1 ; FAO/GAUL/2025/level2 ; FAO/GAUL_SIMPLIFIED_500m/2025/level1 ; FAO/GAUL_SIMPLIFIED_500m/2025/level2"
+    access_method: "Earth Engine"
+    spatial_resolution: "ADM1-ADM2"
+    temporal_resolution: "2025"
+    latency: "static"
+    update_cadence: "on release"
+    licence: "CC BY 4.0 with FAO disclaimer; use of the FAO logo is strictly prohibited"
+    licence_class: open
+    attribution: "FAO GAUL 2025"
+    commercial_use: "yes"
+    plane: both
+    ingestion: query_in_place
+    priority: P3
+    phase: 1
+    verified: true
+    owner: DL
+    notes: "No 2025 level0 asset (use UN/Geodata/BNDA_simplified/current). FAO/GAUL/2015 deprecated. Global/regional context only."
+
+  # ---------------------------------------------------------------- basemap
+  - id: basemap_osm_pmtiles
+    name: "GDE-Nino vector basemap (PMTiles)"
+    provider: "GDE-Nino Commons (built from OpenStreetMap and INEC DPA)"
+    category: basemap
+    url_or_id: "gs://ectwin-commons-prod-public/tiles/static/basemap/v<ver>/basemap.pmtiles"
+    access_method: "Built by build-basemap; served by HTTP range requests to MapLibre"
+    spatial_resolution: "z0-z14 target (estimate)"
+    temporal_resolution: "snapshot"
+    latency: "monthly"
+    update_cadence: "monthly rebuild"
+    licence: "ODbL (OSM-derived)"
+    licence_class: sa
+    attribution: "(c) OpenStreetMap contributors; INEC"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: pull
+    priority: P1
+    phase: 1
+    verified: true
+    job: build-basemap
+    region: us-central1
+    owner: FE
+    notes: "Tile tool per docs/03 section 9 (tippecanoe listed; Planetiler alternative unverified). Offline canton packs under tiles/offline/."
+
+  - id: sentinel2_composite
+    name: "Cloud-masked Sentinel-2 yearly imagery basemap"
+    provider: "ESA / Copernicus; Google Cloud Score+"
+    category: basemap
+    url_or_id: "EE COPERNICUS/S2_SR_HARMONIZED with GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED ; raw gs://gcp-public-data-sentinel-2"
+    access_method: "Earth Engine composite exported to COG"
+    spatial_resolution: "10 m"
+    temporal_resolution: "yearly composite"
+    latency: "n/a"
+    update_cadence: "yearly"
+    licence: "Copernicus Sentinel data terms (unverified in briefs)"
+    licence_class: open
+    attribution: "Contains modified Copernicus Sentinel data <year>"
+    commercial_use: "yes"
+    plane: commons
+    ingestion: query_in_place
+    priority: P3
+    phase: 2
+    verified: true
+    job: build-basemap
+    region: us-central1
+    owner: FE
+    notes: "Context imagery for GAD users; not an analysis layer."
+
+  - id: google_maps_tiles
+    name: "Google Maps Platform 2D map tiles and Photorealistic 3D Tiles (optional)"
+    provider: "Google Maps Platform"
+    category: basemap
+    url_or_id: "Google Map Tiles API with the tenant's own Maps API key"
+    access_method: "Tenant key only (D19); never a Commons key"
+    spatial_resolution: "n/a"
+    temporal_resolution: "n/a"
+    latency: "n/a"
+    update_cadence: "n/a"
+    licence: "Google Maps Platform terms; caching restricted"
+    licence_class: agreement
+    attribution: "Google (as required by Maps Platform terms)"
+    commercial_use: "unclear"
+    plane: tenant
+    ingestion: query_in_place
+    priority: P3
+    phase: 3
+    verified: true
+    owner: FE
+    notes: "Photorealistic 3D: 1,000 free root requests/month then US$6.00 per 1k (costs brief). Maps Weather API is not used as a data source."
