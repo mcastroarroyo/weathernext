@@ -60,6 +60,7 @@ The machine-readable version of this catalogue is [`catalog/data-sources.yaml`](
 - **P / Ph**: priority (P1 is needed for the MVP; P2 for peak-season operations; P3 later or optional) and phase (0–4, per spine §7).
 - **Licence (comm.)**: the licence, plus whether commercial tenants may use it: **Y** yes, **N** no, **?** unclear. Unclear is gated as non-commercial until cleared (§5).
 - **V**: verification flag, as defined above.
+- **Vintage / last checked**: not repeated in these tables. Each source's `vintage` (release or data date in hand) and `last_checked` (ISO date) are in `catalog/data-sources.yaml` v1.1.0. CI warns when `last_checked` is null or older than 90 days (30 days for non-static P1 sources). The date is refreshed whenever a job detects a new release and at the quarterly source-currency review, which the YAML places in [11 §12.3](./11-operations-runbook.md) (that ritual is not yet listed there; **to add**). Exposure layers are "reviewed quarterly" per [02 §6.2](./02-users-requirements-ux.md).
 - Regions: `.gob.ec` pulls run in `southamerica-west1`; everything else runs in `us-central1`, except heavy WeatherNext 3 (WN3) member reads in `us-east1` (D10).
 
 ### 2.2 Official alerts and bulletins
