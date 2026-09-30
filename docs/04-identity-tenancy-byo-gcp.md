@@ -258,11 +258,12 @@ The registry keeps the minimum needed to route and authorise; everything descrip
 | Store | Document | Fields | Authority |
 |---|---|---|---|
 | Registry `ectwin-platform-prod` (Firestore, `southamerica-west1`) | `memberships/{tid}_{uid}` | `tenant_id`, `uid`, `email`, **`role`** (`owner`/`admin`/`analyst`/`reader`), `status` (`invited`/`active`/`removed`), `invited_by`, `created_at` | **Authoritative for access control** |
-| Registry | `invites/{inviteId}` | `tenant_id`, `email_hash`, **`role`**, `token_sha256`, `expires_at` (7 days), `created_by` (`role` and `token_sha256` are **additions to 03 §5.5**) | Deleted on accept or expiry |
-| Registry | `tenants/{tid}` | As [03 §5.5](./03-architecture.md#55-firestore--platform-registry-ectwin-platform-prod-southamerica-west1), plus `connect_code_sha256`, `connect_code_expires_at` and `connect_uid` while `status=pending`, and `sso_idp` (**additions to 03 §5.5**) | Routing |
+| Registry | `invites/{inviteId}` | `tenant_id`, `email_hash`, **`role`**, `token_sha256`, `expires_at` (7 days), `created_by` (as in 03 §5.5) | Deleted on accept or expiry |
+| Registry | `tenants/{tid}` | As [03 §5.5](./03-architecture.md#55-firestore--platform-registry-ectwin-platform-prod-southamerica-west1), plus `connect_code_sha256`, `connect_code_expires_at` and `connect_uid` while `status=pending`, and `sso_idp` (as in 03 §5.5) | Routing |
+| Registry | `accounts/{uid}` | `tou_version`, `privacy_version`, `accepted_at` | ToU/privacy acceptance ([13](./13-governance-legal-risk.md) L-14, PA-01); not used for authorisation |
 | Tenant Firestore | `members/{uid}` | `role` (mirror), `signer`, `auditor`, `mfa_required`, `added_by`, `added_at`, display name | Mirror + capability flags |
 
-Rules: the broker writes both stores in the same request (registry first); `ectwin-sync` reconciles nightly; on mismatch the broker applies the **lower** rank and emits `role_drift` to the tenant audit log (IT-06). Keeping `role` in the registry (a small extension of NFR-013's field list, flagged in §15) lets the broker authorise member management and reconnection even when the tenant project is unreachable, and saves one cross-region tenant read per request.
+Rules: the broker writes both stores in the same request (registry first); `ectwin-sync` reconciles nightly; on mismatch the broker applies the **lower** rank and emits `role_drift` to the tenant audit log (IT-06). Keeping `role` in the registry (included in NFR-013's field list) lets the broker authorise member management and reconnection even when the tenant project is unreachable, and saves one cross-region tenant read per request.
 
 ### 3.5 Invitations (FR-014)
 
@@ -562,8 +563,9 @@ Everything below is created by `infra/tenant-bootstrap/` (Terraform) or `scripts
 | `batch.googleapis.com`, `compute.googleapis.com` | — | — | ✔ | Spot runs (SFINCS, LISFLOOD-FP) |
 | `floodforecasting.googleapis.com` | — | optional | optional | Only if the tenant has its own approved key (§9) |
 | `cloudkms.googleapis.com` | — | optional | optional | CMEK option (§11.4) |
+| `artifactregistry.googleapis.com` | — | — | optional | Tenant repository `ectwin-custom` for custom-model images (FR-078, Phase 2–3); only with `enable_artifact_registry` (`--enable-artifact-registry`, default false) |
 
-v0.1.0 of the artefacts enables the ✔ rows for every tier and adds the T3 rows only through `enable_vertex` / `enable_batch` (`--enable-vertex`, `--enable-batch`) and Flood Forecasting through `enable_flood_forecasting_api` (`--enable-flood-api`). The research checked the hosts of `bigquery`, `storage`, `run`, `earthengine`, `aiplatform`, `cloudscheduler`, `pubsub`, `firestore`, `floodforecasting`, `iamcredentials`, `iam`, `secretmanager`, `cloudkms`, `billingbudgets`, `cloudquotas`, `analyticshub`, `serviceusage` and `logging` against Google discovery documents; `cloudresourcemanager`, `bigquerystorage`, `monitoring`, `workflows`, `batch` and `compute` are standard service names not re-checked **(unverified)**. Enabling an API has no charge of its own **(to confirm per API)**.
+v0.1.0 of the artefacts enables the ✔ rows for every tier and adds the T3 rows only through `enable_vertex` / `enable_batch` (`--enable-vertex`, `--enable-batch`) and Flood Forecasting through `enable_flood_forecasting_api` (`--enable-flood-api`), and Artifact Registry through `enable_artifact_registry` (`--enable-artifact-registry`), a flag v0.1.0 does not yet have (§5.8.4). The research checked the hosts of `bigquery`, `storage`, `run`, `earthengine`, `aiplatform`, `cloudscheduler`, `pubsub`, `firestore`, `floodforecasting`, `iamcredentials`, `iam`, `secretmanager`, `cloudkms`, `billingbudgets`, `cloudquotas`, `analyticshub`, `serviceusage` and `logging` against Google discovery documents; `cloudresourcemanager`, `bigquerystorage`, `monitoring`, `workflows`, `batch` and `compute` are standard service names not re-checked **(unverified)**. Enabling an API has no charge of its own **(to confirm per API)**.
 
 ### 5.2 Service accounts
 
@@ -705,7 +707,7 @@ Both artefacts are maintained by the setup section ([10-setup-and-deployment.md]
 | `platform_broker_sa` | `--platform-sa`, `--no-broker` | default `ectwin-broker@ectwin-platform-prod.iam.gserviceaccount.com`; `""` = paths C2/D | `-stg`/`-dev` brokers for testing |
 | `connection_code` | `--connection-code` | `[a-z0-9_-]{8,63}`, default empty | Written as label `ectwin-connection` on dataset `ectwin` (§4.2 step 6) |
 | `tier` | `--tier` | `T1`–`T4`, default `T1` | Labels only in v0.1.0; T3 features via the flags below |
-| `enable_vertex`, `enable_batch`, `enable_flood_forecasting_api`, `enable_managed_pipelines` | `--enable-vertex`, `--enable-batch`, `--enable-flood-api`, `--enable-managed-pipelines` | bool, false | APIs and roles of §5.1/§5.3.1 |
+| `enable_vertex`, `enable_batch`, `enable_flood_forecasting_api`, `enable_managed_pipelines`, `enable_artifact_registry` | `--enable-vertex`, `--enable-batch`, `--enable-flood-api`, `--enable-managed-pipelines`, `--enable-artifact-registry` | bool, false | APIs and roles of §5.1/§5.3.1; `enable_artifact_registry` is not yet in v0.1.0 (§5.8.4) |
 | `bq_location` (+ `allow_non_us_bigquery`) | `--bq-location` (+ `--allow-non-us-bigquery`) | `US`; anything else refused unless the sandbox escape hatch is set | FR-013 |
 | `gcs_location` | `--gcs-location` | `us-central1` (plan-time warning otherwise) | D10 |
 | `firestore_location` | `--firestore-location` | `southamerica-west1` (plan-time warning outside `southamerica-*`) | The wizard maps region profile `scl`/`gru`/`us` (§12.3) to this value |
@@ -740,6 +742,7 @@ Terraform outputs `bootstrap_version`, `project_number`, `runner_service_account
 | Licence profile and `ectwin_commons_nc` | Subscribed only for noncommercial profiles | Generic `listing_subscriptions` | Wizard passes the NC listing only for `licence_profile = noncommercial` |
 | Tier budgets | T1 20, T2 80, T3 1,000 (§8.2) | `monthly_budget_usd` description states T1 20, T2 80, T3 1000 (raise to 1300 in peak months), T4 sponsor-set (default 20) | **Aligned**; wizard passes §8.2 values |
 | WIF (path C2) | Pool, provider, binding behind `enable_wif` | Not present | Phase 2 |
+| Artifact Registry (FR-078) | `artifactregistry.googleapis.com` behind `enable_artifact_registry` / `--enable-artifact-registry` (default false, §5.1) | Not present | Artefacts add the flag before custom models (Phase 2–3) |
 | Path B | Job runs the same artefact | Same (README §6.4) | Aligned |
 
 ### 5.9 gcloud bootstrap sketch
@@ -1116,7 +1119,7 @@ Rule of thumb: **the project that owns the resource, runs the job, or is named a
 | 8 | Tenant BigQuery storage (`ectwin`, `ectwin_scratch`) | **Tenant** | Resource owner; 10 GiB free | Verified |
 | 9 | Tenant Firestore | **Tenant** | Resource owner | Verified (rule) |
 | 10 | Tenant bucket storage, operations, egress (downloads via signed URLs) | **Tenant** | Resource owner | Verified (rule) |
-| 11 | Commons public tiles, national JSON, canton PDFs | Commons sponsor | Resource owner (egress ≈US$11/month at pilot) | Verified (rule) |
+| 11 | Commons static and forecast tiles, national JSON, canton PDFs (Block D; all via 60-min signed URLs, FR-001) | Commons sponsor | Resource owner (egress ≈US$11/month at pilot) | Verified (rule) |
 | 12 | Commons bulk bucket (Requester Pays) | **Requester (tenant)** | `userProject` "The project to be billed for this request" | Verified |
 | 13 | WN3 full-member Zarr (Requester Pays, `us-east1`) | **Tenant** (T3) | `userProject` | Rule verified; Requester-Pays status of the bucket from a secondary source |
 | 14 | Earth Engine EECU (broker REST or tenant jobs) | **Tenant** | Project in the call / `ee.Initialize(project=)` | Verified |
@@ -1283,7 +1286,7 @@ Nothing in this table blocks onboarding: Commons products work without any of it
 
 | Access | Granted to | How | Typical time | Who needs it | What the Commons provides instead |
 |---|---|---|---|---|---|
-| **WeatherNext** (WN3, WN2 in BigQuery/EE/GCS; access steps and terms in [06 §3.3–3.4](./06-forecast-model-stack.md#33-access-steps)) | **Each Google account** that submits the WeatherNext Data Request form; the platform cannot re-share it | [Form](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform) (via third-party repo); contact weathernext@google.com | ≈5–7 business days | T2+ wanting fan charts, percentiles, point series, full members | Parish exceedance probabilities, *nivel de riesgo*, indices (Non-Retrievable Value-Added), and CC BY 4.0 historic (>1 h old for WN3) aggregates ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) |
+| **WeatherNext** (WN3, WN2 in BigQuery/EE/GCS; access steps and terms in [06 §3.3–3.4](./06-forecast-model-stack.md#33-access-steps)) | **Each Google account** that submits the WeatherNext Data Request form; the platform cannot re-share it; tenants should use a role-based institutional account (e.g. `gde-datos@<gad>.gob.ec`) so approval survives turnover, and file a new request ≥10 business days before a hand-over if not ([11 §9.4](./11-operations-runbook.md)) | [Form](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform) (via third-party repo); contact weathernext@google.com | ≈5–7 business days | T2+ wanting fan charts, percentiles, point series, full members | Parish exceedance probabilities, *nivel de riesgo*, indices (Non-Retrievable Value-Added), and CC BY 4.0 historic (>1 h old for WN3) aggregates ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) |
 | WN2 on-demand runs (Vertex) | Project allowlist; GPU quota (H100/A100) starts at 0 and must be requested; no per-forecast price, the tenant pays compute and storage | Allowlist request via the WeatherNext access guide/contact **(to confirm)** | Unknown | T3 scenario users | Commons scenario library (Phase 3 perturbed-SST engine) |
 | **Flood Forecasting API** ([06 §4.1–4.3](./06-forecast-model-stack.md#41-flood-forecasting-api-surface)) | **Per GCP project**, via waitlist; reply to approval email with the project ID; API key on that project | [Waitlist](http://sites.research.google/gr/floodforecasting/api-waitlist/) | "might take several months" | Optional for T2/T3 (own gauges or higher cadence) | Central snapshots 4×/day under the Commons key, CC BY 4.0 with attribution; commercial-use wording **unverified** → may land in `ectwin_commons_nc` |
 | **Earth Engine registration** | Per project | Browser registration; tier choice (§5.7.4) | Minutes (Partner: weeks) | T2+ (T1 optional) | Commons EE-derived layers (exposure, flood history) in `ectwin_commons` and tiles |
@@ -1490,10 +1493,8 @@ Notes: there is no GCP region in Ecuador. BigQuery stays `US` because WeatherNex
 
 ## 15. Open questions
 
-- **Role storage.** This document keeps a coarse `role` in the registry `memberships` (authoritative) and mirrors it plus `signer`/`auditor` flags in tenant `members/{uid}`. [02 §3.4](./02-users-requirements-ux.md#34-roles-within-a-tenant) says roles are stored in the tenant and [03 §5.5–§6.3](./03-architecture.md#55-firestore--platform-registry-ectwin-platform-prod-southamerica-west1) reads them from the tenant; NFR-013's field list also needs `role`. Reconcile the three documents.
 - **Naming additions** to the spine: `ectwin-guard@<TENANT_PROJECT>` SA, topics `ectwin-budget-alerts` (aligned with the v0.1.0 artefacts, with pull subscription `ectwin-budget-alerts-guard`)/`ectwin-notify` in the tenant, dataset label `ectwin-connection`, secret ids `typesafe-api-key`/`floodforecasting-api-key`, `org_type=personal`, registry fields `connect_code_sha256`/`connect_code_expires_at`/`connect_uid`/`sso_idp`, groups `ectwin-tenants@`/`ectwin-tenants-nc@<DOMAIN>`. Confirm with PL and the setup section.
 - **Artefact reconciliation** (§5.8.4): the budget topic name is aligned (all documents use the artefact name `ectwin-budget-alerts`). Still open: the missing `ectwin-guard` identity and function (IT-M6, 2026-10-30), including whether it is triggered through Eventarc or reads `ectwin-budget-alerts-guard`, and automated BigQuery and EE quotas. Decide the quotas by IT-M3 (2026-10-09).
-- **Signer and auditor.** Flags here vs `role` values in [03 §5.6](./03-architecture.md#56-firestore--tenant-tenant_project-default-southamerica-west1-by-default); reconcile with the role-storage question above.
 - **No-billing onboarding.** The gap brief proposes a zero-cost tier on the BigQuery sandbox plus the EE Community tier; this design requires a billed project (Cloud Run, Scheduler, budgets) and offers T4 sponsored projects instead. Confirm with pilot universities and NGOs.
 - **Commons access grants.** Whether Analytics Hub listings and Commons Pub/Sub topics can be granted to a Google group containing external service accounts, and how the operator's own secure-by-default org policy treats those grants; fall back to per-SA grants with a Commons-side exception.
 - **WeatherNext linked datasets.** Whether a linked dataset created by the approved human account can be queried by `ectwin-runner` under the terms and technically; the WN3 listing id; whether a platform may operate on tenants' behalf (ask weathernext@google.com).
