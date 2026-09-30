@@ -18,7 +18,7 @@ This document specifies the hydrometeorological forecast stack of *Gemelo Digita
 12. [Names introduced by this document](#12-names-introduced-by-this-document)
 13. [Open questions](#13-open-questions)
 
-**Owner codes** are those of [03 §0](./03-architecture.md) and [11 §0](./11-operations-runbook.md): FL forecast and hydromet lead, DL data lead, PL platform lead, SRE operations, DPO data protection, PM service owner, LI INAMHI liaison, TA tenant admin.
+**Owner codes** are those of the owner-role table at the top of [03](./03-architecture.md) (before §1) and of [11 §0](./11-operations-runbook.md#0-conventions): FL forecast and hydromet lead, DL data lead, PL platform lead, SRE operations, DPO data protection, PM service owner, LI INAMHI liaison (defined in 11), TA tenant admin.
 
 **Evidence tags.** Facts carry a link to their source. "(search summary)" means the fact came from a search-engine summary of the linked page, not from reading it. **(unverified)** means the research briefs could not confirm it; **(to confirm)** means a partner or an approved account must confirm it; "estimate" marks our own arithmetic.
 
@@ -47,14 +47,14 @@ Bands L0–L5 are those of the decision calendar in [01 §9.1](./01-context-el-n
 
 | Horizon | Band | Primary source(s) | Resolution / members | Latency and cadence | Role in the twin | Fallback | Product table(s) | Phase |
 |---|---|---|---|---|---|---|---|---|
-| **Observations and nowcast, 0–6 h** | L0 | INAMHI stations (Visor API); IMERG V07 Early/Late; GSMaP v8 NRT; Oya precipitation (EE); GOES-19 ABI flood product; Sentinel-1 GRD | Points (≈1,858 stations, ≈202 transmitting); 0.1°; 0.1°; 5 km / 30 min; 0.01° daily; 10 m | Stations ≈2.5 h observed lag; satellite products hours **(latency per product to confirm)**; GOES flood daily at ≈07:00 UTC next day; S1 revisit ≥6 days | State estimation, antecedent rain, flash-flood and landslide context, observed flood extent | Any single source; INAMHI Visor embed | `inamhi_station_obs_hourly`, `obs_precip_h3` (§6) | P1 display, P2 fusion |
-| **Short range, 6–48 h** | L1 | **WeatherNext 3** hourly interim runs (48 h lead) and main cycles; WN3 station head for 2 m T/Td | 0.1° hourly statistics; 0.05° station head | Interim runs in BigQuery/EE ≈ init + 7 h 25 min (search summary) | Hourly intensity (`tp_1h_max`), flash-flood and landslide forcing | WN2 6-hourly; IFS open data | `parish_exceedance` | P1 (main), P2 (interim, `fc-interim`) |
-| **Medium range, 2–15 days** | L2 | **WeatherNext 3** statistics (mean, p10–p90) + **WeatherNext 2** 64 members | 0.1° / 0.25°; 64 members | 4 cycles/day; WN3 ≈ init + 8 h 10 min; WN2 07:30/13:30/19:30/01:30 UTC | Parish exceedance probabilities for 24/72 h windows, *nivel de riesgo* inputs | ECMWF IFS ENS / AIFS ENS open data (0.25°); GEFS | `parish_exceedance` | P1 |
+| **Observations and nowcast, 0–6 h** | L0 | INAMHI stations (Visor API); IMERG V07 Early/Late; GSMaP v8 NRT; Oya precipitation (EE); GOES-19 ABI flood product; Sentinel-1 GRD | Points (≈1,858–1,894 stations catalogued, ≈202 transmitting); 0.1°; 0.1°; 5 km / 30 min; 0.01° daily; 10 m | Stations ≈2.5 h observed lag; satellite products hours **(latency per product to confirm)**; GOES flood daily at ≈07:00 UTC next day; S1 revisit ≥6 days | State estimation, antecedent rain, flash-flood and landslide context, observed flood extent | Any single source; INAMHI Visor embed | `inamhi_station_obs_hourly`, `obs_precip_h3` (§6) | P1 display, P2 fusion |
+| **Short range, 6–72 h** | L1 | **WeatherNext 3** hourly interim runs (48 h lead) and main cycles (beyond 48 h); WN3 station head for 2 m T/Td | 0.1° hourly statistics; 0.05° station head | Interim runs ≈ init + 7 h 25 min in EE (search summary; BigQuery coverage of interim runs **unverified**); main cycles ≈ init + 8 h 10 min | Hourly intensity (`tp_1h_max`), flash-flood and landslide forcing | WN2 6-hourly; IFS open data | `parish_exceedance` | P1 (main), P2 (interim, `fc-interim`) |
+| **Medium range, 3–15 days** | L2 | **WeatherNext 3** statistics (mean, p10–p90) + **WeatherNext 2** 64 members | 0.1° / 0.25°; 64 members | 4 cycles/day; WN3 ≈ init + 8 h 10 min; WN2 07:30/13:30/19:30/01:30 UTC | Parish exceedance probabilities for 24/72 h windows, *nivel de riesgo* inputs | ECMWF IFS ENS / AIFS ENS open data (0.25°); GEFS | `parish_exceedance` | P1 |
 | **Rivers, 0–7 days** | L1–L2 | Google **Flood Forecasting API** (gauges, virtual `hybas_` gauges, flood status, significant events, flash floods 24 h) | Gauge / HydroBASINS outlet | Hydrologic forecasts daily to 7 days; status several times a day (search summary); flash floods issued once a day (≈06:33 UTC observed) | River status per gauge, urban flash-flood polygons | GEOGloWS (bias-corrected); GloFAS | `floodhub_status_snapshots`, `floodhub_significant_events`, `floodhub_flash_floods`, `river_status` | P1 (if approved) |
 | **Rivers, 0–15 days** | L2 | **GEOGloWS v2** (INAMHI hydroviewer) | 6,838,900 reaches; 52 members; 280 steps to 15 days | Daily runs (00Z) | Reach flows and return-period class, bias-corrected | GloFAS | `river_status` | P1 |
 | **Rivers, 0–30 days** | L2–L3 | **GloFAS** 30-day forecast (EWDS `cems-glofas-forecast`) | 0.05°; 51 members | Daily | P(Q ≥ RP_k) per reach | GEOGloWS | `river_status` | P1 |
 | **Sub-seasonal, 2–6 weeks** | L3 | ECMWF extended range (EC46) **if served as open data (to confirm)**; GEFSv12 to 35 days; CFSv2 45-day members | EC46 grid **(to confirm)**; GEFS 0.5°, 31 members; CFSv2 lagged members | Daily/weekly | Weekly rain anomaly terciles per canton | CFSv2 only | `seasonal_canton` (weekly targets, §5) | P2 |
-| **Seasonal, 1–7 months** | L4–L5 | **C3S multi-system** (SEAS5 and others), **NMME**, **CFSv2** lagged ensemble, **GloFAS seasonal** | 1° (C3S **(unverified)**); GloFAS 0.05° | Monthly (C3S ≈13th **(unverified)**; SEAS5 ≈5th; NMME ≈8–9th; GloFAS ≈6–8th); CFSv2 daily | Calibrated multi-model canton terciles with skill masks; seasonal river anomalies | Single systems; CFSv2 lagged | `seasonal_canton` | P1 |
+| **Seasonal, 1–7 months** | L4–L5 | **C3S multi-system** (SEAS5 and others), **NMME**, **CFSv2** lagged ensemble, **GloFAS seasonal** | 1° (C3S **(unverified)**); GloFAS 0.05° | Monthly (C3S ≈13th, SEAS5 ≈5th, NMME ≈8–9th, all **(unverified)**; GloFAS ≈6–8th, sources disagree); CFSv2 daily | Calibrated multi-model canton terciles with skill masks; seasonal river anomalies | Single systems; CFSv2 lagged | `seasonal_canton` | P1 |
 | **ENSO state and outlook** | L5 | NOAA CPC RONI and strength probabilities; ENFEN ICEN (Niño 1+2); CN-ERFEN; IRI plume; OISST-derived Niño boxes; XRO (supplementary) | Indices | Weekly/monthly; CPC second Thursday | Pathway drivers (D4), coupling indicator, analog selection | Our OISST computation when feeds are late | `enso_indices`, `official_alerts` | P1 |
 | **Climatology and analogs** | All | ERA5 (ARCO), ERA5-Land, CHIRPS v3, GRRR 1980–2023, INAMHI normals 1985–2015, Google inundation history 1999–2020 | 0.25°, 0.1°, 0.05°, HydroBASINS outlets, 128 m | Static or monthly | Thresholds, anomalies, return periods, analog envelopes, calibration targets | CHIRPS v2 | `grrr_ecuador`, `inamhi_thresholds`, analog tables ([07 §7.3](./07-impact-modules-and-triggers.md)) | P0–P1 |
 
@@ -125,7 +125,7 @@ flowchart LR
 | Published statistics | BigQuery/EE: mean, p10, p25, p50, p75, p90 only (0.1°: 19 variables × 6 = 114 bands; 0.05°: 12 bands) ([EE STAC](https://storage.googleapis.com/earthengine-stac/catalog/gcp-public-data-weathernext/projects_gcp-public-data-weathernext_assets_weathernext_3_0_0_0p1deg.json)); all 64 members only in Requester-Pays GCS (sources conflict; **to confirm**) | All 64 members and the mean in BigQuery and EE | — |
 | Archive | **From 2026-01-01**; the documented 2024/2025 backfill does not exist ([OCF #934](https://github.com/openclimatefix/nged-substation-forecast/issues/934)) | **From 2022-01-01** (covers the 2023 coastal El Niño and 2023-24) | Graph EE 2020-01-01 → 2026-04-05T12Z |
 | Weights | Not released | Open; licence updated **2026-08-06 to permit commercial use**; code Apache-2.0, other materials CC BY 4.0 | Open |
-| Compute (reference) | One member ≈6.3 min on 4 TPU v5p chips → a 64-member run ≈27 v5p chip-hours ≈ US$57–113 at US$2.10–4.20/chip-h ([TPU pricing](https://cloud.google.com/tpu/pricing)); cannot be self-run | "Just under 1 minute" per 15-day member on one TPU v5p (search summary) → ≈1.1 chip-h ≈ **US$2.3–4.6 per 64-member run** | — |
+| Compute (reference) | One member ≈6.3 min on 4 TPU v5p chips → a 64-member run ≈27 v5p chip-hours ≈ US$57–113 at US$2.10–4.20/chip-h ([TPU pricing](https://cloud.google.com/tpu/pricing)); cannot be self-run | "Just under 1 minute" per 15-day member on one TPU v5p (search summary) → 64 members ≈ 1.1 chip-h × US$2.10–4.20 ≈ **US$2.3–4.6 per 64-member run** (before compile, I/O and initial-condition preparation) | — |
 | Training cut-off | Through 2026-06-30 (incl. ECMWF cycle 50r1 data); IMERG Final training data stops Sep 2025 | Through 2024 | — |
 | Twin role | **Primary** 0–15 days: hourly intensity, SST, station-head temperature, statistics at 0.1° | **Members** for accumulations and joint probabilities; **El Niño calibration archive**; **what-if engine** | Not used |
 
@@ -134,7 +134,7 @@ flowchart LR
 | Surface | WN3 | WN2 | Status |
 |---|---|---|---|
 | Analytics Hub exchange | `projects/gcp-public-data-weathernext/locations/us/dataExchanges/weathernext_19397e1bcb7` ([next25-weather](https://github.com/gena/next25-weather)) | same | Verified |
-| Listing | **(to confirm)** | `weathernext_2_19a39fe59dd` (secondary source) | Secondary |
+| Listing | **(to confirm)** | `weathernext_2_19a39fe59dd`; the secondary source writes the full name with the project number, `projects/871883017250/locations/us/dataExchanges/weathernext_19397e1bcb7/listings/weathernext_2_19a39fe59dd` | Secondary |
 | Tables in the linked dataset | `weathernext_3_0_0_0p1deg`, `weathernext_3_0_0_0p05deg` | `weathernext_2_0_0`, `weathernext_2_0_0_mean` | Consistent across third-party repos |
 | Schema | Partitioned by day on `init_time`, clustered on `geography`; columns `init_time`, `geography` (point), `geography_polygon`, `forecast ARRAY<STRUCT<time, hours, variables…>>`; WN3 statistic fields named like `total_precipitation_1hr_mean`, `temperature_2m_p90` | same layout; ERA5-style names such as `` `2m_temperature` `` and `total_precipitation_6hr`; member column **(to confirm)** | Field names **(to confirm)** with `wn-schema-check` |
 | Earth Engine | `projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg`, `…/weathernext_3_0_0_0p05deg`; precipitation bands `total_precipitation_1hr`, `imerg_tp_1hr`, `experimental_tp_1hr` (PARDIG), in metres, each × 6 statistics | `…/weathernext_2_0_0` (64 members), `…/weathernext_2_0_0_mean` | Verified (EE catalog) |
@@ -151,15 +151,15 @@ Access is granted **per Google account** through the WeatherNext Data Request fo
 
 | Step | Action | Who | When | Done when |
 |---|---|---|---|---|
-| 1 | Submit the **WeatherNext Data Request form** ([form](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform), found via a third-party repo) for the FL and DL Google accounts, naming `ectwin-commons-prod` and `ectwin-commons-dev`, use case "El Niño decision support for Ecuadorian public agencies; non-retrievable derived products only". Contact: weathernext@google.com. Approval ≈5–7 business days (search summary). | FL | 2026-09-30 | Approval email filed in the access tracker |
+| 1 | Submit the **WeatherNext Data Request form** ([form](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform); URL as given in the EE catalogue entry of the WN3 asset and in third-party repos) for the FL and DL Google accounts, naming `ectwin-commons-prod` and `ectwin-commons-dev`, use case "El Niño decision support for Ecuadorian public agencies; non-retrievable derived products only". Contact: weathernext@google.com. Approval ≈5–7 business days (secondary sources). | FL | Phase 0 day 1–2 (2026-09-29/30) | Approval email filed in the access tracker |
 | 2 | **Subscribe** to the WN3 and WN2 listings from the approved account. This creates read-only linked datasets `weathernext_3` and `weathernext_2` in location `US` (below). | FL | Day of approval | `bq ls ectwin-commons-prod:weathernext_3` lists both WN3 tables |
 | 3 | Grant `roles/bigquery.dataViewer` on the linked datasets to the Commons forecast job service account; confirm the terms allow a service account of the licensee to query **(to confirm with weathernext@google.com)**. | DL | +1 day | Dry run as the job SA succeeds |
 | 4 | **Earth Engine:** the Commons project is registered for EE; read the WN assets with the approved account's project. | FL | +1 day | `ee.ImageCollection(<WN3 asset>).limit(1).getInfo()` returns |
 | 5 | **GCS Zarr (Phase 2):** read the WN3 full-ensemble Requester-Pays bucket from `us-east1` with `userProject=ectwin-commons-prod`; request WN2 Zarr access if needed. | FL | 2027-01-15 spike (M2.2 in [03](./03-architecture.md)) | Chunk layout and cost per cycle measured |
-| 6 | **Vertex allowlist (Phase 3):** ask for the WN2 on-demand allowlist and H100/A100 quota (starts at 0) for the project that will run scenarios ([access-vmg](https://developers.google.com/weathernext/guides/access-vmg), search summary). | FL + TA | Request 2026-10-15; use from 2027-05 | Quota > 0 and a 1-member smoke run succeeds |
+| 6 | **Vertex allowlist (Phase 3):** ask for the WN2 on-demand allowlist ([access-vmg](https://developers.google.com/weathernext/guides/access-vmg), search summary) and GPU quota, which starts at 0, for the project and region that will run scenarios: service `Vertex AI API`, quota "Custom model training preemptible Nvidia H100 GPUs per region" (or the A100 80GB equivalent). The DWS notebook runs **one member per GPU**, so the quota must cover the members submitted at once: 64 GPUs for a full 64-member run, or 16 if the four seeds run one after another ([notebook](https://raw.githubusercontent.com/GoogleCloudPlatform/vertex-ai-samples/main/notebooks/community/weathernext/weathernext_2_dws.ipynb)). | FL + TA | Request 2026-10-15; use from 2027-05 | Quota ≥ 16 granted and a small smoke run (e.g. 1 seed × 8 members on `a3-highgpu-8g`) succeeds |
 | 7 | Run the **preflight** (PF-13 in [04 §4.7](./04-identity-tenancy-byo-gcp.md)) and `wn-schema-check` daily ([11 §2.1](./11-operations-runbook.md)). | DL | Continuous | `commons_ops.dq_results` green |
 
-Subscription (request shape as in [03 §5.2](./03-architecture.md#52-bigquery-datasets); WN3 listing id **(to confirm)**):
+Subscription (request shape as in [03 §5.2](./03-architecture.md#52-bigquery-datasets); WN3 listing id **(to confirm)**; if the resource name with the project id `gcp-public-data-weathernext` is rejected, use the project-number form shown in §3.2):
 
 ```bash
 C=ectwin-commons-prod
@@ -195,7 +195,7 @@ The WeatherNext terms of use ([PDF](https://storage.googleapis.com/weathernext-p
 | Data class | Definition | Examples in the twin | Who may receive it | Where it lives | `licence_class` |
 |---|---|---|---|---|---|
 | **Real-time, unmodified** | WN3 data relating to a time less than 1 h ago or in the future. For WN2 older catalog text says 48 h; the twin applies **48 h for WN2** until confirmed | Raw fields, cell subsets, recoloured maps, re-combined time steps ("unmodified" per the terms), point series | The licensee for **any internal purpose**; its Contractors and Subsidiaries | `commons_internal` (Commons) or tenant `ectwin` / `ectwin_scratch` (own approval only) | `wn_internal` (new) |
-| **Retrievable Value-Added Service** | Derived product from which raw data can be recovered | Parish time series of p10–p90, ensemble spread per cell, fan charts | Only "clearly identified and known third parties", for their internal use | Tenant projects with their own approval; **not** published by Commons (spine rule D15) | `wn_internal` |
+| **Retrievable Value-Added Service** | Derived product from which raw data can be recovered | Parish time series of p10–p90, ensemble spread per cell, fan charts | Only "clearly identified and known third parties", for their internal use | Tenant projects with their own approval; **not** published by Commons (spine §2 P2 and D15: Commons publishes only Non-Retrievable Value-Added or historic WeatherNext data) | `wn_internal` |
 | **Non-Retrievable Value-Added Service** | Raw data cannot be recovered | Parish exceedance probabilities, *nivel de riesgo*, indices, counts of members above a threshold, confidence classes | **Anyone** | `commons_pub.parish_exceedance`, tiles, PDFs | `wn_nrva` |
 | **Historic** | Older than the real-time threshold | Hindcast and verification tables, calibration parameters, archived fields | Anyone, **CC BY 4.0** with attribution | `commons_pub.verification_scores`, `commons_internal.bc_params`, research exports | `wn_historic_ccby` |
 
@@ -218,7 +218,7 @@ Other obligations and risks from the same terms:
 
 Consequences:
 
-1. **Nothing from WeatherNext covers the first ≈7–8 h after the wall-clock time at which it arrives.** The 0–6 h band always relies on observations (§6).
+1. **The first ≈7–8 h of every WeatherNext run are already in the past when it is published.** At any wall-clock time the freshest WeatherNext guidance for the next 0–6 h is at an effective lead of ≈7–14 h (hourly interim runs, N2+) or ≈8–20 h (main cycles, which arrive every 6 h), estimate from the §3.5 timings. The 0–6 h band therefore relies primarily on observations and extrapolation (§6), with WN3 only as background.
 2. The Commons `forecast-cycle` workflow starts at init + 7 h 20 min, probes every 10 min and falls back at init + 10 h ([03 §4.2](./03-architecture.md#42-forecast-cycle), [11 RB-01](./11-operations-runbook.md)).
 3. **Backtests must use publication time, not init time.** WN3 data before September 2026 was reportedly backfilled about 20 days after initialisation (secondary, **unverified**), so a naive replay would be optimistic. `parish_exceedance.created_at` records our own publication time from day 1.
 
@@ -229,7 +229,7 @@ Two queries, both run in the approved project (Commons or a T2+ tenant), both wi
 - `GEOGRAPHY` values cannot be used in `GROUP BY`, `DISTINCT` or join equality, so cells are keyed by `ST_GEOHASH(geography, 12)` (`cell_id`). The sketch in [03 §4.2](./03-architecture.md#42-forecast-cycle) should adopt the same key.
 - The Ecuador clip must be a **constant expression** (a literal WKT), not a subquery, so that clustering on `geography` can prune blocks. The authoritative polygons live in `commons_pub.dim_ecuador_clip`; the literal boxes below are a conservative superset: mainland lon −81.1…−75.1, lat −5.1…1.7, plus Galápagos lon −92.1…−89.2, lat −1.5…1.7 (estimate).
 - WeatherNext precipitation is in metres; multiply by 1,000 for mm.
-- Only referenced nested fields of `forecast` are billed. Expected scan: ≈0.07 GB per WN3 column-init and ≈0.2 GB per WN2 column-init ([costs brief arithmetic, 09](./09-cost-model.md)); third-party point queries billed 30–89 MB.
+- Only referenced nested fields of `forecast` are billed. Expected scan: ≈0.07 GB per WN3 column-init and ≈0.2 GB per WN2 column-init ([costs brief arithmetic, 09](./09-cost-model.md)); third-party point queries billed 30–89 MB. Query A reads 7 leaf columns (`hours`, mean, p10–p90) ≈ 0.5 GB per init and Query B 2 leaf columns ≈ 0.4 GB (estimate), so one cycle stays near the ≤ 1 GB target of M1.1 and far below the 5 GiB cap.
 
 **One-off: cell-to-parish weights for the WN3 0.1° grid** (the WN2 table `cell_parish_weights_wn2` is built the same way; `dim_dpa` column names per [05](./05-data-catalog.md)):
 
@@ -371,9 +371,9 @@ In the `fc-exceedance` job the same caps are set in code (`bigquery.QueryJobConf
 
 ### 3.7 Earth Engine and Xee
 
-Earth Engine is used where it is cheaper or simpler than BigQuery: raster reductions to parishes, joins with EE-native observations (IMERG, CHIRPS), and xarray analysis via Xee (0.1.2, 2026-07-14, [PyPI](https://pypi.org/pypi/xee/json)). Government tenants in Ecuador need a commercial EE plan for operational use; academic and NGO tenants may use the noncommercial tiers ([04 §5.7.4](./04-identity-tenancy-byo-gcp.md)).
+Earth Engine is used where it is cheaper or simpler than BigQuery: raster reductions to parishes, joins with EE-native observations (IMERG, CHIRPS), and xarray analysis via Xee (0.1.2, 2026-07-14, [PyPI](https://pypi.org/pypi/xee/json)). Operational government use in a non-LDC such as Ecuador needs a commercial EE account (search summary of the EE noncommercial page); academic and NGO tenants may use the noncommercial tiers ([04 §5.7.4](./04-identity-tenancy-byo-gcp.md)).
 
-**EE: expected 72 h rain and worst-hour p90 per parish from WN3, exported to BigQuery** (property types of `start_time`/`forecast_hour` and band suffixes **to confirm**; the parish asset is created by DL from `dim_dpa`):
+**EE: expected 72 h rain and worst-hour p90 per parish from WN3, exported to BigQuery** (property types of `start_time`/`forecast_hour` and band suffixes **to confirm**; the parish asset is created by DL from `dim_dpa` and shared read-only with tenant projects, asset ACL **to set**):
 
 ```python
 import ee
@@ -400,9 +400,10 @@ task = ee.batch.Export.table.toBigQuery(
 task.start()
 ```
 
-**Xee: WN2 member ensemble for Ecuador as xarray, P(72 h rain ≥ 100 mm) per cell.** EE sums each member's 6-hourly steps server-side, so Xee only pulls 64 small Ecuador images (≈68 × 28 cells at 0.25°, estimate). Xee argument names **(to confirm against 0.1.2)**.
+**Xee: WN2 member ensemble for Ecuador as xarray, P(72 h rain ≥ 100 mm) per cell.** EE sums each member's 6-hourly steps server-side, so Xee only pulls 64 small images of the mainland box (6° × 6.8° at 0.25° ≈ 24 × 28 cells, estimate). Xee argument names **(to confirm against 0.1.2)**.
 
 ```python
+# continues the previous block (TP, INIT)
 import ee, xarray as xr
 ee.Initialize(project=TP, opt_url="https://earthengine-highvolume.googleapis.com")
 WN2 = ee.ImageCollection("projects/gcp-public-data-weathernext/assets/weathernext_2_0_0")
@@ -426,7 +427,7 @@ q = ds["tp72_mm"].quantile([0.1, 0.5, 0.9], dim="member")               # retrie
 
 | Caveat | Evidence | Rule in the twin |
 |---|---|---|
-| **Andes station-head bias.** The paper reports "strong biases… in sparsely observed… areas, such as the Andes" in the 2 m temperature/dewpoint station head; 2,000 ERA5/HRES pseudo-stations per hour "greatly reduced" them, but the residual is not quantified. Station training used METAR (few in Ecuador), Mesonet (mostly Europe/North America) and ICOADS. | [WN3 paper](https://storage.googleapis.com/deepmind-media/papers/weathernext_3.pdf) | Sierra products (parishes whose area is mostly at or above 1,500 m, the same orography mask used for verification in [14](./14-verification-and-validation.md)) have `confidence` capped at `media` until the Sierra verification of [14](./14-verification-and-validation.md) shows CRPSS > 0.1 against INAMHI stations; temperature is lapse-rate checked against Copernicus DEM elevation (§7). |
+| **Andes station-head bias.** The paper reports "strong biases… in sparsely observed… areas, such as the Andes" in the 2 m temperature/dewpoint station head; 2,000 ERA5/HRES pseudo-stations per hour "greatly reduced" them, but the residual is not quantified. Station training used METAR (few in Ecuador), Mesonet (mostly Europe/North America) and ICOADS. | [WN3 paper](https://storage.googleapis.com/deepmind-media/papers/weathernext_3.pdf) | Sierra products (parishes whose area is mostly at or above 1,500 m, the orography mask of the WeatherBench 2 Ecuador-box test in FS-04; region stratum `sierra` in [14](./14-verification-and-validation.md)) carry `confidence='baja'` until the Sierra verification of [14 §5.3](./14-verification-and-validation.md#53-confidence-labels) clears the `F_LOWSKILL` rule (CRPSS ≥ 0.10 against held-out INAMHI stations); temperature is lapse-rate checked against Copernicus DEM elevation (§7). |
 | **Extreme precipitation not evaluated.** The limitations guide caps evaluation at 4 mm/6 h; El Niño coastal extremes (> 100 mm/day in Manabí and Guayas) are untested. | [benefits and limitations](https://developers.google.com/weathernext/guides/benefits-limitations) (search summary) | Thresholds above the local P99 are shown with `confidence='baja'` unless verification says otherwise. |
 | **Real-time evaluation only in the coastal dry season** (2026-07-01 to 08-11, MRMS and gauges). | Paper | First wet-season verification happens in our own Phase 2 (weekly, [11](./11-operations-runbook.md)). |
 | **Three precipitation heads.** `total_precipitation_1hr` (model), `imerg_tp_1hr` (IMERG-calibrated), `experimental_tp_1hr` (PARDIG). PARDIG cut CRPS by up to 60% vs IMERG, 30% vs MRMS and ≈10% vs gauges at short leads. | Paper | Phase 1 uses `total_precipitation_1hr` for products and computes all three in shadow; the head with the best Ecuador CRPS after 8 weeks of wet-season data becomes primary (decision FL + LI, target 2027-02-15). |
@@ -446,7 +447,7 @@ WN2 is the only WeatherNext archive that contains El Niño conditions: the **202
 3. **Forecast track record for analogs**: how WN2 behaved in 2023 and 2023-24 is shown next to the analog envelopes ([07 §7.3](./07-impact-modules-and-triggers.md)).
 4. **Transfer to WN3**: WN2-derived correction shapes seed WN3 delta mapping until WN3 has one full wet season.
 
-**Materialised extract.** To avoid rescanning the linked tables, `wn2-hindcast-extract` (Cloud Run Delayed Job, one task per month) writes 24 h (12Z–12Z) member totals for the **00Z init only** to `commons_internal.wn2_hindcast_members_ec`, clustered by `cell_id`. Size (estimate): ≈650 cells × 64 members × 15 lead days × ≈1,700 inits ≈ 1.06 billion rows × ≈30 bytes ≈ 32 GB, ≈US$0.64/month active logical storage at US$0.02/GiB-month. The scan to build it is ≈0.2 GB × 1,700 ≈ 340 GB (estimate; the 4-init backfill in [03 §7.5](./03-architecture.md#75-backfills) is ≈1.4 TB), inside the 1 TiB monthly free tier if spread over two months.
+**Materialised extract.** To avoid rescanning the linked tables, `wn2-hindcast-extract` (Cloud Run Delayed Job, one task per month) writes 24 h (12Z–12Z) member totals for the **00Z init only** to `commons_internal.wn2_hindcast_members_ec`, clustered by `cell_id`. Size (estimate): ≈650 land cells (0.25° cells that intersect a parish, estimate) × 64 members × 14 complete 12Z–12Z windows (a 360 h run from 00Z) × ≈1,730 inits (2022-01-01 → 2026-09-30) ≈ 1.01 billion rows × ≈30 bytes ≈ 30 GB, ≈US$0.60/month active logical storage at US$0.02/GiB-month before the 10 GiB free tier; it grows by ≈365 inits (≈6.4 GB) a year. The scan to build it is ≈0.4 GB per init (two leaf columns, `hours` and `total_precipitation_6hr`, at ≈0.2 GB each, the same basis as [03 §7.5](./03-architecture.md#75-backfills)) × ≈1,730 ≈ 0.69 TB ≈ 0.63 TiB, an upper estimate (≈70 GB if clustering prunes exactly to the ≈650 land cells: 650 × 64 × 60 leads × 8 B × 2 columns × 1,730). For comparison, the 4-init parish backfill in 03 §7.5 is ≈2.8 TB. Spreading the extract over two months keeps it inside the 1 TiB monthly free tier alongside routine cycles.
 
 **In-sample caveat (important).** The operational WN2 checkpoint was trained on data through 2024. If the 2022–2024 archive was generated retrospectively by that checkpoint, scores for 2022–2024 (including 2023) are **in-sample and optimistic**; only 2025 onward would be a clean test. The archive's provenance is **(to confirm with weathernext@google.com)**. Until confirmed, `verification_scores` rows for 2022–2024 carry `method_version` suffix `-insample` and the confidence indicator uses 2025-26 scores only.
 
@@ -457,37 +458,41 @@ WN2 can be run on demand on Vertex AI / Gemini Enterprise Agent Platform with cu
 | Item | Specification |
 |---|---|
 | Access | Project allowlist; GPU quota starts at 0 and must be requested (§3.3 step 6) |
-| Job type | `CustomContainerTrainingJob` with the container in §3.2 |
-| Hardware | `a3-highgpu-{1,2,4,8}g` (H100 80 GB) or `a2-ultragpu-*` (A100 80 GB) |
-| Scheduling | `FLEX_START` (Dynamic Workload Scheduler), `SPOT` or `STANDARD`; default `FLEX_START`, `SPOT` for batches of scenarios, `STANDARD` only in N3 posture |
-| Parameters | `--num_samples`, `--horizon_hrs` (≤360), `--forecast_init_time` (2024 onward), `--model_seed` 1–4, `--enable_hourly_prediction`, `--input_data_gcs_dir` (custom initial conditions) |
+| Job type | `CustomContainerTrainingJob` with the container in §3.2; the notebook pins `google-cloud-aiplatform==1.129.0` |
+| Hardware | `a3-highgpu-{1,2,4,8}g` (H100 80 GB) or `a2-ultragpu-{1,2,4,8}g` (A100 80 GB) |
+| Parallelism | **One member per GPU**: `replica_count = num_samples per seed ÷ GPUs per machine`, and `num_samples` per seed must be a multiple of the GPUs per machine (DWS notebook). 16 members per seed on `a3-highgpu-8g` = 2 replicas; on `a3-highgpu-1g` = 16 replicas |
+| Scheduling | `FLEX_START` (Dynamic Workload Scheduler, the notebook default), `SPOT` or `STANDARD`; twin default `FLEX_START`, `SPOT` for batches of scenarios, `STANDARD` only in N3 posture |
+| Parameters | `--num_samples`, `--horizon_hrs` (≤360), `--forecast_init_time` (the notebook says models are available for dates from 2024 onward), `--model_seed` 1–4, `--enable_hourly_prediction`, `--pred_root_dir` (output root), `--input_data_gcs_dir` (custom initial conditions) |
 | Custom inputs | Zarr **v3**, grid 721×1440, levels 50/100/150/200/250/300/400/500/600/700/850/925/1000 hPa, variables `msl, q, sst, t, t2m, u, u10, u100, v, v10, v100, w, z` ([custom inputs guide](https://raw.githubusercontent.com/GoogleCloudPlatform/vertex-ai-samples/main/notebooks/community/weathernext/CUSTOM_INPUTS_GUIDE.md)) |
-| Members | 64 = 4 seeds × 16 samples (inferred from the four operational checkpoints; **to confirm**) |
-| Where | Tenant T3 project (tenant pays); Commons only for the national reference scenarios agreed with CN-ERFEN |
-| Output | Zarr in `gs://<TENANT_PROJECT>-ectwin/scenarios/<scenario_id>/out/`; processed by the same parish SQL as Query B, reading Zarr through a BigQuery load of the Ecuador subset |
+| Members | 64 = 4 seeds × 16 samples: the notebook's "all seeds" option splits `num_samples` evenly across seeds 1–4; that the operational 64-member product is built the same way is **to confirm** |
+| Where | Tenant T3 project (tenant pays); Commons only for the national reference scenarios agreed with CN-ERFEN. Bucket and job in the same region (the notebook checks this); `us-central1` per D10 if H100 quota is granted there |
+| Output | The container writes `<pred_root_dir>/weathernext_2_seed_<s>/<YYYYMMDD>_<HH>hr_01_preds/predictions.zarr/` (hourly runs under `weathernext_2_seed_<s>_hourly/`), with `pred_root_dir = gs://<TENANT_PROJECT>-ectwin/scenarios/<scenario_id>/out`; the Ecuador subset is loaded to BigQuery and processed by the same parish SQL as Query B |
 
-**Initial conditions.** For past inits (studies, the 2023 and 2026 sensitivity tests) ARCO-ERA5 is the base (`gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3`, `us-central1`; ERA5T runs ≈6 days behind). For near-real-time what-ifs another analysis source is needed; IFS open data is a candidate, but whether it carries all 13 levels and variables is **(to confirm)**. The perturbation adds `scale × pattern` to `sst` only, with a smoothed Niño 1+2 composite pattern and a 3° cosine taper; scales −1, 0 (control), +1, +2 °C ([07 §7.4](./07-impact-modules-and-triggers.md)).
+**Initial conditions.** The operational WN2 checkpoint is fine-tuned on and initialised from ECMWF HRES; without `--input_data_gcs_dir` the container uses its own default inputs for `--forecast_init_time` (2024 onward per the notebook). A perturbation needs custom inputs, so the control must be built through the **same** custom-input pipeline. For past inits (studies, sensitivity tests) ARCO-ERA5 is the candidate base (`gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3`, `us-central1`, 37 levels subset to the 13 required; ERA5T runs ≈6 days behind); ERA5 initial conditions differ from the HRES analyses the model was fine-tuned on, a mismatch the acceptance test below must quantify. For near-real-time what-ifs another analysis source is needed; IFS open data is a candidate, but whether it carries all 13 levels and variables is **(to confirm)**. The perturbation adds `scale × pattern` to `sst` only, with a smoothed Niño 1+2 composite pattern and a 3° cosine taper; scales −1, 0 (control), +1, +2 °C ([07 §7.4](./07-impact-modules-and-triggers.md#74-wn2-perturbed-sst-runs-phase-3-t3-only)).
 
 ```python
-# pipelines/tenant/wn2_scenario/submit.py  (SDK argument names follow the DWS notebook; to confirm)
+# pipelines/tenant/wn2_scenario/submit.py  (argument names follow the DWS notebook; SDK pinned as there)
 from google.cloud import aiplatform
-from google.cloud.aiplatform_v1.types import custom_job as cj
+from google.cloud.aiplatform.compat.types import custom_job as gca_custom_job_compat
 
 TP, SID = "my-tenant-project", "nino12-plus1-20270110"
-aiplatform.init(project=TP, location="us-central1", staging_bucket=f"gs://{TP}-ectwin")   # region with H100 quota
+aiplatform.init(project=TP, location="us-central1", staging_bucket=f"gs://{TP}-ectwin")  # bucket in the job region
 IMG = ("us-docker.pkg.dev/vertex-ai-restricted/vertex-vision-model-garden-dockers/"
        "weather-next-2-inference.gpu.0-1:latest")
+MACHINE, GPUS = "a3-highgpu-8g", 8          # H100 80GB; "a2-ultragpu-8g" for A100 80GB
+PER_SEED = 16                               # 4 seeds x 16 = 64 members; must be a multiple of GPUS
+FLEX = gca_custom_job_compat.Scheduling.Strategy.FLEX_START
 
-for seed in (1, 2, 3, 4):
+for seed in (1, 2, 3, 4):                   # 4 x 16 = 64 GPUs at once; run seeds in sequence if quota is 16
     job = aiplatform.CustomContainerTrainingJob(display_name=f"wn2-{SID}-s{seed}", container_uri=IMG)
     job.run(
-        args=["--num_samples=16", "--horizon_hrs=360", "--model_seed=%d" % seed,
-              "--forecast_init_time=2027-01-10T00:00:00Z",
+        args=[f"--pred_root_dir=gs://{TP}-ectwin/scenarios/{SID}/out",
+              f"--num_samples={PER_SEED}", "--horizon_hrs=360", f"--model_seed={seed}",
+              "--forecast_init_time=2027-01-10T00:00:00Z", "--enable_hourly_prediction=False",
               f"--input_data_gcs_dir=gs://{TP}-ectwin/scenarios/{SID}/ic/"],
-        base_output_dir=f"gs://{TP}-ectwin/scenarios/{SID}/out/s{seed}/",
-        replica_count=1, machine_type="a3-highgpu-1g",
-        accelerator_type="NVIDIA_H100_80GB", accelerator_count=1,
-        scheduling_strategy=cj.Scheduling.Strategy.FLEX_START,
+        replica_count=PER_SEED // GPUS,     # one member per GPU (notebook rule)
+        machine_type=MACHINE, accelerator_type="NVIDIA_H100_80GB", accelerator_count=GPUS,
+        scheduling_strategy=FLEX,
         service_account=f"ectwin-runner@{TP}.iam.gserviceaccount.com",
         sync=False)
 ```
@@ -496,13 +501,14 @@ for seed in (1, 2, 3, 4):
 
 | Path | Arithmetic | US$ per 64-member 15-day run |
 |---|---|---|
-| Self-run on TPU v5p (reference) | ≈64 × 1 min ≈ 1.07 chip-h × US$2.10 (Flex-start) – 4.20 (on-demand) ([TPU pricing](https://cloud.google.com/tpu/pricing)) | **≈2.3–4.6** |
-| Vertex on 1× H100, on-demand (estimate) | Throughput on H100 unknown; assume 1–2 min per member → 1.07–2.13 h × US$9.80/h accelerator part ([Vertex pricing](https://cloud.google.com/vertex-ai/pricing)), plus machine part **(unverified)** | **≈10.5–21 + machine** |
-| Vertex with SPOT / FLEX_START | Discount on the above **(unverified for Vertex)** | lower |
+| Self-run on TPU v5p (reference) | 64 × just under 1 min ≈ 1.1 chip-h × US$2.10 (DWS Flex-start) – 4.20 (on-demand) ([TPU pricing](https://cloud.google.com/tpu/pricing)) | **≈2.3–4.6** |
+| Vertex, H100 on-demand (estimate) | H100 throughput unknown; assume 1–2 min per member, one member per GPU → 64 × 1–2 min ≈ 1.07–2.13 GPU-h × US$9.80/h accelerator part ([Vertex pricing](https://cloud.google.com/vertex-ai/pricing)), plus machine part and per-replica start-up (container pull, model load), both **(unverified)** | **≈10.5–21 + machine + start-up** |
+| Vertex, H100 with `SPOT` (estimate) | The Vertex pricing page states that Spot VMs in custom training are billed at Compute Engine Spot prices plus a training management fee (**to confirm**); Compute Engine Spot `a3-highgpu-1g` is US$6.62/h in `us-central1` ([Spot pricing](https://cloud.google.com/spot-vms/pricing)) → 1.07–2.13 GPU-h × 6.62 ≈ 7–14, plus the fee and start-up **(unverified)** | **≈7–14 + fee + start-up** |
+| Vertex with `FLEX_START` | DWS pricing for Vertex custom training not in the briefs **(unverified)** | to measure |
 
-The platform sets `max_cost_usd = 15` per scenario by default ([07 §7.2](./07-impact-modules-and-triggers.md)) and the Phase 3 spike measures the real figure. There is no per-forecast fee; only compute and storage are billed.
+The platform sets `max_cost_usd = 15` per scenario by default ([07 §7.2](./07-impact-modules-and-triggers.md#72-engine-flow)), which covers the Spot estimate but not the on-demand upper bound (runs above the cap need Owner approval), and the Phase 3 spike measures the real figure. There is no per-forecast fee; only compute and storage are billed.
 
-**Acceptance before any user sees a scenario (G0 → G1).** Rerun 2023-03-15 00Z and 2026-02-20 00Z with scales 0 and +1 °C. Pass if (a) the control reproduces the archived operational WN2 run for the same init within sampling noise (CRPS difference < 5% over Ecuador); (b) the coastal 5-day rain response to +1 °C has the physically expected sign and an order of magnitude comparable to the 1997-98 minus 2023-24 composite difference; (c) the SST perturbation is still present at day 5. It is **unverified** whether WN2 treats SST as persistent or evolves it; if the perturbation decays within 2 days the feature stays at G0. Every map carries *escenario experimental – no es pronóstico*.
+**Acceptance before any user sees a scenario (G0 → G1).** Run two El Niño-season inits inside the documented 2024-onward window, 2024-02-15 00Z (late phase of the 2023-24 event) and 2026-02-20 00Z, with scales 0 and +1 °C; add 2023-03-15 00Z (2023 coastal El Niño) only if the container accepts pre-2024 init times with custom inputs **(to confirm)**. Pass if (a) the control built through the custom-input pipeline reproduces the default-input run (or the archived operational WN2 run) for the same init within sampling noise (CRPS difference < 5% over Ecuador), which tests the input pipeline; (b) the coastal 5-day rain response to +1 °C has the physically expected sign and an order of magnitude comparable to the 1997-98 minus 2023-24 composite difference; (c) the SST perturbation is still present at day 5. It is **unverified** whether WN2 treats SST as persistent or evolves it; if the perturbation decays within 2 days the feature stays at G0. Every map carries *escenario experimental – no es pronóstico*.
 
 ### 3.11 Deprecated WeatherNext Gen and Graph
 
@@ -526,12 +532,12 @@ The platform sets `max_cost_usd = 15` per scenario by default ([07 §7.2](./07-i
 
 1. WN3 present → normal cycle (WN3 statistics + WN2 members).
 2. WN3 absent at init + 10 h, WN2 present → WN2-only products, `confidence` capped at `media` ([11 RB-01](./11-operations-runbook.md)).
-3. Both absent → IFS ENS open data (`enfo`, 0.25°, 50 perturbed members **(member count to confirm)**) through the same member-based SQL/xarray path, `model='IFS'`, label *modelo de respaldo*. AIFS ENS runs in shadow in Phase 1 and can replace IFS ENS in the ladder if its Ecuador scores are better by 2027-02-15.
-4. Access terminated or terms changed → IFS/AIFS plus GEOGloWS become primary (degradation level L2, [03 §11.3](./03-architecture.md#113-degradation-ladder)).
+3. Both absent → IFS ENS open data (`enfo` from `gs://ecmwf-open-data`, 0.25°, 50 perturbed members **(member count to confirm)**) through the same member-based SQL/xarray path, `model='IFS'`, label *modelo de respaldo*. The EE asset `ECMWF/NRT_FORECAST/IFS/OPER` named in [03 §4.2](./03-architecture.md#42-forecast-cycle) step 8 is the deterministic run and serves only as a quick-look fallback, not for probabilities. If no WeatherNext arrives for > 18 h the platform is at degradation level L2 and `confidence` is set to `baja` ([03 §11.3](./03-architecture.md#113-degradation-ladder)). AIFS ENS runs in shadow in Phase 1 and can replace IFS ENS in the ladder if its Ecuador scores are better by 2027-02-15.
+4. Access terminated or terms changed → IFS/AIFS plus GEOGloWS become primary (degradation level L2, [03 §11.3](./03-architecture.md#113-degradation-ladder); [11 RB-02](./11-operations-runbook.md)).
 
 **Benchmarks.** Weekly verification scores WN3 and WN2 against IFS ENS and against INAMHI's own WRF (`wrf_tiempo_precipitacion` on the INAMHI GeoServer) so users can see whether the AI models add skill locally. For 2023, the only open ensemble hindcast is IFS ENS 2016–2024 in WeatherBench2 (`gs://weatherbench2/datasets/ifs_ens/2016-2024-1440x721.zarr`).
 
-**Not used as sources.** The Google Maps Platform Weather API (MetNet + WN3) is excluded because its policies prohibit using it to build a weather model or weather app and restrict caching ([policies](https://developers.google.com/maps/documentation/weather/policies)). Open-Meteo's `google_weathernext2_ensemble` (WN2, 00/12Z only, no WN3; [docs](https://open-meteo.com/en/docs/google-weathernext-api)) may be used by developers for prototypes only.
+**Not used as sources.** The Google Maps Platform Weather API (MetNet + WN3) is excluded because its policies prohibit using it to build a weather model or weather app and restrict caching ([policies](https://developers.google.com/maps/documentation/weather/policies)). Open-Meteo's `google_weathernext2_ensemble` (WN2, 00/12Z only, full members kept only for the latest run, no WN3; free tier non-commercial; [docs](https://open-meteo.com/en/docs/google-weathernext-api), search summary) may be used by developers for prototypes only.
 
 ---
 
@@ -553,7 +559,7 @@ Base URL `https://floodforecasting.googleapis.com/v1`; API key on every call (`?
 | `flashFloods.search` | `POST` | `countryCodes`, `pageSize` ≤ 10,000; latest only | Urban flash-flood polygons |
 | `serializedPolygons.get` | `GET v1/serializedPolygons/{id}` | returns `{polygonId, kml}`; transient 503s | Inundation, notification and event polygons |
 
-**Access and terms.** Access is per GCP project through a waitlist ([waitlist](http://sites.research.google/gr/floodforecasting/api-waitlist/)); approval "might take several months"; after approval, reply with the project id, then enable the API ([Access & Set-up](https://support.google.com/flood-hub/answer/16364306?hl=en), search summary). Free of charge, CC BY 4.0 ([FAQ](https://support.google.com/flood-hub/answer/16364606?hl=en), search summary). One summary says use is "primarily limited to non-commercial use" (**unverified**, important): [03 §5.3](./03-architecture.md#53-commons-table-schemas-ddl) places the snapshot tables in `commons_pub`; if the non-commercial wording is confirmed they move to `commons_pub_nc` and M1 reads them from `commons_internal` ([03 §14](./03-architecture.md#14-open-questions)). Quota 200 requests/min per project ([OCHA README](https://github.com/OCHA-DAP/ds-google-flood-hub)). The API is a pilot; breaking changes are announced in advance. Ecuador coverage is **unknown until queried**: a 2023-era report lists four verified locations (Zapotal, Babahoyo, Daule, Pula) ([Primicias](https://www.primicias.ec/noticias/tecnologia/google-ecuador-mapa-inundaciones/)); the upper bound for virtual gauges is ≈1,840 HydroBASINS outlets on the mainland plus 39 in Galápagos (GRRR decoding), and the API serves only ≈250k of GRRR's ≈1.03M outlets globally.
+**Access and terms.** Access is per GCP project through a waitlist ([waitlist](http://sites.research.google/gr/floodforecasting/api-waitlist/)); approval "might take several months"; after approval, reply with the project id, then enable the API ([Access & Set-up](https://support.google.com/flood-hub/answer/16364306?hl=en), search summary). Free of charge, CC BY 4.0 ([FAQ](https://support.google.com/flood-hub/answer/16364606?hl=en), search summary). One summary says use is "primarily limited to non-commercial use" (**unverified**, important). [03 §5.3](./03-architecture.md#53-commons-table-schemas-ddl) places the snapshot tables in `commons_pub`, but the licence matrix of [05 §5.2](./05-data-catalog.md#52-matrix-of-attribution-and-obligations-for-the-main-sources) classes `floodhub_api` as `pending_review` (treated as `nc`), so the snapshots are published to `commons_pub_nc` until legal clears the terms; M1 reads them from `commons_internal` either way ([03 §14](./03-architecture.md#14-open-questions)). Quota 200 requests/min per project ([OCHA README](https://github.com/OCHA-DAP/ds-google-flood-hub)). The API is a pilot; breaking changes are announced in advance. Ecuador coverage is **unknown until queried**: a 2023-era report lists four verified locations (Zapotal, Babahoyo, Daule, Pula) ([Primicias](https://www.primicias.ec/noticias/tecnologia/google-ecuador-mapa-inundaciones/)); the upper bound for virtual gauges is ≈1,840 HydroBASINS outlets on the mainland plus 39 in Galápagos (GRRR decoding), and the API serves only ≈250k of GRRR's ≈1.03M outlets globally.
 
 ### 4.2 Ingestion jobs
 
@@ -570,7 +576,7 @@ Base URL `https://floodforecasting.googleapis.com/v1`; API key on every call (`?
 import time, json, hashlib, datetime as dt, requests
 BASE = "https://floodforecasting.googleapis.com/v1"
 KEY = secret("floodhub-api-key")                     # Commons Secret Manager
-PAUSE = 0.32                                         # OCHA pacing, keeps well under 200 req/min
+PAUSE = 0.32                                         # OCHA pacing: at most ~187 req/min, under the 200/min quota
 LOOPS = {"mira_mataje": [(-79.2, 0.3), (-77.6, 0.3), (-77.6, 1.9), (-79.2, 1.9)],
          "puyango_tumbes": [(-80.7, -4.3), (-79.5, -4.3), (-79.5, -3.3), (-80.7, -3.3)],
          "catamayo_chira": [(-81.0, -5.2), (-79.2, -5.2), (-79.2, -3.9), (-81.0, -3.9)]}
@@ -601,6 +607,7 @@ def areas():
         yield {"loop": {"vertices": [{"latitude": la, "longitude": lo} for lo, la in pts]}}
 
 def run(snapshot_at: dt.datetime):
+    # ingest-floodhub-status runs steps 1-4 (+6); ingest-floodhub-events runs steps 5-6
     # 1. Gauge registry (EC + transboundary loops), including non-verified and model-less gauges
     gauges = {}
     for a in areas():
@@ -614,12 +621,12 @@ def run(snapshot_at: dt.datetime):
         upsert_gauge_models(call("GET", "gaugeModels:batchGet", params={"names": chunk}).json())
     # 3. Forecasts in chunks; one unserved gauge makes the whole batch 404 -> per-gauge fallback
     ids = [g for g in gauges if g not in NOT_SERVED]
+    since = iso(snapshot_at - dt.timedelta(days=2))                 # default is one week ago; floor 2023-10-01
     for chunk in chunks(ids, 100):                                  # 500 allowed; 100 keeps URLs short
-        r = call("GET", "gauges:queryGaugeForecasts",
-                 params={"gaugeIds": chunk, "issuedTimeStart": iso(snapshot_at - dt.timedelta(days=2))})
+        r = call("GET", "gauges:queryGaugeForecasts", params={"gaugeIds": chunk, "issuedTimeStart": since})
         if r.status_code == 404:
             for gid in chunk:
-                r1 = call("GET", "gauges:queryGaugeForecasts", params={"gaugeIds": [gid]})
+                r1 = call("GET", "gauges:queryGaugeForecasts", params={"gaugeIds": [gid], "issuedTimeStart": since})
                 if r1.status_code == 404: mark_not_served(gid, snapshot_at)
                 else: store_forecasts(r1.json(), snapshot_at)
         else:
@@ -644,12 +651,12 @@ def run(snapshot_at: dt.datetime):
     merge_into_bigquery(snapshot_at)                                # MERGE on (snapshot_at, gauge_id) etc.
 ```
 
-Expected request count per run (estimate): 4 gauge searches + ≤5 model batches + ≤5 forecast batches (+ per-gauge fallbacks) + 4 status searches + 2 event searches + 0–30 polygons ≈ 20–55 requests, under the 200/min quota and consistent with OCHA's ≈170 requests/day for the whole world.
+Expected request count per full run (estimate): 4 gauge searches + 1–5 model batches + 1–5 forecast batches + 4 status searches + 2 event searches + 0–30 polygons ≈ 12–50 requests, plus pagination and any per-gauge fallbacks. This is below the < 60 requests per run estimated for Ecuador by the Flood API research, under the 200/min quota, and is consistent with OCHA's ≈170 requests/day for the whole world.
 
 ### 4.3 Snapshots, history and backfill
 
 - **There is no history endpoint** for significant events and flash floods; flood status can look back only through `cutoffTime`, with a floor of 2025-08-01. The daily/6-hourly snapshots in `floodhub_status_snapshots`, `floodhub_significant_events` and `floodhub_flash_floods` ([03 §5.3](./03-architecture.md#53-commons-table-schemas-ddl)) are therefore the only record, and the raw JSON is kept forever in `ectwin-commons-prod-raw`.
-- **Backfill** (Phase 0, DL): one `searchLatestFloodStatusByArea` per day from 2025-08-01 to today with `cutoffTime = <day>T23:59:59Z`, for `EC` and each loop (≈420 days × 4 ≈ 1,700 requests over two days at the paced rate).
+- **Backfill** (DL, as soon as the key is approved; Phase 0 if approval is that fast): one `searchLatestFloodStatusByArea` per day from 2025-08-01 to the approval date with `cutoffTime = <day>T23:59:59Z`, for `EC` and each loop. To 2026-09-30 that is ≈426 days × 4 areas ≈ 1,700 requests plus pagination, ≈10 min at the 0.32 s pacing (estimate; [03 §7.5](./03-architecture.md#75-backfills) counts `EC` only, < 1,000 requests). Each extra month of waitlist adds ≈120 requests.
 - **Not-served list**: gauges that 404 go to `commons_internal.floodhub_not_served` (OCHA's `GOOGLE_NOT_SERVED` pattern, [ds-aa-som-floods](https://github.com/OCHA-DAP/ds-aa-som-floods)); they are retried weekly.
 
 ### 4.4 Thresholds keyed on `gaugeModelId`, and quality
@@ -676,7 +683,7 @@ Rules:
 
 1. A status or forecast is interpreted only with the thresholds of the `gauge_model_id` in force at its `issued_time`.
 2. When a gauge's model id changes, verification series for that gauge are split at the change date and the twin shows *modelo actualizado el <fecha>*.
-3. Severity mapping: `ABOVE_NORMAL` ≥ warning, `SEVERE` ≥ danger, `EXTREME` ≥ extreme danger; `UNKNOWN` is shown as *sin dato*. That thresholds equal 2-, 5- and 20-year return periods is **unverified**.
+3. Severity mapping (our assumption, **to confirm** with an approved key, as in [07 §4.1](./07-impact-modules-and-triggers.md#41-m1-riverine-flood-inundación-fluvial)): `ABOVE_NORMAL` ≥ warning, `SEVERE` ≥ danger, `EXTREME` ≥ extreme danger, `NO_FLOODING` below warning; `UNKNOWN` is shown as *sin dato*. That thresholds equal 2-, 5- and 20-year return periods is **unverified**.
 4. **Quality.** `qualityVerified=false` gauges (most virtual `hybas_` gauges) are shown with the label *modelo no verificado* and a 0.8 quality factor in M1 ([07 §4.1](./07-impact-modules-and-triggers.md)). Small coastal basins (Chone, Portoviejo, Jubones) are low confidence beyond lead day 1: comparing the GRRR reforecast with GRRR's own reanalysis for 2016 to mid-2023 ([GRRR bucket](https://storage.googleapis.com/storage/v1/b/flood-forecasting/o?delimiter=/)), POD/FAR at RP2 fell from 0.46/0.46 at lead 1 to 0.17/0.73 at lead 5 at Chone, while Daule stayed at 0.89/0.12 → 0.80/0.25. This measures forcing-error propagation, not skill against observations.
 5. Inundation maps (`inundationMapSet`) were absent from every status OCHA sampled; M1 uses them when present and otherwise the static footprints ([07 §4.1](./07-impact-modules-and-triggers.md)).
 
@@ -708,7 +715,8 @@ loc = xr.open_zarr(f"{ROOT}/hybas_outlet_locations_UNOFFICIAL.zarr", storage_opt
 ec = loc.where((loc.longitude > -92.1) & (loc.longitude < -75.1) &
                (loc.latitude > -5.1) & (loc.latitude < 1.7), drop=True)
 ids = ec.gauge_id.values                                    # refine with the dim_ecuador_clip polygon
-rea = xr.open_zarr(f"{ROOT}/reanalysis/streamflow.zarr", storage_options=so).sel(gauge_id=ids)
+rea = xr.open_zarr(f"{ROOT}/reanalysis/streamflow.zarr", storage_options=so)
+rea = rea.sel(gauge_id=np.intersect1d(rea.gauge_id.values, ids))   # not every outlet is in this index (1,840 of 1,844)
 rp = xr.open_zarr(f"{ROOT}/return_periods.zarr", storage_options=so)
 rp = rp.sel(gauge_id=np.intersect1d(rp.gauge_id.values, ids))   # separate index: join on id string
 rea.to_dataframe().reset_index().to_parquet("grrr_ecuador_reanalysis.parquet")   # -> load job
@@ -762,7 +770,7 @@ c.retrieve("cems-glofas-seasonal", {                                   # run on 
     "/tmp/glofas_seasonal_202611.grib2")
 ```
 
-Each reach's P(Q ≥ RP_k) is computed from the members against GloFAS reforecast-based return periods and written to `river_status` with `source='GLOFAS'`. The GloFAS licence states that its output is not a flood warning; only national authorities may issue warnings. Commercial redistribution of derived products is **(unverified)** and needs legal review ([13](./13-governance-legal-risk.md)).
+Each reach's P(Q ≥ RP_k) is computed from the members against GloFAS reforecast-based return periods and written to `river_status` with `source='GLOFAS'`. The GloFAS licence states that its output is not a flood warning; only national authorities may issue warnings. Commercial redistribution of derived products is **(unverified)** and needs legal review ([13](./13-governance-legal-risk.md)); until then GloFAS-derived rows carry `licence_class='pending_review'`, treated as `nc` ([05 §5.1](./05-data-catalog.md#51-licence-classes)).
 
 ### 4.8 GEOGloWS, with bias caveats
 
@@ -777,21 +785,21 @@ Each reach's P(Q ≥ RP_k) is computed from the members against GloFAS reforecas
 
 ### 4.10 OpenHydroNet fine-tune and a Caravan extension for Ecuador (Phase 3)
 
-OpenHydroNet (`google-research/flood-forecasting`, package `googlehydrology`, Apache-2.0, a NeuralHydrology fork open-sourced 2026-06-03) contains the current Flood Hub production model `mean_embedding_forecast_lstm` ([repo](https://github.com/google-research/flood-forecasting), [Gauch et al. 2025](https://hess.copernicus.org/articles/29/6221/2025/)). Masked-mean embeddings tolerate missing forcing sources, which suits Ecuador's gappy data. No Ecuador Caravan extension exists, and no pre-trained production weights were found (**unverified absence**). The goal is a model INAMHI controls, trained on Ecuadorian gauges.
+OpenHydroNet (`google-research/flood-forecasting`, package `googlehydrology`, Apache-2.0, a NeuralHydrology fork open-sourced 2026-06-03 per a search summary) contains `mean_embedding_forecast_lstm`, the Flood Hub production model as of December 2025 ([repo](https://github.com/google-research/flood-forecasting), [Gauch et al. 2025](https://hess.copernicus.org/articles/29/6221/2025/)). Masked-mean embeddings tolerate missing forcing sources, which suits Ecuador's gappy data. No Ecuador Caravan extension exists, and no pre-trained production weights were found (**unverified absence**). The goal is a model INAMHI controls, trained on Ecuadorian gauges.
 
 | Step | Work | Owner | Window | Output |
 |---|---|---|---|---|
 | 1 | Data agreement: daily discharge for INAMHI's 43 automatic level/discharge stations and historical series (≈182 stations exist in the BYU/GEOGloWS validation archive; collaborating with BYU is the fastest route) | LI + DL | Request 2026-10; data by 2027-03 | Signed annex; licence for a published extension **(to confirm)** |
-| 2 | Basin delineation from MERIT Hydro (`MERIT/Hydro/v1_0_1`) or HydroBASINS level 12; QC upstream area within ±20% of INAMHI metadata | FL | 2027-03 → 04 | Basin polygons + QC report |
-| 3 | Build **Caravan-EC** with the Caravan Earth Engine scripts ([wiki](https://github.com/kratzert/Caravan/wiki/Extending-Caravan-with-new-basins)): attributes (HydroATLAS), ERA5-Land forcings, streamflow | FL | 2027-04 | `gs://ectwin-commons-prod-bulk/hindcast/caravan-ec/` |
-| 4 | Forcings: CHIRPS, IMERG, ERA5-Land per basin (EE); **WN2 2022 → present** per basin as the forecast forcing (matches operations); MultiMet (`gs://caravan-multimet/v1.1/…`) for existing Caravan basins | FL | 2027-04 → 05 | Zarr forcings |
-| 5 | `run convert-caravan`; base model from `example-configs/floodhub-settings-config.yml` on Caravan + GRDC-Caravan (22,372 basins) + CARAVAN-COL + Caravan-EC | FL | 2027-05 | Base checkpoint (≈10–50 L4-h, US$4–21 estimate) |
-| 6 | `run finetune` on Ecuador basins, training only `static_embedding_fc` and `head` as in the [tutorial](https://colab.research.google.com/github/google-research/flood-forecasting/blob/main/tutorial/OpenHydroNet_Tutorial.ipynb) | FL | 2027-06 | EC checkpoint (≈1–4 L4-h, < US$2 on Spot, estimate) |
+| 2 | Basin delineation from MERIT Hydro (`MERIT/Hydro/v1_0_1`) or HydroBASINS level 12; QC upstream area within ±20% of INAMHI metadata | FL | 2027-05 (early May; after the peak-season freeze) | Basin polygons + QC report |
+| 3 | Build **Caravan-EC** with the Caravan Earth Engine scripts ([wiki](https://github.com/kratzert/Caravan/wiki/Extending-Caravan-with-new-basins)): attributes (HydroATLAS), ERA5-Land forcings, streamflow | FL | 2027-05 | `gs://ectwin-commons-prod-bulk/hindcast/caravan-ec/` |
+| 4 | Forcings: CHIRPS, IMERG, ERA5-Land per basin (EE); **WN2 2022 → present** per basin as the forecast forcing (matches operations); MultiMet (`gs://caravan-multimet/v1.1/…`) for existing Caravan basins | FL | 2027-05 → 06 | Zarr forcings |
+| 5 | `run convert-caravan`; base model from `example-configs/floodhub-settings-config.yml` on Caravan + GRDC-Caravan (≈22,372 basins together) + the community CARAVAN-COL (Colombia) extension + Caravan-EC | FL | 2027-06 | Base checkpoint (≈10–50 L4-h on Spot `g2-standard-4` at US$0.424/h ≈ US$4–21, estimate) |
+| 6 | `run finetune` on Ecuador basins, training only `static_embedding_fc` and `head` as in the [tutorial](https://colab.research.google.com/github/google-research/flood-forecasting/blob/main/tutorial/OpenHydroNet_Tutorial.ipynb) | FL | 2027-07 | EC checkpoint (≈1–4 L4-h, < US$2 on Spot, estimate) |
 | 7 | `run evaluate`: leave-basins-out, Mar–Jun 2023 and Jan–May 2026 held out | FL + LI | 2027-07 | Scores in `verification_scores` |
 | 8 | `run infer` daily in Commons after the 00Z cycle, forcing = WN2 member mean + WN3 mean precipitation + observed rain; `river_status.source='OHN_EC'`, maturity G1 | FL | From 2027-08 (shadow) | Rows in `river_status` |
 
 ```bash
-# models/openhydronet/  — commands from the OpenHydroNet README
+# models/openhydronet/  — commands from the OpenHydroNet README (arguments of convert-caravan to confirm)
 run convert-caravan --config-file configs/ec_convert.yml
 run train     --config-file configs/ec_base.yml          # copy of floodhub-settings-config.yml + Caravan-EC basins
 run finetune  --config-file configs/ec_finetune.yml      # freeze all but static_embedding_fc and head
@@ -809,12 +817,12 @@ run infer     --config-file configs/ec_operational.yml   # daily, Cloud Run job 
 
 | Source | Access | Grid / members | Issue | Licence for derived products | GCP copy | Role |
 |---|---|---|---|---|---|---|
-| **C3S multi-system** | CDS API `seasonal-monthly-single-levels` (DOI 10.24381/cds.68dd14c3), `seasonal-original-single-levels`, `seasonal-postprocessed-single-levels` ([CDS](https://cds.climate.copernicus.eu/datasets/seasonal-monthly-single-levels)) | 1° **(unverified)**; SEAS5 51/25; others vary; hindcast 1993–2016 common | Monthly; official 13th 12 UTC **(unverified)** | Catalogue says `other`; commercial derived use likely with attribution **(unverified; legal review)** | None | Core multi-model |
+| **C3S multi-system** | CDS API `seasonal-monthly-single-levels` (DOI 10.24381/cds.68dd14c3), `seasonal-original-single-levels`, `seasonal-postprocessed-single-levels` ([CDS](https://cds.climate.copernicus.eu/datasets/seasonal-monthly-single-levels)) | 1° **(unverified)**; SEAS5 51 forecast / 25 hindcast members, others vary **(unverified)**; common hindcast 1993–2016 | Monthly; official 13th 12 UTC **(unverified)** | Catalogue says `other`; commercial derived use likely with attribution **(unverified; legal review)**; `pending_review` in [05 §5.2](./05-data-catalog.md#52-matrix-of-attribution-and-obligations-for-the-main-sources) | None (Google `weather-dl` can pull it into GCS) | Core multi-model |
 | **SEAS5 / EC46 open data** | `ecmwf-opendata` stream `mmsa`→`mmsf` exists in the client; **the Google and AWS mirrors hold no seasonal or 46-day folders** (checked 2026-09-28) | — | SEAS5 ≈5th **(unverified)** | CC BY 4.0 if served | `gs://ecmwf-open-data` (15-day only) | Use if/when served; else SEAS5 via C3S (`originating_centre=ecmwf`, `system=51`) |
 | **NMME** | CPC FTP `https://ftp.cpc.ncep.noaa.gov/NMME/…` and IRI Data Library `SOURCES/.Models/.NMME/…` | 1°; CFSv2, CanESM5, GEM5.2_NEMO, GFDL-SPEAR, NASA_GEOS5v2, NCAR_CESM1 | ≈8–9th **(unverified)** | Likely yes **(unverified)** | None (`s3://noaa-nmme-pds` is empty) | Second multi-model |
 | **CFSv2** | `s3://noaa-cfs-pds` (anonymous); member 01 of each cycle runs 9 months (`monthly_grib_01/…avrg.grib.grb2`); members 02–04 at 00Z about one season; 06/12/18Z 45 days | Grid **(to confirm)**; lagged ensemble ≈120 members from 30 days | Daily; 00Z monthly files 07:31–08:52 UTC | Public domain | AWS only | Daily-updated seasonal; sub-seasonal |
 | **GEFSv12** | `gs://gfs-ensemble-forecast-system/gefs.YYYYMMDD/00/atmos/pgrb2ap5/` (`gec00`, `gep01`–`gep30`, `geavg`, `gespr`) to **f840 (35 days)** | 0.5°; 31 | Daily | Public domain | GCS | Weeks 3–5 |
-| **GloFAS seasonal** | EWDS `cems-glofas-seasonal` (§4.7) | 0.05°; 51 | ≈6–8th (sources disagree) | Review | None | Seasonal river anomalies |
+| **GloFAS seasonal** | EWDS `cems-glofas-seasonal` (§4.7) | 0.05°; 51 (SEAS5-driven) | ≈6–8th (sources disagree) | GloFAS ToS; `pending_review` | None | Seasonal river anomalies |
 | **CPC RONI** | `https://www.cpc.ncep.noaa.gov/data/indices/RONI.ascii.txt`; probabilities and strengths HTML tables ([probabilities](https://cpc.ncep.noaa.gov/products/analysis_monitoring/enso/roni/probabilities.php)) | Index | Second Thursday | Public domain **(unverified)** | — | Hydro-energy pathway (D4b) |
 | **ENFEN ICEN** | `http://met.igp.gob.pe/datos/ICEN.txt`; comunicados ([ENFEN](https://enfen.imarpe.gob.pe/comunicados/)) | Niño 1+2, ERSSTv5, 1991–2020 | Monthly / comunicados | Public | — | Coastal pathway (D4a) |
 | **CN-ERFEN** | Reports (PDF) via INOCAR | — | Irregular (≈1–2 weeks in Aug–Sep 2026) | Official | — | Official national statement, verbatim |
@@ -861,7 +869,7 @@ grib = requests.get(f, headers={"Range": f"bytes={start}-{end}"}, timeout=60).co
 
 ### 5.3 ENSO indices
 
-**Niño 1+2 (and Niño 3.4) from OISST in Earth Engine.** This reconciles conflicting published values (reported Niño 1+2 for the same week ranged +3.4 to +4.7 °C, [01 §3.2](./01-context-el-nino-ecuador.md#32-why-the-twin-shows-icen-and-roni-and-absolute-sst)) by computing, with dataset and climatology stated, the **conventional**, **relative** and **absolute** values. Asset `NOAA/CDR/OISST/V2_1` (0.25°, daily from 1981-09; preliminary lags 1 day, final 14 days; bands `sst`, `anom`, `ice`, `err`; property `status`) ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/NOAA/NOAA_CDR_OISST_V2_1.jsonnet)). The 0.01 scale factor and the base period of the native `anom` band are **(to confirm)**, so we build our own 1991–2020 climatology (ICEN's base period) once.
+**Niño 1+2 (and Niño 3.4) from OISST in Earth Engine.** This reconciles conflicting published values (weekly Niño 1+2 values reported within September 2026 ranged from +3.4 to +4.7 °C, [01 §3.2](./01-context-el-nino-ecuador.md#32-why-the-twin-shows-icen-and-roni-and-absolute-sst)) by computing, with dataset and climatology stated, the **conventional**, **relative** and **absolute** values. Asset `NOAA/CDR/OISST/V2_1` (0.25°, daily from 1981-09; preliminary lags 1 day, final 14 days; bands `sst`, `anom`, `ice`, `err`; property `status`) ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/NOAA/NOAA_CDR_OISST_V2_1.jsonnet)). The 0.01 scale factor and the base period of the native `anom` band are **(to confirm)**, so we build our own 1991–2020 climatology (ICEN's base period) once.
 
 ```python
 # pipelines/commons/ingest_enso/oisst_boxes.py
@@ -924,7 +932,7 @@ Method (seasonal and sub-seasonal; `seasonal-calibrate` step of `ingest-seasonal
 4. **Hindcast terciles.** `APPROX_QUANTILES` over hindcast members 1993–2016 (SEAS5 from 1981, CFSv2 from 1982, which include 1982-83) → `commons_internal.seasonal_hc_terciles`.
 5. **Calibration.** Extended logistic regression (ELR) per canton against observed CHIRPS v3 terciles (canton series from EE `reduceRegions`), falling back to quantile mapping where the hindcast is too short.
 6. **Combination.** Equal weights across systems (C3S style) by default; RPSS-weighted when at least 20 hindcast years exist for all systems.
-7. **Skill masks.** Per canton, system, init month and lead: RPSS and reliability stored in `commons_internal.seasonal_skill`; cantons with **RPSS ≤ 0 are greyed out** (*sin habilidad demostrada*) and never feed triggers. A second RPSS computed on **El Niño hindcast years only** is shown alongside, with its (wide) confidence interval.
+7. **Skill masks.** Per canton, system, init month and lead: RPSS and reliability stored in `commons_internal.seasonal_skill`; cantons with **RPSS ≤ 0, or no skill row, are greyed out** (*sin habilidad demostrada*) and never feed triggers. A second RPSS computed on **El Niño hindcast years only** is shown alongside, with its (wide) confidence interval.
 8. **Publish** calibrated multi-model rows (`system='C3S_MME'`) and per-system rows to `commons_pub.seasonal_canton` with `rpss` and `hindcast_period`; province values are area-weighted from cantons.
 
 ```sql
@@ -946,10 +954,11 @@ SELECT m.system, m.init, m.lead_months, m.dpa_canton,
        ANY_VALUE(s.rpss) AS rpss, ANY_VALUE(s.rpss_el_nino) AS rpss_el_nino
 FROM m
 JOIN `ectwin-commons-prod.commons_internal.seasonal_hc_terciles` AS h
-  USING (system, lead_months, dpa_canton)
-LEFT JOIN `ectwin-commons-prod.commons_internal.seasonal_skill` AS s
-  USING (system, lead_months, dpa_canton)
-WHERE h.init_month = EXTRACT(MONTH FROM @init_date) AND s.init_month = EXTRACT(MONTH FROM @init_date)
+  ON  h.system = m.system AND h.lead_months = m.lead_months AND h.dpa_canton = m.dpa_canton
+  AND h.init_month = EXTRACT(MONTH FROM @init_date)
+LEFT JOIN `ectwin-commons-prod.commons_internal.seasonal_skill` AS s  -- filter in ON, so a missing
+  ON  s.system = m.system AND s.lead_months = m.lead_months AND s.dpa_canton = m.dpa_canton  -- skill row
+  AND s.init_month = EXTRACT(MONTH FROM @init_date)                   -- keeps the canton (rpss NULL)
 GROUP BY 1, 2, 3, 4;
 ```
 
@@ -965,11 +974,11 @@ NeuralGCM (`gs://neuralgcm`, weights CC BY-SA 4.0) is atmosphere-only, needs ext
 
 ## 6. Nowcasting and observation fusion
 
-WeatherNext arrives ≈7–8 h after init (§3.5), so the next 0–6 h at any wall-clock time are covered only by observations and extrapolation.
+WeatherNext arrives ≈7–8 h after init (§3.5), so at any wall-clock time its guidance for the next 0–6 h is already a 7–20 h forecast. The 0–6 h band is therefore led by observations and extrapolation, with WN3 as background only.
 
 | Source | Identifier | Resolution / cadence | Latency | Notes |
 |---|---|---|---|---|
-| INAMHI stations | Visor API `…/api_visor/station_data_automaticas/get_data_hour/`, `…/get_precipitation/` ([config](https://github.com/jorgessanchez7/Global_Forecast_Validation/blob/master/Ecuador/INAMHI/config.py)) | ≈1,858 stations (≈202 transmitting); hourly | ≈2.5 h observed; river levels can arrive 9–24 days late | 92-day window; 1 request / 5 min; archived by `ingest-inamhi-stations` |
+| INAMHI stations | Visor API `…/api_visor/station_data_automaticas/get_data_hour/`, `…/get_precipitation/` ([config](https://github.com/jorgessanchez7/Global_Forecast_Validation/blob/master/Ecuador/INAMHI/config.py)) | ≈1,858–1,894 stations catalogued (≈202 automatic stations transmitting, 43 with level or discharge); hourly | ≈2.5 h observed; river levels can arrive 9–24 days late | 92-day window; 1 request / 5 min; archived by `ingest-inamhi-stations` |
 | IMERG V07 | EE `NASA/GPM_L3/IMERG_V07` | 0.1°, 30 min | Hours **(to confirm per run)** | **No IMERG Final after 2025-09-30** (V08 transition) ([STAC](https://storage.googleapis.com/earthengine-stac/catalog/NASA/NASA_GPM_L3_IMERG_V07.json)); Early/Late only for 2026 |
 | GSMaP v8 | EE `JAXA/GPM_L3/GSMaP/v8/operational` | 0.1°, hourly | Near real time (`status=provisional`) | JAXA acknowledgement required |
 | Oya | EE `projects/global-precipitation-nowcast/assets/global_estimation` ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/global-precipitation-nowcast/projects_global-precipitation-nowcast_assets_global_estimation.jsonnet)) | 5 km, 30 min from 2004 | **(to confirm)** | Geostationary-infrared precipitation; "competitive with IMERG Final"; CC BY 4.0; whether the asset also holds forecast steps is **(to confirm)** |
@@ -993,7 +1002,7 @@ INAMHI *advertencias* and station readings are official data and always appear a
 
 ## 7. Bias correction and downscaling
 
-**Truth hierarchy.** (1) INAMHI stations and gauges; (2) CHIRPS v3 (0.05°, 1981 →; EE `UCSB-CHC/CHIRPS/V3/DAILY_SAT` and `DAILY_RNL` per the catalog source of 2026-09-28 ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/UCSB-CHC/UCSB-CHC_CHIRPS_V3_DAILY_SAT.jsonnet)); another brief found it absent, so the CHC COGs `data.chc.ucsb.edu/products/CHIRPS/v3.0/daily/final/{rnl|sat}/cogs/YYYY/` are the fallback); (3) IMERG Late as provisional truth only; ERA5 never as the sole truth. INAMHI normals 1985–2015 (GeoServer) anchor climatological thresholds.
+**Truth hierarchy.** (1) INAMHI stations and gauges; (2) CHIRPS v3 (0.05°, 1981 →; EE `UCSB-CHC/CHIRPS/V3/DAILY_SAT` and `DAILY_RNL` per the catalog source of 2026-09-28 ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/UCSB-CHC/UCSB-CHC_CHIRPS_V3_DAILY_SAT.jsonnet)); a check of the EE catalogue listing found it absent, so the CHC COGs `data.chc.ucsb.edu/products/CHIRPS/v3.0/daily/final/{rnl|sat}/cogs/YYYY/` are the fallback); (3) IMERG Late as provisional truth only; ERA5 never as the sole truth. INAMHI normals 1985–2015 (GeoServer) anchor climatological thresholds.
 
 | Target | Method | Stratification | Training | Validation | Phase |
 |---|---|---|---|---|---|
@@ -1045,9 +1054,9 @@ CREATE OR REPLACE FUNCTION `ectwin-commons-prod.commons_internal.qm_map`(
   END));
 ```
 
-In Query B (§3.6) the corrected member total is `qm_map(tp24_mm, p.model_quantiles, p.obs_quantiles)` joined on the cell's elevation class, month and lead day, applied **per 24 h window before summing** to 72 h. Parameters change only through the release gate in §9.
+In the production variant of Query B (§3.6), each member's cell total is first formed per 24 h window (4 six-hourly steps), corrected with `qm_map(tp24_mm, p.model_quantiles, p.obs_quantiles)` joined on the cell's elevation class, month and lead day, and only then summed to 72 h; the Query B listing above shows the uncorrected path. Parameters change only through the release gate in §9.
 
-**Downscaling.** WN3 already provides 0.05° station-head temperature and IMERG-calibrated 0.1° precipitation, which removes most of the need for downscaling at 0–15 days. For ≈1 km products (urban AOIs, small Andean cantons) the twin uses statistical methods (`xsdba` 0.7.0 or `ibicus` 1.3.1, Apache-2.0) against CHIRPS v3 0.05° and INAMHI stations. CorrDiff has no Ecuador checkpoint and a full training run would cost ≈US$2k–9k on Spot A100s (estimate, [PhysicsNeMo README](https://github.com/NVIDIA/physicsnemo/blob/main/examples/weather/corrdiff/README.md)); it is deferred. Seasonal 1° products are not downscaled to parishes: they are reported per canton with the cell-provenance note (§5.4).
+**Downscaling.** WN3 already provides 0.05° station-head temperature and IMERG-calibrated 0.1° precipitation, which removes most of the need for downscaling at 0–15 days. For ≈1 km products (urban AOIs, small Andean cantons) the twin uses statistical methods (`xsdba` 0.7.0 or `ibicus` 1.3.1, Apache-2.0) against CHIRPS v3 0.05° and INAMHI stations. CorrDiff has no Ecuador checkpoint; full training takes "thousands of GPU hours" ([PhysicsNeMo README](https://github.com/NVIDIA/physicsnemo/blob/main/examples/weather/corrdiff/README.md)), ≈US$2k–9k on Spot A100s (estimate); it is deferred. Seasonal 1° products are not downscaled to parishes: they are reported per canton with the cell-provenance note (§5.4).
 
 ---
 
@@ -1059,11 +1068,11 @@ In Query B (§3.6) the corrected member total is `qm_map(tp24_mm, p.model_quanti
 | Fallback exceedance | same table, `model='IFS'` | same | same | IFS ENS open data | When WeatherNext late > init + 10 h | `open` | same, labelled *modelo de respaldo* |
 | Internal quantities | `commons_internal.wn2_parish_72h`, `…wn3_parish_hourly` | parish × init | p10/p50/p90, expected totals | WN3, WN2 | per cycle | `wn_internal` | M-module computation only |
 | Tenant AOI forecasts | `ectwin.aoi_forecast_summary`, `ectwin.aoi_exceedance` | AOI × init | as above + fan charts (own WN approval) | Tenant linked datasets | 09:25/15:25/21:25/03:25 UTC | `wn_internal` inside tenant | Tenant users |
-| Observed precipitation | `commons_pub.obs_precip_h3` | H3 × 30 min | 1–72 h accumulations | IMERG, GSMaP, Oya, INAMHI | 30 min (P2) | `open` (per source attribution) | M2, M4, verification |
-| Flood API snapshots | `floodhub_status_snapshots`, `floodhub_significant_events`, `floodhub_flash_floods` | gauge/event × snapshot | severity, trend, thresholds, polygons | Flood API | 4×/day (3-hourly N2+); events daily | CC BY 4.0 (commercial wording to confirm; tables move to `commons_pub_nc` if it is non-commercial) | M1, M2, M10 |
-| River status | `commons_pub.river_status` | reach/gauge × issue × lead day | `prob_rp2/5/10/20`, severity, consensus | GloFAS, GEOGloWS BC, Flood API, OHN-EC | daily (Flood API 4×) | `open` / `nc` per source | M1, M3, triggers |
-| ENSO | `commons_pub.enso_indices` | index × period × issuer | Niño 1+2/3.4 (conventional, relative, absolute), RONI, ICEN, SOI, SLA, probabilities | CPC, ENFEN, CN-ERFEN, OISST, BoM, XRO | daily/weekly/monthly | `open` | ENSO panel, analogs, coupling indicator |
-| Seasonal / sub-seasonal | `commons_pub.seasonal_canton` | canton × system × target | terciles, anomaly, RPSS | C3S, NMME, CFSv2, GEFS, GloFAS seasonal | monthly (C3S), daily (CFSv2), weekly (GEFS) | `open` (C3S licence review) | M5, M7, M8, triggers TR-02 |
+| Observed precipitation | `commons_pub.obs_precip_h3` | H3 × 30 min | 1–72 h accumulations | IMERG, GSMaP, Oya, INAMHI | 30 min (P2) | `open` for the satellite blend (per-source attribution; JAXA acknowledgement for GSMaP); station-corrected fields follow the INAMHI MoU (`agreement`: derived output only if the MoU allows) | M2, M4, verification |
+| Flood API snapshots | `floodhub_status_snapshots`, `floodhub_significant_events`, `floodhub_flash_floods` (in `commons_pub_nc` until cleared, [05 §5.2](./05-data-catalog.md#52-matrix-of-attribution-and-obligations-for-the-main-sources)) | gauge/event × snapshot | severity, trend, thresholds, polygons | Flood API | 4×/day (3-hourly N2+); events twice daily (07:00, 09:15) | `pending_review`, treated as `nc` (source CC BY 4.0; "primarily non-commercial" wording unverified) | M1, M2, M10 |
+| River status | `commons_pub.river_status` | reach/gauge × issue × lead day | `prob_rp2/5/10/20`, severity, consensus | GloFAS, GEOGloWS BC, Flood API, OHN-EC | daily (Flood API 4×) | Per source: `open` (GEOGloWS forecasts, GRRR thresholds), `nc` (GEOGloWS return periods), `pending_review` (GloFAS, Flood API); consensus fields take the most restrictive input (rule G-05 of [05](./05-data-catalog.md)) | M1, M3, triggers |
+| ENSO | `commons_pub.enso_indices` | index × period × issuer | Niño 1+2/3.4 (conventional, relative, absolute), RONI, ICEN, SOI, SLA, probabilities | CPC, ENFEN, CN-ERFEN, OISST, BoM, XRO | daily/weekly/monthly | `open` (CPC, OISST-derived, XRO CC BY 4.0); `official_verbatim` for ENFEN and CN-ERFEN values | ENSO panel, analogs, coupling indicator |
+| Seasonal / sub-seasonal | `commons_pub.seasonal_canton` | canton × system × target | terciles, anomaly, RPSS | C3S, NMME, CFSv2, GEFS, GloFAS seasonal | monthly (C3S), daily (CFSv2), weekly (GEFS) | `open` for CFSv2 and GEFS rows (public domain); `pending_review` for C3S, `C3S_MME` and GloFAS seasonal rows until legal review; NMME per legal review | M5, M7, M8, triggers TR-02 |
 | Verification | `commons_pub.verification_scores` | model × product × region × lead × period | CRPS(S), BSS, ROC, POD/FAR, reliability | Archived products vs INAMHI, CHIRPS v3 | daily (N1+), weekly, monthly | `open` / `wn_historic_ccby` | Confidence indicator, public scores |
 | Tiles and national JSON | `tiles/forecast/<product>/<init>/`, `national/<init>/*.json` | — | Derived from the rows above | — | per cycle | inherits | PWA, PDFs |
 
@@ -1183,6 +1192,9 @@ gantt
   Schema check WeatherNext              :c5, 06:45, 06:50
   section Rivers
   GEOGloWS INAMHI                       :r1, 00:30, 00:45
+  GEOGloWS INAMHI                       :r1b, 06:30, 06:45
+  GEOGloWS INAMHI                       :r1c, 12:30, 12:45
+  GEOGloWS INAMHI                       :r1d, 18:30, 18:45
   Flood API status                      :r2, 01:15, 01:25
   Flood API events and flash floods     :r3, 07:00, 07:10
   Flood API status                      :r4, 07:15, 07:25
@@ -1267,11 +1279,11 @@ These extend [03-architecture.md](./03-architecture.md) and should be adopted th
 1. **WeatherNext schema and listings.** WN3 listing id; whether WN3 BigQuery/EE tables hold members or only statistics (sources conflict); WN2 member column name; exact `forecast` struct field names; whether WN3 interim runs are in BigQuery or only EE/GCS (`fc-interim` depends on it). Owner FL, by FS-M1.0.
 2. **Service accounts and terms.** Whether a Commons job service account (not the approved human account) may query the linked datasets under the terms, and whether per-parish percentiles count as retrievable. Ask weathernext@google.com (FL + DPO), before 2026-10-30.
 3. **WN2 real-time threshold** (1 h vs 48 h) and **WN2 archive provenance** (operational at the time vs regenerated by a checkpoint trained through 2024). The second decides whether 2022–2024 skill scores are in-sample (§3.9).
-4. **Vertex WN2 cost and inputs.** H100 throughput and Vertex price per run; which near-real-time analysis can feed `--input_data_gcs_dir` with all 13 levels; whether SST perturbations persist through the forecast (§3.10).
+4. **Vertex WN2 cost and inputs.** H100 throughput, per-replica start-up time and Vertex price per run (machine part, Spot management fee, DWS price); how much preemptible H100 quota (16 or 64 GPUs) the tenant can get; whether `--forecast_init_time` accepts pre-2024 dates when custom inputs are given (decides whether 2023 can be a test case); which near-real-time analysis can feed `--input_data_gcs_dir` with all 13 levels; whether SST perturbations persist through the forecast (§3.10).
 5. **EC46 and SEAS5 open data.** The spine lists EC46 open data; the briefs could not confirm it on any mirror (§5.1). Until confirmed, GEFS + CFSv2 serve sub-seasonal. Tension noted, spine not changed.
-6. **Flood Forecasting API.** Approval date for the Commons project; Ecuador coverage (verified vs virtual gauges, inundation maps); the "primarily non-commercial" wording, which decides `commons_pub` vs `commons_pub_nc`; loop vertex field names and orientation.
+6. **Flood Forecasting API.** Approval date for the Commons project; Ecuador coverage (verified vs virtual gauges, inundation maps); the "primarily non-commercial" wording, which decides whether the snapshots can leave `commons_pub_nc` (`pending_review` per [05 §5.2](./05-data-catalog.md#52-matrix-of-attribution-and-obligations-for-the-main-sources)); the severity-to-threshold mapping; loop vertex field names and orientation.
 7. **INAMHI inputs.** Official *umbrales* table and climatological day (12Z–12Z assumed); historical discharge series for the Caravan extension and its publication licence; whether INAMHI's own GEOGloWS corrections can be reused.
 8. **CHIRPS v3 in Earth Engine.** One brief found the `UCSB-CHC/CHIRPS/V3/*` assets in the catalog source, another found none; the COG fallback is ready either way.
 9. **Seasonal licences and dates.** C3S redistribution of derived canton tables for non-European centres; official C3S release day; GloFAS seasonal horizon on EWDS (123 days) vs the 7-month web product.
-10. **Schema alignment across documents.** [01 §11.3](./01-context-el-nino-ecuador.md) sketches `ectwin_commons.enso_indicators`; this document follows [03](./03-architecture.md) (`commons_pub.enso_indices`) with three added columns. The parish SQL sketch in [03 §4.2](./03-architecture.md#42-forecast-cycle) groups and joins on a `GEOGRAPHY` column and uses a subquery for the clip; BigQuery does not allow the former and may not prune clusters with the latter, so it should adopt the `cell_id` key and literal clip of §3.6.
+10. **Schema alignment across documents.** [01 §11.3](./01-context-el-nino-ecuador.md) sketches `ectwin_commons.enso_indicators`; this document follows [03](./03-architecture.md) (`commons_pub.enso_indices`) with three added columns. The parish SQL sketch in [03 §4.2](./03-architecture.md#42-forecast-cycle) groups and joins on a `GEOGRAPHY` column and uses a subquery for the clip; BigQuery does not allow the former and may not prune clusters with the latter, so it should adopt the `cell_id` key and literal clip of §3.6. Step 8 of 03 §4.2 names the deterministic EE asset `ECMWF/NRT_FORECAST/IFS/OPER` for the fallback, whereas probabilities need IFS ENS (`enfo`) from `gs://ecmwf-open-data` (§3.12). Line B4 of [09](./09-cost-model.md) quotes this document's earlier ≈340 GB scan for the WN2 hindcast extract; the corrected upper estimate is ≈0.69 TB (§3.9).
 11. **Oya nowcast content and satellite latencies.** Whether the Oya EE asset contains forecast steps, and the operational latency of IMERG Early/Late, GSMaP NRT and Oya over Ecuador, which set the fusion cadence (§6).
