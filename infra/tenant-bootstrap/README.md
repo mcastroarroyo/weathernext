@@ -226,6 +226,7 @@ The full list, with validation rules, is in [`variables.tf`](./variables.tf). An
 | `enable_vertex`, `enable_batch` | `false` | T3 |
 | `enable_managed_pipelines` | `false` | [§3.1](#31-project-level-roles-held-by-ectwin-runner) |
 | `enable_flood_forecasting_api` (`--enable-flood-api`) | `false` | Only if you have your own allow-listed access. National snapshots come from Commons. |
+| `enable_artifact_registry` (`--enable-artifact-registry`) | `false` | T3, Phase 2–3: enables Artifact Registry for the tenant repository `ectwin-custom` (custom-model images, [02 FR-078](../../docs/02-users-requirements-ux.md)) |
 | `scratch_retention_days`, `nearline_after_days`, `nearline_prefixes`, `soft_delete_retention_days` | `7`, `90`, `[runs/, reports/, evidence/, exports/, raw/]`, `7` | `tiles/`, `curated/` and `catalog/` stay STANDARD because they are read often; NEARLINE charges US$0.01/GiB for retrieval |
 | `app_origins` (`--app-origins`) | `[]` | Bucket CORS for signed-URL range reads from the web app **(domain to confirm)** |
 | `listing_subscriptions`, `linked_dataset_ids` | `{}`, `[]` | Second pass ([§7 step 5](#step-5--analytics-hub-subscriptions-linked-datasets)) |

@@ -138,6 +138,12 @@ variable "enable_flood_forecasting_api" {
   default     = false
 }
 
+variable "enable_artifact_registry" {
+  description = "T3 (Phase 2-3): enable artifactregistry.googleapis.com so the tenant can keep custom-model images in its own repository ectwin-custom (FR-078). Off by default."
+  type        = bool
+  default     = false
+}
+
 variable "extra_services" {
   description = "Additional APIs to enable, e.g. [\"dlp.googleapis.com\"] for Cloud DLP pseudonymisation (D18)."
   type        = list(string)
