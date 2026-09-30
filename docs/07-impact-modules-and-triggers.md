@@ -42,7 +42,7 @@ This document specifies how *Gemelo Digital Ecuador – El Niño* (GDE-Niño) tu
 | IP-05 | **Libraries and emulators before live 2D runs** (D13) | The SFINCS scenario library (M3) is built once on Batch Spot. Operations interpolate it. Live runs happen only when a gate says the situation is outside the library. |
 | IP-06 | **Rules layers where data are thin** | Where no calibrated process model exists (banana, cacao, shrimp, leptospirosis), modules use documented, tenant-editable rule tables (Firestore `rules/{ruleId}`, FR-052) instead of pretending to precision. |
 | IP-07 | **Numbers in code, Jev for qualitative fusion** (D16) | Every numeric input is bucketised in code before a Jev call. Jev (`jev-1.13.0`) never sets a number, never publishes and never activates. |
-| IP-08 | **Probabilities and analogs, not single values** (D3) | Modules publish p10/p50/p90 or exceedance probabilities and show the analog envelope (1982-83, 1997-98, 2015-16, 2017, 2023-24). |
+| IP-08 | **Probabilities and analogs, not single values** (D3) | Modules publish p10/p50/p90 of impact quantities (people, cases, days-to-threshold, flooded area) or exceedance probabilities, never quantiles of raw WeatherNext variables ([13](./13-governance-legal-risk.md) N-4), and show the analog envelope (1982-83, 1997-98, 2015-16, 2017, 2023-24). |
 | IP-09 | **Licence-aware outputs** (D15) | WeatherNext-derived impacts are Non-Retrievable Value-Added products ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)). NC inputs go only to `commons_pub_nc`. GPL models ship as separate source-built images. |
 | IP-10 | **No module goes public without a validation report** (FR-034) | Release gates G0–G3 (§10). Misses and false alarms are published (CTX-16). |
 
@@ -167,7 +167,7 @@ Internal (non-published) helper tables used by the SQL in this document: `common
 
 ### 2.6 Licence class of impact outputs
 
-Every output row carries `licence_class` from the vocabulary of [05 §5.1](./05-data-catalog.md) (`open`, `sa`, `nc`, `wn_nrva`, `wn_historic_ccby`, plus the internal `agreement` and `pending_review`). The build job computes it from the input classes recorded in `commons_pub.layer_registry`: a derived layer **inherits the most restrictive input class** unless legal records an exception (rule G-05 in [05](./05-data-catalog.md)). Consequences for this document (D15):
+Every output row carries `licence_class` from the vocabulary of [05 §5.1](./05-data-catalog.md) (`open`, `sa`, `nc`, `wn_nrva`, `wn_historic_ccby`, `official_verbatim`, `agreement` (internal inputs only), `pending_review` (gated as `nc`; `commons_pub_nc` only after G-12) and the broker-side `wn_retrievable` (real-time or retrievable WeatherNext data, never published; `wn_internal` in [06](./06-forecast-model-stack.md), refined in [13](./13-governance-legal-risk.md))). The build job computes it from the input classes recorded in `commons_pub.layer_registry`: a derived layer **inherits the most restrictive input class** unless legal records an exception (rule G-05 in [05](./05-data-catalog.md)). Consequences for this document (D15):
 
 - Inputs that are still `pending_review` in [05 §5.1](./05-data-catalog.md) are gated as `nc` until cleared. For impact modules these are GloFAS (`glofas_*`), the Flood Forecasting API (`floodhub_api`), Copernicus DEM GLO-30, JRC Global Surface Water, MSP gazettes (`msp_gacetas_*`), MAG layers (`mag_*`), CELEC/CENACE operational data (`energy_system_ops`) and the IOC/UHSLC tide-gauge series (`ioc_uhslc_sealevel`) behind `SLA_GYE`. Until they clear, products that use them (M1 river impacts, M2 and M3 through the gauge-based sea-level anomaly, the M3 library, M5, M6 cluster cards, M7, the M8 card) are published only through `commons_pub_nc`, and only after the interim check of rule G-12 in [05](./05-data-catalog.md). Commercial tenants see versions built without the uncleared inputs where one exists (for example the IMP-01 risk index with the uncleared river components shown as *sin datos*).
 - `nc` inputs (GEOGloWS return periods, FABDEM, Global Flood Database) never reach `commons_pub`.
@@ -184,12 +184,12 @@ Costs are estimates for Commons (monthly, list price before free tiers) or per t
 
 | ID | Module | Pathway | Main method | Plane | Cadence | First release | Commons cost | Tenant cost | Owner |
 |---|---|---|---|---|---|---|---|---|---|
-| M1 | Riverine flood | Coast (+Amazon rivers) | Flood API, GloFAS, GEOGloWS exceedance → RP footprints × exposure; LISFLOOD-FP in tenant | P2/P3 | 4×/day + daily GloFAS | P1 (status × exposure) | ≈US$1–4/month | LISFLOOD-FP <US$0.50/event | IM, FL |
+| M1 | Riverine flood | Coast (+Amazon rivers) | Flood API, GloFAS, GEOGloWS exceedance → RP footprints × exposure; LISFLOOD-FP in tenant | P2/P3 | 4×/day + daily GloFAS | P1 (status × exposure) | ≈US$1/month (≈US$2 peak) | LISFLOOD-FP <US$0.50/event | IM, FL |
 | M2 | Pluvial/urban, tide-blocked drainage | Coast | Rules: hourly rain probability × tide + sea-level anomaly blocking; SFINCS pluvial slices | P2/P3 | Weekly calendar; hourly in event mode | P1 (calendar) | <US$1/month | ≈US$0 | IM |
 | M3 | Coastal compound flooding | Coast | SFINCS scenario library (4 sites × 280 runs) + emulator | P2/P3 | Campaign; matching each cycle | P2 | US$60–360 one-off; ≈US$1–2/month | Live ensemble US$2–8 | IM, HYD |
 | M4 | Landslides | Coast/Sierra slopes | LHASA 2.1.1 with WN3 forcing; SNGR/IIGE susceptibility; TRIGRS in tenant | P2/P3 | Daily | P2 | ≈US$4/month | TRIGRS <US$0.10/run | IM |
-| M5 | Agriculture | Coast | Sentinel-1 flood duration × crop map × damage functions; disease-weather indices; AquaCrop-OSPy | P2/P3 | Per S1 pass; per cycle; campaigns | P1 (exposure) | US$0–90/season (EE) | Cents per run | AGR |
-| M6 | Aquaculture and fisheries | Coast/ocean | Farm-cluster rules; S1 flooded ponds; marine heatwaves | P2/P3 | Per cycle; daily | P1 (basic card) | Shared with M5; ≈US$1/month | Cents | AGR |
+| M5 | Agriculture | Coast | Sentinel-1 flood duration × crop map × damage functions; disease-weather indices; AquaCrop-OSPy | P2/P3 | Per Sentinel-1 pass; per cycle; campaigns | P1 (exposure) | US$0–90/season (EE) | Cents per run | AGR |
+| M6 | Aquaculture and fisheries | Coast/ocean | Farm-cluster rules; Sentinel-1 flooded ponds; marine heatwaves | P2/P3 | Per cycle; daily | P1 (basic card) | Shared with M5; ≈US$1/month | Cents | AGR |
 | M7 | Health | Coast + Amazon | Dengue DLNM-INLA; leptospirosis exposure; malaria suitability; facilities | P2 | Weekly | P1 (gazette data) | <US$1/month | — | EPI |
 | M8 | Hydropower and drought | Andes/Amazon | Reservoir watch; SPI/SPEI/VHI; LSTM inflow + reservoir balance | P2/P3 | Daily; monthly | P1 (card) | ≈US$1/month | LSTM training <US$5 | FL, IM |
 | M9 | Transport and critical infrastructure | Both | Segment/bridge hazard; RA2CE isolation; facility exposure | P2/P3 | Per cycle | P1 (static exposure) | ≈US$1/month | Minutes | IM, DL |
@@ -363,14 +363,14 @@ def strip(points: pd.DataFrame, tide: pd.DataFrame, sla_m: float, rain: pd.DataF
 
 **Purpose and users.** Estuarine and coastal cities where river discharge, rain, astronomical tide and the El Niño sea-level anomaly act together. ERFEN reported a +40 cm coastal anomaly in August 2026, against +42 to +47 cm in 1997-98 ([Primicias](https://www.primicias.ec/sociedad/fenomeno-elnino-ecuador-ascenso-nivel-mar-inundaciones-erosion-playas-calentamiento-oceano-invierno-131023/)). The value could not be checked against La Libertad gauge data (IOC `lali`, UHSLC 091), so the CMEMS `zos` band is used as a gridded cross-check. Users: P01–P04, P09, P11, CNA. Decisions: LT-20, LT-21, LT-25, LT-06.
 
-**Sites.**
+**Sites.** Sites are keyed by slug (bulk path `sfincs-library/<site>/`, model ID `EMU-SFINCS-<site>` in [14 §8.1](./14-verification-and-validation.md)).
 
 | Site | Area | Rivers | Tide reference |
 |---|---|---|---|
-| S1 `guayaquil-duran` | Guayaquil, Durán, Samborondón, lower Daule and Babahoyo | Daule, Babahoyo, Guayas | `gyer`, `puna` |
-| S2 `machala` | Machala, Puerto Bolívar, El Guabo | Jubones and estuary channels | Puerto Bolívar **(gauge to confirm)** |
-| S3 `portoviejo-chone` | Portoviejo; Chone to the Bahía de Caráquez estuary | Portoviejo, Chone | Manta/Bahía **(to confirm)** |
-| S4 `esmeraldas` | Esmeraldas city and river mouth | Esmeraldas, Teaone | Esmeraldas **(to confirm)** |
+| `guayaquil-duran` | Guayaquil, Durán, Samborondón, lower Daule and Babahoyo | Daule, Babahoyo, Guayas | `gyer`, `puna` |
+| `machala` | Machala, Puerto Bolívar, El Guabo | Jubones and estuary channels | Puerto Bolívar **(gauge to confirm)** |
+| `portoviejo-chone` | Portoviejo; Chone to the Bahía de Caráquez estuary | Portoviejo, Chone | Manta/Bahía **(to confirm)** |
+| `esmeraldas` | Esmeraldas city and river mouth | Esmeraldas, Teaone | Esmeraldas **(to confirm)** |
 
 **Model build (per site).**
 
@@ -405,7 +405,7 @@ validation_lhs: {n: 40, seed: 20261001}
 
 - **Level A (Phase 2).** Multilinear interpolation of maximum depth per output cell over the 4-D grid. It is exact at grid nodes and costs milliseconds.
 - **Probabilistic mode.** Each cycle draws 1,000 forcing samples: rain from the 64 WN2 members (WN3 members in Phase 2 after the cost spike, [03 ADR-29](./03-architecture.md)), discharge from GloFAS members at the matched outlets (each member's peak converted to a return period with GloFAS's own reanalysis thresholds, so that GloFAS and GRRR climatologies are not mixed on the `discharge_rp` axis), tide from the predicted high water in the window, and SLA from the gauge residual ± its 30-day standard deviation. The emulator gives `P(depth > 0.15 m)` per cell and the expected number of people flooded. This is a Non-Retrievable Value-Added product and can be published.
-- **Out-of-library guard.** If any forcing lies outside the grid (for example SLA > 60 cm or Q > RP25), the product is flagged *fuera de biblioteca* and the S4 gate decides whether a live 50-member SFINCS ensemble runs (Commons campaign for national sites, tenant T3 for private AOIs).
+- **Out-of-library guard.** If any forcing lies outside the grid (for example SLA > 60 cm or Q > RP25), the product is flagged *fuera de biblioteca* and the Jev S4 gate decides whether a live 50-member SFINCS ensemble runs (Commons campaign for national sites, tenant T3 for private AOIs).
 
 ```python
 # models/sfincs/emulator.py  (M3, level A)
@@ -461,7 +461,7 @@ flowchart LR
   E1 --> E2
   E2 --> O1["P flood per cell and people exposed"]
   E2 --> G1{"Inside library?"}
-  G1 -->|no| G2["S4 gate - live SFINCS ensemble"]
+  G1 -->|no| G2["Jev S4 gate - live SFINCS ensemble"]
   G1 -->|yes| O1
   O1 --> O2["sfincs_match, tiles, risk index h_coast"]
 ```
@@ -472,7 +472,7 @@ flowchart LR
 
 **Validation.** Aug 2026 tidal-flood events; Segura EP `Zonas_Inundables`; Sentinel-1 flood maps including EMSR870 (March 2026); Google inundation history; GRRR 1998 peaks as an upper-bound sanity check (Daule record 1,989.5 m³/s on 1998-04-02 against RP100 of 2,526). A "what if 1998 happened again" run is a scenario, not verification. **Emulator acceptance (estimate targets):** on the 40 held-out runs, CSI of the 0.15 m extent ≥ 0.80 and depth MAE ≤ 0.10 m in built-up cells.
 
-**Phase.** Phase 0: DEM, bathymetry, LiDAR and IDF requests (PT, by 2026-10-16). S1 library G1 by **2026-12-15**; S2 and S3 by **2027-01-15**; S4 by **2027-01-31**; probabilistic mode G2 by **2027-02-15** (IM, HYD). Phase 3: wave setup with SnapWave driven by `COPERNICUS/MARINE/WAV/ANFC_0_083DEG_PT3H`, Delft3D FM propagation of SLA into the Gulf of Guayaquil, and salinity intrusion.
+**Phase.** Phase 0: DEM, bathymetry, LiDAR and IDF requests (PT, by 2026-10-16). `guayaquil-duran` library G1 by **2026-12-15**; `machala` and `portoviejo-chone` by **2027-01-15**; `esmeraldas` by **2027-01-31**; probabilistic mode G2 by **2027-02-15** (IM, HYD). Phase 3: wave setup with SnapWave driven by `COPERNICUS/MARINE/WAV/ANFC_0_083DEG_PT3H`, Delft3D FM propagation of SLA into the Gulf of Guayaquil, and salinity intrusion.
 
 ### 4.4 M4 Landslides (*movimientos en masa*)
 
@@ -772,7 +772,7 @@ Flags never change official information. Only `F_OBS` changes the level (a floor
 | `F_LOWSKILL` | Published CRPSS < 0.1 or BSS < 0 for that region and lead ([14](./14-verification-and-validation.md)) | Confidence *baja* |
 | `F_COUPLING_LOW` | Coupling indicator *bajo* ([01 §11.2](./01-context-el-nino-ecuador.md)) | Shows the 2023-24 message from [02 §8.4](./02-users-requirements-ux.md) |
 | `F_DIVERGE` | WN3, WN2 and IFS probabilities differ by more than 0.3 | Confidence *baja* (as in [14 §5.3](./14-verification-and-validation.md)) |
-| `F_OUT_OF_LIBRARY` | M3 forcing outside the library | `h_coast` shown as *indeterminado*; S4 gate invoked |
+| `F_OUT_OF_LIBRARY` | M3 forcing outside the library | `h_coast` shown as *indeterminado*; Jev S4 gate invoked |
 
 ### 5.3 Computation and schema
 
@@ -969,7 +969,7 @@ WITH e AS (
     AND evaluated_at BETWEEN @start AND @end
   GROUP BY 1
 ), o AS (
-  SELECT DISTINCT event_date AS d FROM ectwin.observed_events            -- materialised from SITREP, COE2, S1
+  SELECT DISTINCT event_date AS d FROM ectwin.observed_events            -- materialised from SITREP, COE2, Sentinel-1
   WHERE event_def = @event_def
     AND event_date BETWEEN DATE(@start) AND DATE_ADD(DATE(@end), INTERVAL @lead_max_days + @tolerance_days DAY)
 ), x AS (
@@ -1074,7 +1074,7 @@ flowchart TB
   OUT --> LOG["decision_log and audit"]
 ```
 
-Scenario runs use the existing `POST /v1/t/{tid}/runs` endpoint ([03 §6.2](./03-architecture.md)) with pipeline names `analog`, `sfincs`, `wn2-scenario` or `lever`: a dry-run estimate first, the cost-confirmation text (disclaimer D10 in [02 §8.5](./02-users-requirements-ux.md), not spine decision D10) above US$1 (FR-066), and Owner approval above the tenant cap.
+Scenario runs use the existing `POST /v1/t/{tid}/runs` endpoint ([03 §6.2](./03-architecture.md)) with pipeline names `analog`, `sfincs`, `wn2-scenario` or `lever`: a dry-run estimate first, the cost-confirmation text (disclaimer D10 in [02 §8.5](./02-users-requirements-ux.md), not spine decision D10) above the tenant's tier threshold (FR-066 default US$1; T3 US$5, [04 §8.2](./04-identity-tenancy-byo-gcp.md)), and Owner approval above the tenant cap.
 
 ```json
 {"pipeline": "wn2-scenario", "idempotency_key": "4f1c-…",
@@ -1134,7 +1134,7 @@ FR-038 acceptance: at least two levers validated with a partner. Target: pumps w
 | IMP-04 | *Franja horaria de riesgo compuesto* | M2 | same | P03 | hourly (event) | open † ‡ | P2 | LT-25 |
 | IMP-05 | *Escenarios de inundación costera* | M3 | `sfincs_scenarios`, `sfincs_match`, COG/PMTiles | All (view) | per cycle | open or sa † | P2 | FR-035 |
 | IMP-06 | *Deslizamientos: amenaza diaria* | M4 | `landslide_hazard_parish` | MIT, COEs | daily | `wn_nrva` | P2 | LT-27 |
-| IMP-07 | *Cultivos expuestos y afectados* | M5 | `agri_impact_parish` | P06, P11 | per S1 pass | open † | P1 (exposure), P2 | LT-04, LT-30 |
+| IMP-07 | *Cultivos expuestos y afectados* | M5 | `agri_impact_parish` | P06, P11 | per Sentinel-1 pass | open † | P1 (exposure), P2 | LT-04, LT-30 |
 | IMP-08 | *Índice Sigatoka / pudrición* | M5 | `crop_disease_index` | P10, Acorbanec | per cycle | `wn_nrva` | P2 | LT-15 |
 | IMP-09 | *Ficha camaronera por clúster* | M6 | `aquaculture_cluster_risk` | P10, CNA | per cycle | open or sa † | P1 (basic), P2 | LT-14 |
 | IMP-10 | *Olas de calor marino* | M6 | `marine_heat_index` | CGREG, IPIAP | daily | open | P3 | LT-32 |
@@ -1179,7 +1179,7 @@ gantt
   Triggers and evidence packs :tr1, 2026-12-01, 2027-01-31
   M8 drought lite :m8b, 2026-11-23, 2026-12-15
   section Phase 3
-  M8 full hydro module :m8c, 2027-05-01, 2027-06-30
+  M8 full hydro module :m8c, 2027-05-03, 2027-06-30
   WN2 perturbed SST engine :wn2, 2027-06-01, 2027-07-31
   Levers validated with partners :lv, 2027-06-01, 2027-09-15
 ```
@@ -1210,13 +1210,13 @@ Estimates, list prices before free tiers (Cloud Run US$0.000018/vCPU-s, [pricing
 | M10 grid + joins | P2 | US$2–8 (EE) | <US$1 | <US$1 |
 | Jev S3 parish escalation (1,200 parishes × 4 cycles × 30 days = 144,000/month; upper bound, INEC lists 1,041 parishes; `d1_3` only) | P2 | — | ≈US$13 | ≈US$13 |
 | Jev S4 run gates (150 basins × 4 cycles × 30 days = 18,000/month) | P2 | — | ≈US$2 | ≈US$2 |
-| **Commons impact total** | P2 | **≈US$70–395** | **≈US$23–46** | **≈US$26–74** |
+| **Commons impact total** | P2 | **≈US$70–394** | **≈US$23–46** | **≈US$26–74** |
 | Tenant: LISFLOOD-FP event | P3 | — | <US$0.50 per event | — |
 | Tenant: live SFINCS 50-member ensemble | P3 | — | US$2–8 per event | — |
 | Tenant: WN2 perturbed run | P3 | — | US$2.3–4.6 per run (TPU self-run); Vertex GPU to measure | — |
 | Tenant: AquaCrop campaign | P3 | — | ≈US$1–2 per campaign (≈US$1.4 for the national design in M5) | — |
 
-Arithmetic for the totals (estimate): one-off = M1 US$8–16 + M3 US$60–360 + M9 up to US$10 + M10 US$2–8 ≈ US$70–394; normal month = S3 13 + S4 2 + M4 4 + M3 1–2 + M1 1 + M6 ocean 1 + M9 1 + M5/M6 Sentinel-1 0–18 + the four sub-US$1 lines (M2, M7, M8, M10: 0–4) ≈ US$23–46; peak month = the same with M1 ≈2, M2 ≈1, M3 ≈2, three sub-US$1 lines (0–3) and Sentinel-1 0–45 ≈ US$26–74. Jev costs are the S3/S4 lines of the W4/W5 workloads in [08](./08-ai-decision-layer-jev.md) (US$13.31 and US$1.89).
+Arithmetic for the totals (estimate): one-off = M1 US$8–16 + M3 US$60–360 + M9 up to US$10 + M10 US$2–8 ≈ US$70–394; normal month = Jev S3 13 + Jev S4 2 + M4 4 + M3 1–2 + M1 1 + M6 ocean 1 + M9 1 + M5/M6 Sentinel-1 0–18 + the four sub-US$1 lines (M2, M7, M8, M10: 0–4) ≈ US$23–46; peak month = the same with M1 ≈2, M2 ≈1, M3 ≈2, three sub-US$1 lines (0–3) and Sentinel-1 0–45 ≈ US$26–74. Jev costs are the S3/S4 lines of the W4/W5 workloads in [08](./08-ai-decision-layer-jev.md) (US$13.31 and US$1.89).
 
 The Commons impact total fits within the Commons envelope of US$100–300/month ([09](./09-cost-model.md)) together with ingestion and forecast processing. EE figures fall to US$0 if the Commons project qualifies for a noncommercial tier (in force since 2026-04-27: Community 150 EECU-h/month, Contributor 1,000 EECU-h/month with a billing account, Partner by application); whether operational government use in Ecuador qualifies as noncommercial is **unverified** (see [09](./09-cost-model.md)).
 
@@ -1230,8 +1230,8 @@ Details of metrics and reference data are in [14-verification-and-validation.md]
 |---|---|---|---|---|
 | G0 Prototype | Code runs on historical data | Notebook, data licences checked, manifest | IM | Team only |
 | G1 Experimental | Runs operationally in Commons or a pilot tenant | Hindcast on at least one past season; methodology page draft; D1 labels; cost measured | IM + FL | Pilot tenants, marked *experimental* |
-| G2 Validated | Meets the acceptance targets in §4 | Validation report with misses and false alarms; partner technical review (INAMHI, MSP, MAG, CELEC, Segura EP as relevant); DPO check for M7 | IM + FL + partner | All users |
-| G3 GA | Stable for a full season | One full season of verification; runbook in [11](./11-operations-runbook.md); on-call ownership | IM + SRE | All users, SLO applies |
+| G2 Validated | Meets the acceptance targets in §4 | Validation report with misses and false alarms; partner technical review (INAMHI, MSP, MAG, CELEC, Segura EP as relevant); DPO check for M7 | IM + FL + partner; promotion decided by the TAG in its CTC session on the MRC's recommendation (independent validation for Tier A models, [13 §9.2](./13-governance-legal-risk.md), [14 §8.5](./14-verification-and-validation.md)) | All users |
+| G3 GA | Stable for a full season | One full season of verification; runbook in [11](./11-operations-runbook.md); on-call ownership | CTC confirms the season of verification; IM + SRE sign | All users, SLO applies |
 
 Regressions: if a published verification score falls below its G2 threshold for 4 consecutive weeks, the product drops to G1 and the UI says so.
 
@@ -1273,5 +1273,5 @@ Regressions: if a published verification score falls below its G2 threshold for 
 12. **Flood API commercial use.** The "primarily non-commercial" wording is unverified; until confirmed, Flood API-derived indicators are not used in commercial tenants' parametric products.
 13. **WN2 custom initial conditions.** Input format, analysis source for near-real-time inits, and whether SST is evolved or persisted (Phase 3 spike).
 14. **LHASA and TRIGRS licences.** LHASA ships a LICENSE.pdf whose terms were not read; the TRIGRS licence on code.usgs.gov is unconfirmed.
-15. **Licence reviews on the critical path (DPO with legal).** GloFAS, the Flood Forecasting API, Copernicus DEM GLO-30, JRC Global Surface Water, IOC/UHSLC sea level, MSP gazettes, MAG layers and CELEC/CENACE data are `pending_review` in [05 §5.1](./05-data-catalog.md). Until they clear, IMP-01–05, IMP-07, IMP-09 and IMP-11–13 reach commercial tenants only in reduced form (§2.6, §8). GloFAS and Flood API clearance should be decided before the Phase 1 exit (2026-11-27).
+15. **Licence reviews on the critical path (DPO with legal).** GloFAS, the Flood Forecasting API, Copernicus DEM GLO-30, JRC Global Surface Water, IOC/UHSLC sea level, MSP gazettes, MAG layers and CELEC/CENACE data are `pending_review` in [05 §5.1](./05-data-catalog.md). Until they clear, IMP-01–05, IMP-07, IMP-09 and IMP-11–13 reach commercial tenants only in reduced form (§2.6, §8). GloFAS and Flood API clearance must be decided by 2026-11-13 (GOV-M6 / LG-4 in [13](./13-governance-legal-risk.md)), ahead of the Phase 1 exit (2026-11-27).
 16. **Canton count for campaigns.** Cost arithmetic uses 221 cantons (research brief) while the INEC reference files list 226 canton codes and 1,041 parishes; use the official INEC DPA list for all runs (DL).
