@@ -316,66 +316,74 @@ Kind regards,
 
 > GDE-Niño (*Gemelo Digital Ecuador – El Niño*) is a public-interest decision-support platform for Ecuador's response to the very strong El Niño now under way; peak impacts are expected from November 2026 to March 2027, and river floods and flash floods are among the main hazards. We request Flood Forecasting API access for one Google Cloud project, ectwin-commons-prod, which serves national government partners (SNGR and INAMHI), emergency operations committees, municipal governments and humanitarian users. A single scheduled job would take snapshots of gauges, flood status, significant events and flash-flood polygons for Ecuador and its transboundary basins four times a day. It would use fewer than about 60 requests per run, far below the 200-requests-per-minute quota. Snapshots would be archived for verification, combined with GloFAS and GEOGloWS, and shown with Google Flood Hub attribution beneath official warnings, never as alerts. Municipal governments would read the results through the platform instead of each applying for its own key. We will share what we learn about Ecuador coverage, including gauges that the API does not serve, with the Flood Forecasting team.
 
-**Direct request through a Google contact.** If someone on the programme has a Google contact, send this in addition to (not instead of) the waitlist form, so the request is on record in both places:
+**Direct request through a Google contact (institution-focused, testing project).** For the testing phase the programme uses a Wursta test project (`<TEST_PROJECT_ID>`, **to confirm**) instead of `ectwin-commons-prod`. Access is granted per project, so production will need the access extended to the production projects later (question 1 in the e-mail). Confirm that each institution agrees to be named before sending.
 
 ```text
-Subject: Flood Forecasting API access for Ecuador's El Niño response (GDE-Niño)
+Subject: Flood Forecasting API access for three Ecuadorian public institutions (El Niño 2026-27)
 
 Hi <GOOGLE_CONTACT_FIRST_NAME>,
 
-Thank you for offering to help. I'd like to request access to the Google
-Flood Forecasting API for GDE-Niño (Gemelo Digital Ecuador – El Niño), a
-decision-support platform for Ecuador's response to the very strong El Niño
-now under way. Ecuador's El Niño committee (CN-ERFEN) declared the event
-active on 28 August, peak impacts are expected from November 2026 to
-March 2027, and we plan to go live on 27 November 2026, before the coastal
-rainy season peaks.
+Thank you for offering to help. Ecuador is entering a very strong El Niño:
+the national El Niño committee (CN-ERFEN) declared the event active on
+28 August, and the heaviest rain and river flooding are expected from
+November 2026 to March 2027. Wursta is supporting three Ecuadorian public
+institutions that need better flood information for this season, and I'd
+like to request Flood Forecasting API access to serve them.
+
+What each institution needs
+- Ministerio de Infraestructura y Transporte (MIT, mit.gob.ec) runs the
+  national road network. It needs river-flood and flash-flood forecasts
+  along state roads and at bridges a few days ahead, to pre-position
+  machinery and temporary bridges and to plan road closures.
+- GAD Municipal de Otavalo (otavalo.gob.ec) is an Andean municipality in
+  Imbabura province. It needs early notice of rising rivers and flash floods
+  in the town and its rural parishes, to protect neighbourhoods, water
+  supply and access roads.
+- ECU 911 (ecu911.gob.ec), Ecuador's integrated emergency service, needs to
+  see where flooding is forecast or under way, to anticipate surges in
+  emergency calls, pre-position rescue resources and route incidents to
+  the right responders.
 
 How we would use the API
-- One scheduled job in a single Google Cloud project would take snapshots of
-  Ecuador's gauges, flood status, significant events and flash-flood
-  forecasts four times a day, including the basins Ecuador shares with
-  Colombia and Peru. That is fewer than about 60 requests per run, well
-  within the 200 requests/minute quota.
-- Because the API keeps no history, we would archive the snapshots and
-  combine them with GloFAS and GEOGloWS to produce parish-level flood
-  probabilities and exposure for emergency operations committees (COE),
-  municipalities and ministries.
-- The platform issues no alerts. Official warnings from Ecuador's national
-  risk agency (SNGR) and hydromet service (INAMHI) are shown verbatim above
-  our products, and Flood Hub data carries attribution (CC BY 4.0). We are
-  proposing data-sharing agreements with both agencies.
-- Municipal governments would read the results through the platform instead
-  of each applying for its own key.
+- One scheduled job in a single Google Cloud project would read gauges,
+  flood status, significant events and flash-flood forecasts for Ecuador,
+  including the basins it shares with Colombia and Peru, four times a day.
+  That is fewer than about 60 requests per run, well within the
+  200 requests/minute quota.
+- Results would be matched to each institution's roads, bridges, parishes
+  and service areas. Because the API keeps no history, we would archive the
+  snapshots so each institution can review past events.
+- These are decision-support products. Official alerts in Ecuador come from
+  the national risk agency (SNGR), and hydrometeorological warnings from
+  INAMHI; those remain the reference. Flood Hub data would carry
+  attribution (CC BY 4.0).
 
 Project details
-- Google Cloud project ID: ectwin-commons-prod
-  (project number: <PROJECT_NUMBER>)
-- Organisation: <ORGANISATION>, <COUNTRY>
-- Technical contact: <CONTACT_NAME>, <CONTACT_EMAIL>
-- Waitlist form submitted on <DATE> from <ACCOUNT>
+- Google Cloud project: <PROJECT_NAME> (ID: <PROJECT_ID>,
+  number: <PROJECT_NUMBER>), a Wursta project used for testing before
+  production
+- Contact: <SENDER_NAME>, <SENDER_EMAIL>
+- Waitlist form submitted on <DATE> (if applicable)
 
-It would also help to confirm:
-1. Whether derived products (parish-level probabilities, not raw gauge
-   data) may be shown to signed-in users that include private companies,
-   such as insurers and exporters, or whether a non-commercial restriction
-   applies.
-2. Current coverage in Ecuador: how many quality-verified gauges there are,
-   and whether inundation maps are issued for them.
-3. Whether querying flood status with cutoffTime (back to 2025-08-01) is the
-   recommended way to build a history, and whether the Google Runoff
-   Reanalysis & Reforecast (GRRR) will be extended beyond 2023.
-4. Whether INAMHI, the national hydromet service, could get its own access,
-   so the national authority holds a key directly.
-5. Whether a temporary quota increase is possible during flood peaks, if we
-   need one.
+It would also help to know:
+1. Whether access on this project can be used to serve these three public
+   institutions, and later extended to each institution's own Google Cloud
+   project for production.
+2. Whether any non-commercial terms apply, given that we are delivering this
+   for public institutions.
+3. Current coverage in Ecuador: how many quality-verified gauges there are,
+   whether any serve Imbabura province (Otavalo), and whether the flash-flood
+   forecasts cover Otavalo and the main road corridors.
+4. Whether inundation maps are issued for Ecuadorian gauges.
+5. Whether a temporary quota increase is possible during flood peaks, if
+   needed.
 
 I'd be glad to set up a short call. Thank you very much.
 
 Best regards,
 <SENDER_NAME>
-<ROLE>, <ORGANISATION>
-<EMAIL> · <PHONE>
+<ROLE>, Wursta
+<SENDER_EMAIL> · <PHONE>
 ```
 
 **On approval.** First reply to the approval e-mail:
