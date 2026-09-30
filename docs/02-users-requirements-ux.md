@@ -133,7 +133,7 @@ Access tiers T0–T4 are defined in §3.
 **P11 — Risk analyst, insurer or bank**
 - *Goals.* Portfolio exposure by branch and *parroquia*, planning for a surge in claims, loan relief. For scale: BanEcuador lent US$634.2M to 131,199 clients in 2025 ([source](https://github.com/espinosacodes/makers-builder-case)).
 - *Pains.* Needs evidence packs it can reproduce. Licence obligations.
-- *Tier.* T3 commercial; uses the API.
+- *Tier.* T3 commercial (T2 is enough for portfolio uploads, FR-077 and J10). Uses BI tools on the tenant's BigQuery until the API (FR-069) arrives in Phase 2.
 
 **P12 — University researcher**
 - *Goals.* Download subsets, build models (e.g. OpenHydroNet), contribute to verification.
@@ -164,9 +164,9 @@ Access tiers T0–T4 are defined in §3.
 
 1. **Sign-in is required** for everything except the landing page, legal notices, the status page and help (spine D6). Users sign in with Google or with email and password through Identity Platform. TOTP MFA is required for tenant Owners, Admins and *Firmantes técnicos* (FR-002).
 2. **A signed-in user with no connected project is at T0.** They get a read-only national view built only from Commons products.
-   - **Nothing is saved on any server** (spine D6). Language and the first-run acknowledgement are kept only in the browser. The only central record is the Identity Platform account itself (uid, email), which exists for every signed-in user.
+   - **Nothing the user creates is saved on any server** (spine D6). Language, view state and the per-device first-run acknowledgement are kept only in the browser. The only central records are: the Identity Platform account (uid, email); the ToU/privacy acceptance (version, time; [13](./13-governance-legal-risk.md) L-14); broker request logs keyed by a 16-char uid hash, kept 30 days; aggregated, pseudonymised performance telemetry (NFR-016); and anything the user chooses to send through support, grievance or LOPDP-rights channels ([13 §2.10, §8.4](./13-governance-legal-risk.md)). The full inventory is in [04 §12.2](./04-identity-tenancy-byo-gcp.md).
    - Every save action instead shows disclaimer D9 (§8.5).
-3. **Saving anything requires the organisation's own GCP project** (spine D7). This covers views, AOIs, rules, subscriptions, reports, runs and audit logs, all stored in that tenant project. Organisations should use org-owned projects so the workspace survives staff changes and the post-29 Nov 2026 change of authorities.
+3. **Saving anything requires the organisation's own GCP project** (spine D7). This covers sessions, views, AOIs, rules, subscriptions, reports, runs, custom models and audit logs, all stored in that tenant project. Organisations should use org-owned projects so the workspace survives staff changes and the post-29 Nov 2026 change of authorities. Exact storage layout: [03 §5.6](./03-architecture.md) (Firestore), [03 §5.4](./03-architecture.md) (BigQuery), [03 §5.1](./03-architecture.md) (bucket); data inventory and residency: [04 §12.2–12.3](./04-identity-tenancy-byo-gcp.md); disconnect and export: [04 §10](./04-identity-tenancy-byo-gcp.md).
 4. **Connecting a project** uses paths A–D (spine D8). The broker's only standing permission is `roles/iam.serviceAccountTokenCreator` on `ectwin-runner@<TENANT_PROJECT>.iam.gserviceaccount.com`. The mechanics are in [04-identity-tenancy-byo-gcp](./04-identity-tenancy-byo-gcp.md).
 5. **The tenant pays for its own usage.** The quota project is always the tenant project. Cost guardrails are installed at bootstrap (monthly budget with 50/90/100% alerts, BigQuery `QueryUsagePerDay` custom quota, Earth Engine daily EECU cap), and the broker sets `maximumBytesBilled` on every job it issues. Budgets alert but do not cap spend ([budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets)), and custom quotas and the EECU cap are approximate, so tenants are told they can still overspend.
 
@@ -204,7 +204,8 @@ Cost figures are the plan's anchors (see [09-cost-model](./09-cost-model.md)), b
 | Own WeatherNext linked datasets (fan charts, percentiles) | No | Optional | Yes | Yes, plus full ensembles from Requester-Pays GCS | As profile |
 | Own Flood Forecasting API key | No | No | Optional | Optional | No |
 | Trigger dashboards and evidence packs | No | View | Yes | Yes | As profile |
-| 2D hydraulic runs, WN2 on-demand scenarios, custom models | No | No | No | Yes | No (unless sponsor agrees) |
+| Portfolio exposure upload (FR-077) | No | No | Yes | Yes | As profile |
+| 2D hydraulic runs, WN2 on-demand scenarios, custom models (FR-078) | No | No | No | Yes | No (unless sponsor agrees) |
 | Downloads | Daily PDFs | Parish/AOI tables | Plus bulk to own bucket | Plus bulk and full ensembles | As profile |
 | REST / OGC API | No | Read, limited | Yes | Yes | As profile |
 | Proyecto y costos dashboard; audit log | No | Yes | Yes | Yes | Yes (sponsor view too) |
@@ -217,24 +218,24 @@ Cost figures are the plan's anchors (see [09-cost-model](./09-cost-model.md)), b
 | Content | T0 | T1–T4 without own WeatherNext approval | Tenants with own WeatherNext approval |
 |---|---|---|---|
 | WeatherNext-derived exceedance probabilities and indices (Non-Retrievable Value-Added Service) | Yes, with required citation | Yes | Yes |
-| WeatherNext data relating to times ≥1 h in the past (historic, CC BY 4.0) | Aggregates only (product choice) | Aggregates only (product choice) | Yes |
-| Real-time WeatherNext data (relating to times <1 h ago or in the future, which includes every forecast still valid ahead): raw fields, percentiles, point time series | No | No | Yes, for internal use. Anything shared or exported carries a copy of the terms, the "Legally Binding Terms of Use" text file, "Copyright 2024-6 Google LLC" and a notice of modifications (disclaimer D5) |
-| Layers licensed CC BY-NC(-SA) (e.g. GEOGloWS return periods) | View only (noncommercial platform context; no download) | Only on a noncommercial profile | Only on a noncommercial profile |
+| WeatherNext data relating to times ≥1 h in the past (WN3), or ≥48 h for WN2 until Google confirms ([06 §3.4](./06-forecast-model-stack.md), [13 §3.2](./13-governance-legal-risk.md)) (historic, CC BY 4.0) | Aggregates only (product choice) | Aggregates only (product choice) | Yes |
+| Real-time WeatherNext data (relating to times <1 h ago or in the future, which includes every forecast still valid ahead; for WN2, <48 h ago until Google confirms): raw fields, percentiles, point time series | No | No | Yes, for internal use. Anything shared or exported carries a copy of the terms, the "Legally Binding Terms of Use" text file, "Copyright 2024-6 Google LLC" and a notice of modifications (disclaimer D5) |
+| Layers licensed CC BY-NC(-SA) (e.g. GEOGloWS return periods), and layers whose licence is `pending_review` | No — T0 has no licence profile and is treated as commercial (fail closed, [13](./13-governance-legal-risk.md) LP-06); commercial-safe substitutes are shown (e.g. GRRR return periods, CC BY 4.0) | Only on a noncommercial profile | Only on a noncommercial profile |
 
-Source: [WeatherNext terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf) §§2–4; licence gating spine D15. The terms treat colouring, sub-setting or recombining time steps, parameters or model runs as *unmodified* data, not a value-added service, so a coloured map of raw real-time fields is never shown at T0.
+Source: [WeatherNext terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf) §§2–4, as read in [06 §3.4](./06-forecast-model-stack.md); licence gating spine D15, with a missing or unknown licence profile treated as commercial ([05](./05-data-catalog.md) G-02, [13](./13-governance-legal-risk.md) LP-06). The terms treat colouring, sub-setting or recombining time steps, parameters or model runs as *unmodified* data, not a value-added service, so a coloured map of raw real-time fields is never shown at T0.
 
 ### 3.4 Roles within a tenant
 
-App roles are stored in the tenant's Firestore (`members/{uid}`); whether the platform registry also mirrors a coarse role for routing is an open reconciliation with [04](./04-identity-tenancy-byo-gcp.md) (§11). App roles need no GCP IAM. Only the person who runs the bootstrap needs IAM roles on the tenant project: project Owner is simplest, the minimum set is in [04 §5.3.3](./04-identity-tenancy-byo-gcp.md), and creating the budget needs project Owner/Editor or a billing-account role.
+The four access roles (Owner, Admin, *Analista*, *Lector/a*; codes `owner`, `admin`, `analyst`, `reader`) are authoritative in the platform registry membership and mirrored in the tenant's Firestore `members/{uid}`, together with the *Firmante técnico* and *Auditor/a* capability flags. The flags are not roles: *Firmante técnico* combines with *Analista* or above, *Auditor/a* with any role ([04 §3.3–§3.4](./04-identity-tenancy-byo-gcp.md)). App roles need no GCP IAM. Only the person who runs the bootstrap needs IAM roles on the tenant project: project Owner is simplest, the minimum set is in [04 §5.3.3](./04-identity-tenancy-byo-gcp.md), and creating the budget needs project Owner/Editor or a billing-account role.
 
 | Role (UI) | Can do | MFA |
 |---|---|---|
 | *Propietario/a* (Owner) | Connect or disconnect the project, set the organisation profile, manage members, approve costly runs. **At least 2 per institutional tenant.** | Required |
 | *Administrador/a* | Members, integrations (email, WhatsApp, SMS), budgets view, retention | Required |
 | *Analista* | AOIs, rules, runs within the cost cap, report drafts, downloads | Optional |
-| *Firmante técnico* (a flag combinable with *Analista* or above) | Signs off reports and evidence packs before they are shared outside the tenant | Required to sign |
+| *Firmante técnico* (flag, combinable with *Analista* or above) | Signs off reports and evidence packs before they are shared outside the tenant | Required to sign |
 | *Lector/a* | View, download PDFs and cards, comment | Optional |
-| *Auditor/a* | Read the audit log and evidence packs | Recommended |
+| *Auditor/a* (flag, combinable with any role) | Read the audit log and evidence packs | Recommended |
 
 ---
 
@@ -382,6 +383,8 @@ sequenceDiagram
 7. **First run (FR-053).** Results are ready ≤15 min later. The Mi área dashboard shows, for example, "Próximos 7 días: Nivel 2 de 4 – Moderado · Acceso vía E25 (example): Nivel 3 de 4".
 8. **Privacy (FR-054).** The polygons are organisational assets. No personal location is stored.
 
+**Variant: banana or cacao exporter, port logistics.** A banana or cacao exporter (P10) groups its packing stations and the access roads to Puerto Bolívar or Guayaquil into one AOI group and applies the *bananera* template (FR-052). It adds a route rule on the M9 road-segment layer `ectwin_commons.road_segment_risk` (hazard class per segment and lead; static exposure in Phase 1, per-cycle risk from Phase 2, ODbL share-alike; [07](./07-impact-modules-and-triggers.md) IMP-15). The Mi área dashboard then shows, for example, "Ruta a Puerto Bolívar: 2 tramos en Nivel 3 de 4 en las próximas 72 h", which feeds shipping and harvest scheduling ([01](./01-context-el-nino-ecuador.md) LT-23).
+
 ### J6 — Research download (university)
 
 **Actor:** P12, on a noncommercial university project with research credits.
@@ -391,7 +394,7 @@ sequenceDiagram
    - a WeatherNext 2 archive subset over the 2023-24 El Niño for the Ecuador bbox (lon −92.1…−75.1, lat −5.1…1.7, spine D13). Those fields relate to past times, so they are CC BY 4.0, but reading them from the BigQuery or Earth Engine assets still needs the researcher's own approved WeatherNext access (per Google account, §3.3).
 2. They choose a format: GeoParquet, NetCDF or Zarr.
 3. **Cost preview.** The platform shows dry-run bytes and the estimated cost, and warns that the **BigQuery sandbox rejects queries on the upper-bound estimate**, suggesting one column per query or enabling billing with a daily quota.
-4. **Run.** The job runs in the tenant with `maximumBytesBilled` and exports to `gs://<TENANT_PROJECT>-ectwin/exports/<date>/`.
+4. **Run.** The job runs in the tenant with `maximumBytesBilled` and exports to `gs://<TENANT_PROJECT>-ectwin/exports/<export_id>/`.
 5. **Package.** It includes `LICENSES.txt`, attribution strings, the WeatherNext "Legally Binding Terms of Use" file and copyright line where applicable, dataset versions and suggested citation text.
 6. **API alternative.** The same query can be copied as SQL or as an API call (FR-069).
 
@@ -412,9 +415,22 @@ sequenceDiagram
 
 ### J9 — Invited member and T0 viewer (short)
 
-- **Invited analyst (P02 colleague).** They open the invitation email (valid 7 days, FR-014), sign in with Google or email/password, read the first-run notice (FR-004) and land directly in the tenant with the *Analista* role. MFA is optional unless they are also a *Firmante técnico* (FR-002). Their first save goes to the tenant's Firestore; nothing about them is stored centrally beyond the Identity Platform account and the tenant membership needed for routing (NFR-013).
+- **Invited analyst (P02 colleague).** They open the invitation email (valid 7 days, FR-014), sign in with Google or email/password, read the first-run notice (FR-004) and land directly in the tenant with the *Analista* role. MFA is optional unless they are also a *Firmante técnico* (FR-002). Their first save goes to the tenant's Firestore; nothing about them is stored centrally beyond the Identity Platform account, the ToU/privacy acceptance and the tenant membership with its role, needed for routing and authorisation (NFR-013).
 - **T0 viewer (for example a provincial technician whose institution has no project yet).** They sign in and see the "Modo visor – nada se guarda" badge, the national map, official alerts, the ENSO panel, parish probabilities and the daily PDFs. When they tap *Guardar*, *Suscribirse* or *Nueva área*, disclaimer D9 explains that saving needs an institutional Google Cloud project, with two buttons: "Conectar proyecto" (J1) and "Solicitar proyecto patrocinado" (FR-010).
 - **Acceptance.** In usability tests, ≥90% of T0 participants can say why their work was not saved and how to change that.
+
+### J10 — Insurer or bank: portfolio exposure and claims-surge planning
+
+**Actor:** P11, on a commercial T2 or T3 tenant. **Trigger:** the monthly risk committee, and any rise in *nivel de riesgo* over parishes where the portfolio is concentrated.
+
+1. **Upload (FR-077).** Mi área → "Cartera" → upload a CSV or GeoParquet of insured or loan locations, or of DPA parish codes, with exposure values (sum insured or outstanding balance, number of policies or loans) and a branch code. The first upload is blocked until the Owner confirms the tenant DPIA (DPIA-03 template; processing activity PA-13 in [13](./13-governance-legal-risk.md)). The file lands in tenant BigQuery `ectwin.portfolio_<id>`. It is processed only in the tenant and never sent to Commons.
+2. **Join (tenant job).** Points are assigned to parishes. The job joins `ectwin_commons.risk_index_parish`, `ectwin_commons.population_exposure` (M10; `exposure_parish` until it ships) and the analog loss bands ([01 §4](./01-context-el-nino-ecuador.md)). The commercial licence profile applies (FR-073): non-commercial layers are excluded, and so are Flood API-derived indicators until their commercial use is confirmed ([07 §12](./07-impact-modules-and-triggers.md) item 12).
+3. **Read.** Exposure-at-risk by branch and *parroquia*: the exposure value in parishes at Nivel 3–4 for each horizon (72 h, 15 days, season), with the probability and confidence of each level, and the analog-year range with disclaimer D6.
+4. **Plan.** Claims-surge planning (adjusters and liquidity per branch, set against the analog loss bands) and a list of parishes where borrowers are exposed, as input to loan-relief programmes. The decisions stay with the institution. Outputs are at parish level or coarser; there is no household scoring ([13](./13-governance-legal-risk.md) AUP §8.3).
+5. **Evidence (FR-072, Phase 2).** An evidence pack with dataset versions, `init_time` and the join definition, signed by a *Firmante técnico*, for the risk committee, a reinsurer or the regulator.
+6. **BI tools before the API.** Until the REST API (FR-069) arrives in Phase 2, analysts connect Looker Studio or Power BI to the tenant's BigQuery through the standard connectors and query the linked `ectwin_commons` dataset and `ectwin.portfolio_<id>` directly. The tenant pays for the queries.
+
+**Journey acceptance:** a 10,000-row test portfolio is loaded, joined and summarised by branch and parish in ≤15 min (target, to validate), and no portfolio row appears in any Commons table or platform log.
 
 ---
 
@@ -453,7 +469,7 @@ Owning roles per area (staffing in [12-roadmap-team-budget](./12-roadmap-team-bu
 
 | ID | Requirement | Pri | Ph | Acceptance criteria | Trace |
 |---|---|---|---|---|---|
-| FR-001 | Every app screen, tile endpoint and API requires an authenticated Identity Platform session (Google or email/password). Only the landing page, legal notices, status page and help are public. | M | 1 | Unauthenticated requests to `/app/*`, `/api/*`, `/tiles/*` get a 401 or a redirect. The pen test finds no unauthenticated data route. Sign-in takes ≤3 screens. | All |
+| FR-001 | Every app screen, tile endpoint and API requires an authenticated Identity Platform session (Google or email/password). Only the landing page, legal notices, status page and help are public. Static reference layers (`tiles/static/`, `cog/`) are served through the same 60-min signed URLs as forecast tiles; only the web app shell is public-read. | M | 1 | Unauthenticated requests to `/app/*`, `/api/*`, `/tiles/*` get a 401 or a redirect. The pen test finds no unauthenticated data route, including static reference tiles and COGs. Sign-in takes ≤3 screens. | All |
 | FR-002 | TOTP MFA is mandatory for Owners, Admins, *Firmantes técnicos* (before signing) and platform operators, and optional for others. SMS MFA is off by default (US$0.16 per SMS to Ecuador after 10 free per day, [pricing](https://cloud.google.com/identity-platform/pricing)). | M | 1 | An Owner cannot finish onboarding without TOTP. Recovery codes are issued. Enrolments and resets are audited. | P13, J1, J9 |
 | FR-003 | SAML/OIDC federation (Identity Platform multi-tenancy) for institutions that have their own identity provider. Tier 2 pricing: first 50 MAU free, then US$0.015/MAU, billed to the platform project ([pricing](https://cloud.google.com/identity-platform/pricing)). | S | 2 | A test ministry IdP signs users into the right tenant. The MAU cost is visible in the operator console. | P01, P07 |
 | FR-004 | First-run acknowledgement: before the first view on each device, the user reads disclaimers D2 and D3 and taps "Entiendo". For T0 this is kept in browser storage only. | M | 1 | Every new device sees it. It is shown again after 90 days or when the disclaimer version changes. | All, N01 |
@@ -491,9 +507,9 @@ Owning roles per area (staffing in [12-roadmap-team-budget](./12-roadmap-team-bu
 
 | ID | Requirement | Pri | Ph | Acceptance criteria | Trace |
 |---|---|---|---|---|---|
-| FR-024 | Parish exceedance probabilities for INAMHI thresholds, for 24 h and 72 h accumulations over days 1–15, from WeatherNext 3 (primary) and WeatherNext 2. Published from Commons as Non-Retrievable products. | M | 1 | Every parish has a probability class per lead day. Values are reproducible from Commons tables. No raw WeatherNext field reaches T0. | All |
-| FR-025 | Ensemble fan charts (p10–p90 and mean) at a point or AOI, for tenants with their own WeatherNext linked datasets. | M | 1 | Shown only when the tenant's linked dataset exists. Carries the WeatherNext citation. Exports include the required terms files. | P03, P05, P11 |
-| FR-026 | River status: GloFAS and GEOGloWS reach forecasts with return-period classes; Flood API gauges, flood status and flash floods when approved; deep link to the INAMHI hydroviewer. | M | 1 | The popup shows source, issue time, class and trend. Non-commercial return periods are hidden for commercial profiles. | P02, P04 |
+| FR-024 | Parish exceedance probabilities for INAMHI thresholds: 24 h and 72 h accumulations over days 1–15 from WeatherNext 2 members in Phase 1 (WeatherNext 3 full members from Phase 2 if the ADR-29 spike passes, [03 §10](./03-architecture.md)), and hourly intensity (`tp_1h_max`) from WeatherNext 3; published from Commons as Non-Retrievable products. Method: [06 §3.6](./06-forecast-model-stack.md). | M | 1 | Every parish has a probability class per lead day. Values are reproducible from Commons tables. No raw WeatherNext field reaches T0. | All |
+| FR-025 | Ensemble fan charts (p10–p90 and mean) at a point or AOI, for tenants with their own WeatherNext linked datasets (access steps and Earth Engine route: [06 §3.3, §3.7](./06-forecast-model-stack.md)). | M | 1 | Shown only when the tenant's linked dataset exists. Carries the WeatherNext citation. Exports include the required terms files. | P03, P05, P11 |
+| FR-026 | River status: GloFAS and GEOGloWS reach forecasts with return-period classes; Flood API gauges, flood status and flash floods when approved; deep link to the INAMHI hydroviewer. One table, several sources: [06 §4.9](./06-forecast-model-stack.md). | M | 1 | The popup shows source, issue time, class and trend. Non-commercial return periods are hidden for commercial profiles and at T0 (§3.3). | P02, P04 |
 | FR-027 | ENSO panel with Niño 1+2 / ICEN, Niño 3.4 / RONI, SOI and sea-level anomaly; links to the latest CN-ERFEN, ENFEN and CPC statements; a coupling / confidence indicator. Each value names its dataset and base period. | M | 1 | The panel updates within 24 h of each source release. Each value shows its dataset (e.g. ERSSTv5 or OISST) and climatology. | P01, P07, P09 |
 | FR-028 | Observations and nowcast: INAMHI station rainfall (Phase 1; ≈2.5 h transmission lag); IMERG Early/Late, GSMaP NRT, GOES-19 imagery and the Oya precipitation nowcast (EE `projects/global-precipitation-nowcast/assets/global_estimation`) in Phase 2, with 1, 3, 6 and 24 h accumulations. | S | 1–2 | Each source shows its latency. Station data ≤3 h old is marked current. | P04, J3 |
 | FR-029 | Sub-seasonal and seasonal outlooks per canton. Sub-seasonal (weeks 2–6): GEFSv12 to 35 days and CFSv2; ECMWF extended range where openly available **(open-data availability unverified)**. Seasonal (1–7 months): tercile probabilities from C3S multi-system, NMME and CFSv2, and GloFAS seasonal flows. | S | 2 | The canton table updates monthly and has a methodology page. Cantons whose hindcast RPSS is ≤0 are greyed out as "sin habilidad demostrada". | P06, P07, P09 |
@@ -545,7 +561,7 @@ Owning roles per area (staffing in [12-roadmap-team-budget](./12-roadmap-team-bu
 | FR-050 | Create "Mi área" by drawing, buffering a point or line, uploading GeoJSON/KML/zipped Shapefile/GeoPackage (≤10 MB), or picking DPA units. Invalid geometries are repaired and areas can be grouped. | M | 1 | A 12-polygon KML upload completes in ≤30 s. Invalid geometry is repaired or explained. | P10, J5 |
 | FR-051 | AOI enrichment: parishes, river reaches (`hybas_`, `river_id`), stations, tide reference, access roads and exposed structures. | S | 1 | Ready ≤2 min after saving. | P10, P03 |
 | FR-052 | Sector rule templates (*camaronera*, *bananera*, *ciudad costera*, *embalse*, *parroquia rural*) with editable thresholds and lead times. | S | 2 | Edits are audited. A preview shows how often the rule would have fired last season. | P10, P06 |
-| FR-053 | AOI pipelines run as Cloud Run jobs with Cloud Scheduler in the tenant project, under `ectwin-runner`, with run history, retries and cost per run. | S | 1 (T2+) | A run finishes ≤15 min after new forecast data arrives. 3 automatic retries. 90 days of history. | P10, P03 |
+| FR-053 | AOI pipelines run as Cloud Run jobs with Cloud Scheduler in the tenant project, under `ectwin-runner`, with run history, retries and cost per run. | S | 1 (T1: ≤3 AOIs, daily; T2: many AOIs, daily; T3: hourly and custom) | In every tenant tier (T1–T4), a run finishes ≤15 min after new forecast data arrives. 3 automatic retries. 90 days of history. | P10, P03 |
 | FR-054 | Device geolocation is off by default. "Usar mi ubicación" only centres the map for the moment and is never stored. AOIs are organisational polygons. | M | 1 | No user latitude or longitude is found in any store (code review plus data scan). | All |
 
 **Subscriptions and notifications**
@@ -575,7 +591,7 @@ Owning roles per area (staffing in [12-roadmap-team-budget](./12-roadmap-team-bu
 
 | ID | Requirement | Pri | Ph | Acceptance criteria | Trace |
 |---|---|---|---|---|---|
-| FR-063 | Tenant admin console: members and roles, organisation and licence profile, region, integrations (email, WhatsApp, SMS), retention, external-access status. | M | 1 | Every admin action is audited (FR-071). | P13 |
+| FR-063 | Tenant admin console: members and roles, organisation and licence profile, region, integrations (email, WhatsApp, SMS), retention, external-access status, and the image channel (`stable`/`early`) with Owner opt-in auto-update of tenant pipeline images; without opt-in the console shows "Actualización disponible". | M | 1 | Every admin action is audited (FR-071). Without Owner opt-in no tenant job image changes, and the console shows "Actualización disponible" when a newer image exists on the tenant's channel; opt-in changes and each image update are audited. | P13 |
 | FR-064 | Operator console: tenant registry status, onboarding funnel, feed health, platform-wide incident banner. It gives no access to tenant content. | M | 1 | An IAM test shows the operator cannot read tenant Firestore or BigQuery. | P14 |
 
 **Project and costs**
@@ -598,9 +614,9 @@ Owning roles per area (staffing in [12-roadmap-team-budget](./12-roadmap-team-bu
 
 | ID | Requirement | Pri | Ph | Acceptance criteria | Trace |
 |---|---|---|---|---|---|
-| FR-071 | Tenant audit log in BigQuery `ectwin.audit_events`: exports, shares, sign-offs, rule edits, role changes, costly runs. Broker impersonation is also visible in Cloud Audit Logs. | M | 1 | Each entry is written ≤60 s after the action. Retention defaults to 400 days **(to confirm with DPO)**. | P13, P11 |
+| FR-071 | Tenant audit log in BigQuery `ectwin.audit_events`: exports, shares, sign-offs, rule edits, role changes, costly runs. Broker impersonation is also visible in Cloud Audit Logs. | M | 1 | Each entry is written ≤60 s after the action. Retention defaults to 5 years for public-sector tenants and 400 days for private tenants; tenants may extend ([13 §2.10](./13-governance-legal-risk.md)) **(to confirm with DPO)**. | P13, P11 |
 | FR-072 | Evidence pack: an immutable JSON and PDF snapshot with data versions, `init_time`, model versions, rule definitions, SHA-256 hash and signers. | S | 2 | Recomputing from the pack reproduces every value exactly. | P09, P11 |
-| FR-073 | Licence gating at render, export and API: non-commercial layers blocked for commercial profiles; share-alike and ODbL obligations applied in exports; WeatherNext real-time and historic (relating to times ≥1 h in the past) terms applied (spine D15). | M | 1 | Automated tests per licence class. A commercial test tenant can reach no non-commercial layer. | P10, P11 |
+| FR-073 | Licence gating at render, export and API: non-commercial and `pending_review` layers blocked for commercial profiles and for T0, since a missing or unknown licence profile is treated as commercial (fail closed, [13](./13-governance-legal-risk.md) LP-06); share-alike and ODbL obligations applied in exports; WeatherNext real-time and historic terms applied, with historic meaning relating to times ≥1 h in the past (WN3), or ≥48 h for WN2 until Google confirms ([06 §3.4](./06-forecast-model-stack.md), [13 §3.2](./13-governance-legal-risk.md)) (spine D15). | M | 1 | Automated tests per licence class. Neither a commercial test tenant nor a T0 user can reach a non-commercial or `pending_review` layer. | P10, P11 |
 
 **Help, feedback and language**
 
@@ -610,7 +626,53 @@ Owning roles per area (staffing in [12-roadmap-team-budget](./12-roadmap-team-bu
 | FR-075 | "Reportar observación": users report observed impacts or forecast misses (text, optional photo, parish) to feed verification. Stored in the tenant. | S | 2 | Each report is stored with DPA code and time. No personal location is kept beyond the parish unless the user opts in. | P04, P05 |
 | FR-076 | Languages: es-EC by default and a complete English UI. Short Kichwa audio and SMS messages for Andean drought and hydropower, reviewed by native speakers. | M (es/en) / C (Kichwa) | 1 / 3 | All strings are externalised. Every Kichwa item is signed off by a native reviewer. | All |
 
-**Coverage check:** 76 FRs. Phase 1 "Must" items: FR-001, 002, 004–007 (note), 009, 010, 012–015, 017–020, 024–027, 032, 033, 036, 040–046 (fixed template), 049, 050, 054–056, 058 (sharing), 063–068 (budget/tables), 071, 073, 074, 076 (es/en).
+**Portfolios and custom models**
+
+| ID | Requirement | Pri | Ph | Acceptance criteria | Trace |
+|---|---|---|---|---|---|
+| FR-077 | Portfolio exposure: upload a CSV or GeoParquet of insured or loan locations, or DPA parish codes, with exposure values into tenant BigQuery `ectwin.portfolio_<id>`. It is processed only in the tenant and never sent to Commons. A tenant job joins `ectwin_commons.risk_index_parish`, `population_exposure` and the analog loss bands ([01 §4](./01-context-el-nino-ecuador.md)) and outputs exposure-at-risk by branch and *parroquia*, plus an evidence pack (FR-072, from Phase 2). The commercial licence profile applies (FR-073), with Flood API-derived indicators excluded ([07 §12](./07-impact-modules-and-triggers.md) item 12). Before FR-069, BI tools (Looker Studio, Power BI) query the tenant's linked `ectwin_commons` dataset and the portfolio table directly through BigQuery connectors. | S | 1 (T2+) | A 10,000-row test portfolio is joined and summarised ≤15 min after upload. No portfolio row appears in any Commons table or platform log (data scan). Outputs are at parish level or coarser. Upload stays blocked until the tenant DPIA is confirmed ([13](./13-governance-legal-risk.md) PA-13). | P11, P06, J10 |
+| FR-078 | Custom models in the tenant: a model config is registered in tenant Firestore `models/{modelId}` (image digest, parameters, licence, approval). Artefacts and weights go to `gs://<TENANT_PROJECT>-ectwin/models/<modelId>/` (new prefix, to add to [03 §5.1](./03-architecture.md)). Images are either platform images run with parameters or images in a tenant Artifact Registry repository `ectwin-custom`; the bootstrap enables Artifact Registry only when `enable_artifact_registry` is set (default false; to add to the tenant bootstrap variables and the API list in [04 §5.1](./04-identity-tenancy-byo-gcp.md)). Runs go through the tenant AOI pipeline (FR-053) or Batch, with a cost preview (FR-066) and Owner approval. Outputs go to `ectwin.impact_aoi`; verification follows [14 §6.6](./14-verification-and-validation.md). | C | 2–3 (T3) | A registered test model runs from its pinned digest and reproduces its outputs. No run starts without Owner approval, and every run is audited (FR-071). No model config or artefact is stored centrally. | P01, P05, P07, P11 |
+
+**Coverage check:** 78 FRs. Phase 1 "Must" items: FR-001, 002, 004–007 (note), 009, 010, 012–015, 017–020, 024–027, 032, 033, 036, 040–046 (fixed template), 049, 050, 054–056, 058 (sharing), 063–068 (budget/tables), 071, 073, 074, 076 (es/en).
+
+### 5.3 Traceability to the lead-time matrix (CTX-06)
+
+CTX-06 in [01](./01-context-el-nino-ecuador.md) makes the lead-time matrix ([01 §9.2](./01-context-el-nino-ecuador.md)) configuration and requires every `LT-xx` row to map to a product surface, a schedule and a verification metric. This table is that mapping. Screens use the §7 names. Schedules give the cadence and first phase from 01 §9.2 and the outputs catalogue in [07 §8](./07-impact-modules-and-triggers.md). Metrics come from the product × metric matrix in [14 §3.2](./14-verification-and-validation.md).
+
+| LT | Decision (short) | FR | Screen | Schedule (first phase) | Verification metric |
+|---|---|---|---|---|---|
+| LT-01 | National alert level (SNGR; the twin only supports) | FR-027, FR-036, FR-041 | Pronóstico → ENSO; Escenarios → Años análogos; Alertas oficiales | ENSO panel ≤24 h after each source release; analogs monthly (Phase 1) | ENSO index MAE, RMSE and category hit rate; coupling-indicator ROC AUC |
+| LT-02 | Drawdown of Cat-DDO, IDB and CAF lines | FR-036, FR-072 | Escenarios → Años análogos; Administración → Auditoría y evidencias | Loss-scenario bands (Phase 1); evidence packs on demand (Phase 2) | Byte-for-byte pack reproducibility (FR-072); post-event reports ([14 §10.2](./14-verification-and-validation.md)) |
+| LT-03 | Relocate or reinforce polling sites (CNE) | FR-024, FR-032, FR-068 | Impactos → Exposición; Reportes → Descargas | Static list by 30 Oct 2026; daily rain-probability card 15–29 Nov (Phase 1) | Parish rain exceedance BS, BSS, reliability |
+| LT-04 | Sowing dates; AgroProtege targeting | FR-029, FR-032, FR-034 | Pronóstico → Subestacional y estacional; Impactos → Módulos sectoriales | Crop exposure (Phase 1); terciles monthly (Phase 2) | Seasonal RPSS; M5 CSI and basis-risk correlation |
+| LT-05 | Reservoir rule curves, thermal procurement, imports | FR-029, FR-034 | Pronóstico → Energía | Reservoir card daily (Phase 1, [07](./07-impact-modules-and-triggers.md) IMP-13); module (Phase 3) | Days-to-threshold MAE and p10–p90 coverage; inflow CRPS and NSE |
+| LT-06 | Exporters: insurance purchase, dykes, capital buffers | FR-034, FR-036, FR-077 | Mi área → Cartera; Escenarios → Años análogos | Seasonal and analogs monthly (Phase 2; FR-077 from Phase 1 for T2+) | Seasonal RPSS; M6 CSI of flooded pond area |
+| LT-07 | Anticipatory-action readiness and activation | FR-037, FR-072 | Escenarios → Disparadores | Per indicator; read-only (Phase 1), full (Phase 2) | Trigger contingency: POD, FAR, CSI, median lead time, V(α) |
+| LT-08 | Risk-reduction investment priorities | FR-033, FR-068 | Impactos → Nivel de riesgo por parroquia; Reportes → Descargas | Per season (Phase 3) | Risk-index ROC AUC; canton-day POD and FAR at level ≥3 |
+| LT-09 | Vector control, supplies, surge staffing (MSP) | FR-034 | Impactos → Módulos sectoriales (salud) | Weekly (Phase 2) | Dengue CRPS on counts, hit rate and FAR of P75 exceedance, BSS |
+| LT-10 | School continuity (MINEDUC) | FR-024, FR-032 | Impactos → Exposición | Per cycle (Phase 1) | Parish rain exceedance BS, BSS |
+| LT-11 | Dredging and drainage priorities | FR-026, FR-032, FR-033 | Pronóstico → Ríos; Impactos | Per cycle (Phase 1) | River KGE and NSE; POD, FAR, CSI at RP2 and RP5 |
+| LT-12 | Machinery and Bailey-bridge pre-positioning | FR-032, FR-034 | Impactos → Exposición, Módulos sectoriales (vías) | Static (Phase 1); per cycle (Phase 2, [07](./07-impact-modules-and-triggers.md) IMP-15) | M4 LHASA ROC AUC; POD and FAR at class *alta* |
+| LT-13 | Rationing schedules (CENACE) | FR-034 | Pronóstico → Energía | Card daily (Phase 1); module (Phase 3) | Days-to-threshold MAE; BSS of P(reach within 45 days) |
+| LT-14 | Stocking density, early harvest (shrimp) | FR-034, FR-050–FR-053 | Mi área (template *camaronera*) | Daily AOI pipeline; basic (Phase 1, J5), full (Phase 2) | Parish rain exceedance BSS; M6 CSI; contingency of trigger TR-10 ([07](./07-impact-modules-and-triggers.md)) |
+| LT-15 | Sigatoka spray cycles, drainage (banana) | FR-034, FR-052 | Impactos → Módulos sectoriales; Mi área (template *bananera*) | Per cycle (Phase 2) | M5 metrics; a disease-index metric is still to be added to 14 §3.2 |
+| LT-16 | Shelter readiness, kit dispatch, volunteer rosters | FR-032, FR-044, FR-045 | Reportes → Reporte diario por cantón, Tarjeta WhatsApp | Daily PDF at 06:00 ECT (Phase 1) | Parish rain exceedance BSS; risk-index POD and FAR at level ≥3 |
+| LT-17 | Fumigation, leptospirosis prophylaxis | FR-034 | Impactos → Módulos sectoriales (salud) | Per event (Phase 2) | Flood-footprint CSI; contingency of trigger TR-09 |
+| LT-18 | INAMHI *advertencias* (official; the twin does not issue) | FR-025, FR-068, FR-070 | Pronóstico → Lluvia (tenant fan charts); Reportes → Descargas | Per WeatherNext cycle, in the tenant (Phase 1) | WN2/WN3 CRPS, CRPSS, QCRPS, spread–skill |
+| LT-19 | Local alert changes, COE activation, MTT sessions (official) | FR-024, FR-033, FR-046 | Mapa; Impactos → Nivel de riesgo por parroquia; Reportes → Constructor | 4× per day (Phase 1) | Risk-index ROC AUC; canton-day POD, FAR, CSI at level ≥3 |
+| LT-20 | Pre-emptive evacuation of river margins | FR-026, FR-032, FR-055 | Pronóstico → Ríos; Mapa | 4× per day (Phase 1) | River POD, FAR, CSI at RP2 and RP5 (±1 day); lead time gained |
+| LT-21 | Tidal-flood (*aguaje*) preparedness | FR-031 | Pronóstico → Ríos (coastal panel) | Daily calendar (Phase 1, [07](./07-impact-modules-and-triggers.md) IMP-03); panel and SFINCS (Phase 2) | Contingency of trigger TR-06; footprint CSI (M3) |
+| LT-22 | EAP trigger activation | FR-037, FR-072 | Escenarios → Disparadores | Per indicator (Phase 2) | Trigger contingency: POD, FAR, CSI, median lead time, V(α) |
+| LT-23 | Ports, logistics, harvest scheduling | FR-050–FR-053 | Mi área | Daily AOI pipeline (Phase 1) | Tenant-side verification ([14 §6.6](./14-verification-and-validation.md)) |
+| LT-24 | Water-utility intake and treatment adjustments | FR-026, FR-050 | Pronóstico → Ríos; Mi área | Per cycle (Phase 2) | River KGE and NSE; POD and FAR |
+| LT-25 | Pumping, road closures and drainage at high tide | FR-031, FR-035, FR-059 | Pronóstico (coastal panel); Escenarios → Escenarios de inundación; event mode | Hourly during events (Phase 2) | Footprint CSI; contingency of trigger TR-06 |
+| LT-26 | Flash-flood and landslide response | FR-026, FR-028, FR-059 | Pronóstico → Observaciones y nowcast; event mode | Stations hourly (Phase 1 display); nowcast (Phase 2) | `tp_1h_max` exceedance BS; lead time gained |
+| LT-27 | Road closures | FR-034 | Impactos → Módulos sectoriales (vías, deslizamientos) | Daily (Phase 2) | M4 LHASA ROC AUC; POD and FAR at class *alta* (±1 day) |
+| LT-28 | Generator fuel, patient transfers | FR-032, FR-034 | Impactos → Exposición | Per cycle (Phase 2) | Flood-footprint CSI (M1, M3) |
+| LT-29 | Emergency-declaration evidence; damage and needs assessment | FR-046, FR-072 | Administración → Auditoría y evidencias; Reportes | On demand (Phase 2) | Pack reproducibility; post-event report ≤30 days ([14 §10.1](./14-verification-and-validation.md)) |
+| LT-30 | Loss adjustment, claim verification | FR-034, FR-072, FR-077 | Impactos → Módulos sectoriales; Mi área → Cartera | Per Sentinel-1 pass (Phase 2) | M5 CSI and basis-risk correlation |
+| LT-31 | Verification, learning, analog-library update | FR-030, FR-075 | Pronóstico (confidence labels); methodology page | Weekly provisional, monthly final (Phase 2) | All published scores ([14 §3.2, §10.1](./14-verification-and-validation.md)) |
+| LT-32 | Marine-ecosystem and fisheries measures | FR-034 | Impactos → Módulos sectoriales | Daily (Phase 3) | Not yet in 14 §3.2 (to add) |
 
 ---
 
@@ -632,7 +694,7 @@ Owning roles per area (staffing in [12-roadmap-team-budget](./12-roadmap-team-bu
 | NFR-010 | Scalability | Load | Pilot: 2,000 MAU and 30 tenants. Target without redesign: 50,000 MAU (the Identity Platform free tier) and 300 tenants. Must absorb a 10× spike within 1 h on event nights. | 1–2 |
 | NFR-011 | Security | Application baseline | OWASP ASVS Level 2. Strict Content Security Policy. Subresource Integrity for CDN scripts. Dependency and container scanning in CI. **External pen test before Phase 2 (by 2026-11-20).** | 1 |
 | NFR-012 | Security | Tenant isolation and least privilege | No service-account keys anywhere. Broker tokens last ≤15 min. The broker's only grant is Token Creator on `ectwin-runner`. Automated cross-tenant access tests run on every release. | 1 |
-| NFR-013 | Privacy | Central data minimisation | The registry holds only uid, email, tenant project id, runner service-account email, region profile and status (spine §2), plus the uid-to-tenant membership needed for routing (role mirror to reconcile with [04](./04-identity-tenancy-byo-gcp.md), §11). No session or AOI data is held centrally. | 1 |
+| NFR-013 | Privacy | Central data minimisation | The registry holds only the fields listed in [03 §5.5](./03-architecture.md) and [04 §3.1–§3.4](./04-identity-tenancy-byo-gcp.md): per tenant, the tenant project id and `project_number`, runner service-account email, `display_name`, `org_type`, `licence_profile`, `tier`, region profile, `connection_path`, status and `last_preflight`, plus `connect_code_sha256`, its expiry and `connect_uid` while pending, `sso_idp` and WIF issuers (Phase 2); invites stored as hashes; the uid-to-tenant membership with its role (`owner`/`admin`/`analyst`/`reader`) needed for routing and authorisation; and the ToU/privacy acceptance record (version, time; [13](./13-governance-legal-risk.md) L-14). No personal data beyond uid and email. No session, AOI or model data is held centrally. | 1 |
 | NFR-014 | Privacy (LOPDP) | Compliance pack per tenant | Delivered to each tenant: privacy notice naming the country and region; RAT template; DPIA template; Spanish processor contract. The breach playbook follows LOPDP Art. 43 and 46: processor to controller within 2 business days (*término de dos días*; the contract target is ≤48 h); controller to the SPDP and ARCOTEL within 5 business days (*término*), with notice also to the CSIRT under the 2026 cybersecurity-law amendment; data subjects within 3 days when their rights are at risk ([LOPDP](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/lopd.md); see [13](./13-governance-legal-risk.md)). | 1 |
 | NFR-015 | Privacy | Residency | Personal data defaults to `southamerica-west1`, and the Cloud Logging bucket region is set explicitly. The UI states that Identity Platform has no data-location commitment ([data residency list](https://cloud.google.com/terms/data-residency)). | 1 |
 | NFR-016 | Privacy | Telemetry | No third-party trackers or advertising. Real-user monitoring is pseudonymised and aggregated. Geolocation is off (FR-054). | 1 |
@@ -663,8 +725,8 @@ Owning roles per area (staffing in [12-roadmap-team-budget](./12-roadmap-team-bu
 | INAMHI *advertencias* | Polled every 15 min | ≤20 min | 6 h |
 | INAMHI stations | Hourly, with ≈2.5 h lag | ≤30 min after fetch | 6 h |
 | IMERG Early / GSMaP NRT | Per product | ≤1 h after availability | 12 h |
-| WeatherNext 3 derived probabilities | Main 00/06/12/18Z cycles to 15 days, in BigQuery/EE ≈8 h 10 min after `init_time`; hourly interim runs to 48 h (horizon from a search summary), ≈7 h 25 min after `init_time` | ≤1 h after availability | 18 h after the latest `init_time` |
-| WeatherNext 2 derived probabilities | 6-hourly | ≤2 h after availability | 24 h |
+| WeatherNext 3 derived probabilities | Main 00/06/12/18Z cycles to 15 days, in BigQuery/EE ≈8 h 10 min after `init_time`; hourly interim runs to 48 h (horizon from a search summary), ≈7 h 25 min after `init_time` ([06 §3.5, §10](./06-forecast-model-stack.md)) | ≤1 h after availability | 18 h after the latest `init_time` |
+| WeatherNext 2 derived probabilities | 6-hourly ([06 §3.5, §10](./06-forecast-model-stack.md)) | ≤2 h after availability | 24 h |
 | GloFAS / GEOGloWS | Daily | ≤3 h after release | 36 h |
 | Flood Forecasting API | Forecasts daily to 7 days; status several times a day | Snapshot at least every 6 h (estimate) | 24 h |
 | ENSO indices and statements | Weekly (CPC) and on publication (CN-ERFEN, ENFEN) | ≤24 h | 10 days |
@@ -786,6 +848,7 @@ flowchart TD
 - The list of AOIs and groups, each with its current level, next-72-h probability, last run and cost of the last run.
 - "Nueva área" wizard (FR-050): method → geometry → name and group → template → rules → subscriptions → cost preview → save.
 - The detail view has tabs: Resumen, Pronóstico (fan chart where licensed), Ríos y marea, Exposición, Reglas, Historial.
+- "Cartera" (T2 and above, FR-077): portfolio uploads and exposure-at-risk by branch and parish (J10).
 - At T0 the whole screen is replaced by an explanation and a "Conectar proyecto" button.
 
 **Pronóstico.** *Personas:* P01, P05, P07, P09.
@@ -971,7 +1034,7 @@ Río Portoviejo: caudal normal, tendencia al alza.
 Confianza: media.
 Detalle (requiere inicio de sesión): <enlace>
 Alertas oficiales: alertasecuador.gob.ec
-Datos: WeatherNext 3 vía Google BigQuery. <cita D4 literal>
+Datos: WeatherNext 2 y WeatherNext 3 vía Google BigQuery. <cita D4 literal>
 ```
 
 ### 8.8 Notification design
@@ -1120,13 +1183,12 @@ No cash incentives for public servants, to avoid conflicts of interest; particip
 - **Retrievable products for identified T0 users.** The same brief suggests that signed-in, identified users may receive Retrievable Value-Added Services for internal use. The spine limits Commons to Non-Retrievable products, and this document follows the spine. Confirm with weathernext@google.com whether platform-mediated sharing to tenants is acceptable.
 - **Current alert status.** Press reports a nationwide red alert (Res. SNGR-238-2026, 29 Aug 2026; one outlet writes "SNGRE-238-2026"). The governance brief found only SNGR-193-2026 (yellow to orange, applied in Galápagos 24–31 July), and sources conflict on the current colour. The UI must render whatever the ingested resolution says and must never hard-code a status.
 - **WeatherNext citation in short formats.** Whether a link to a page showing disclaimer D4 satisfies terms §4(b) for SMS and other space-limited messages (§8.8). Confirm with weathernext@google.com.
-- **Registry role mirror.** Whether the platform registry mirrors a coarse tenant role for routing, as [04](./04-identity-tenancy-byo-gcp.md) proposes, or reads roles only from the tenant (§3.4, NFR-013). Reconcile 02, 03 and 04 before Phase 1 build.
 - **Sub-seasonal sources.** The spine lists ECMWF extended range (EC46) as open data; the seasonal-data brief found the 46-day extended range not in open data and used GEFSv12 (35 days) for weeks 3–5. FR-029 follows the brief until EC46 open-data access is confirmed.
 - **COE structure.** MTT/GT numbering, the name of the SNGR national monitoring room and the formal COE protocol are **(unverified)**. Validate in W2 interviews.
 - **WhatsApp and SMS delivery.** WhatsApp Business Platform accounts, templates and costs; SMS providers and prices; whether COEs accept messages from a non-government sender. COE WhatsApp practice itself is **(unverified)**.
 - **Register and formats.** *Usted* or *tú*; the es-EC decimal separator convention (validate with users and INAMHI publications).
 - **Earth Engine commercial registration.** The Earth Engine guidance says operational teams must register commercially, and the Partner tier names government *research* groups. Confirm whether COE or GAD operational use qualifies for any noncommercial tier; if not, public tenants pay Limited-plan EECU fees. This affects T1/T2 cost for public tenants.
 - **Kichwa.** Priority, the reviewing institution, and whether Shuar is also needed for Amazon hydro-energy messaging (Kichwa ≈527k and Shuar ≈60k speakers, INEC 2010, from a secondary source).
-- **Legal.** The final disclaimer wording is blocked until the disaster-risk law text and its Reglamento are obtained. Statutory response times for LOPDP data-subject requests and audit-log retention need DPO confirmation.
+- **Legal.** The final disclaimer wording is blocked until the disaster-risk law text and its Reglamento are obtained. Statutory response times for LOPDP data-subject requests and the audit-log retention split (5 years public, 400 days private, [13 §2.10](./13-governance-legal-risk.md)) need DPO confirmation.
 - **Co-branding.** Whether SNGR or INAMHI will allow references or logos in PDFs, and under which *convenio*.
 - **Election turnover.** The date new GAD authorities take office after 29 Nov 2026 is **(unverified)**. Hand-over support (FR-016) should be ready before then.
