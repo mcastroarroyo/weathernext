@@ -251,7 +251,7 @@ Taxes are not included: add 15% IVA, plus ISD where applicable ([09](../../docs/
 
 ### 6.1 Path A1: Cloud Shell and Terraform (recommended for IT teams)
 
-1. Open Cloud Shell in the tenant project. The web app's *Abrir en Cloud Shell* button uses the documented URL pattern `https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=<REPO_URL>&cloudshell_tutorial=<TUTORIAL_MD>` ([example of the pattern](https://github.com/GoogleCloudPlatform/bigquery-antipattern-recognition/blob/main/terraform/README.md)). The public repository URL and tutorial file are **to confirm**. Until they exist, clone manually:
+1. Open Cloud Shell in the tenant project. The web app's *Abrir en Cloud Shell* button uses the documented URL pattern `https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=<REPO_URL>&cloudshell_tutorial=<TUTORIAL_MD>` ([example of the pattern](https://github.com/GoogleCloudPlatform/bigquery-antipattern-recognition/blob/main/terraform/README.md)). The Spanish tutorial is [`TUTORIAL.es.md`](./TUTORIAL.es.md); the public repository URL is **to confirm**. Until it exists, clone manually:
    ```bash
    git clone <REPO_URL> weathernext && cd weathernext/infra/tenant-bootstrap
    gcloud config set project PROJECT_ID
@@ -758,5 +758,5 @@ scripts/verify-tenant.sh --project PROJECT_ID --json --strict > verify.json  # f
   - Whether a platform-guided subscription (path B) may act for the approved user under the WeatherNext terms. Ask `weathernext@google.com`.
 - **Earth Engine for government.** Whether operational use by *GAD*s and ministries must be commercial, or fits the Partner tier's climate-adaptation eligibility. This drives T2 cost (US$0 versus up to US$36/month in the Standard example of [09](../../docs/09-cost-model.md)).
 - **Runner access to tenant secrets.** The runner can read tenant third-party keys, which the broker needs for tenant-billed decisions. The DPO should confirm that this is acceptable for public-sector tenants, or that a split identity (a separate jobs service account) is needed.
-- **Public repository and Cloud Shell tutorial.** The public repository URL and the Cloud Shell tutorial file for the *Abrir en Cloud Shell* button are still to be created.
+- **Public repository URL.** The Spanish Cloud Shell tutorial for the *Abrir en Cloud Shell* button is [`TUTORIAL.es.md`](./TUTORIAL.es.md); the public repository URL (`<REPO_URL>`) is still to be created.
 - **CLI flags in the scripts.** The scripts were tested only against stubs. The gcloud/bq flags listed in the header of `bootstrap-tenant.sh` must be confirmed against the current Cloud SDK in Cloud Shell during AC-01 (2026-10-09). The REST field names used by `verify-tenant.sh` must be confirmed at the same time.
