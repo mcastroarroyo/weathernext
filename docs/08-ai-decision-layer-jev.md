@@ -32,7 +32,7 @@ Owner codes follow [03-architecture.md](./03-architecture.md): **AI** (AI decisi
 | Build phase (one-off) | Jev batteries B1–B5 turn most of the external-data curation into a review task | ≈3,600 → ≈620 analyst-hours (estimate). Jev API ≈US$15 against ≈US$188 on Gemini Flash-Lite |
 | Run time at national peak | S1–S6 plus ingestion flags | ≈4.3M decisions/month ≈ **US$113** on Jev against ≈US$1,450 on Gemini 3.1 Flash-Lite |
 | Gemini | Bulletins on 3.1 Flash-Lite **Batch**, analyst copilot on 3.8 Flash, escalations, NL→SQL | 3.8 Flash doubles in price on **2027-01-01** |
-| Vendor risk | TypeSafe came out of stealth on 2026-09-15. It has no SLA, one US region and no LATAM data residency. | Four interchangeable backends behind one request shape; a monthly failover drill |
+| Vendor risk | TypeSafe came out of stealth on 2026-09-15. It has no published SLA, is based on the US West Coast and has no published LATAM data residency. | Four interchangeable backends behind one request shape; a monthly failover drill |
 | Privacy | DLP pseudonymisation before any external call. ECU 911 narratives reach TypeSafe only after zero-data-retention (ZDR) terms are signed. | Data classes C0–C4 enforced in code |
 
 ---
@@ -60,9 +60,9 @@ Status labels follow the research convention. **Verified** means read in a prima
 | Customisation | **No fine-tuning or LoRA.** Behaviour is shaped only through the state, instructions and criteria. | same | Verified |
 | Deployment | **Hosted only; weights not released.** Routes: TypeSafe, Cloudflare Workers AI (`typesafe/jev`), Vercel AI Gateway, OpenRouter (`~typesafe/jev-latest`), Netlify AI Gateway | [awesome-typesafe-jev](https://github.com/AbdelStark/awesome-typesafe-jev) | Verified |
 | Google Cloud | Not found in Model Garden or on GCP Marketplace, so it cannot be billed through GCP. A Google codelab registers Jev as a custom AlloyDB `google_ml` endpoint, with the key in Secret Manager. | [Model Garden](https://cloud.google.com/model-garden), [codelab](https://codelabs.developers.google.com/alloydb-ai-jev) | Absence **(unverified)** |
-| Data handling | "Jev is not trained on customer requests or responses." **ZDR only on the enterprise plan.** Based on the US West Coast. No EU or LATAM residency. | [docs/models](https://docs.typesafe.ai/models), [eesel](https://www.eesel.ai/blog/typesafe-jev-pricing) | Secondary; DPA not read |
+| Data handling | "Jev is not trained on customer requests or responses." **ZDR only on the enterprise plan.** Based on the US West Coast. No published EU or LATAM data residency. Default retention is reported as "as long as necessary" **(unverified until the DPA is read)**. | [docs/models](https://docs.typesafe.ai/models), [eesel](https://www.eesel.ai/blog/typesafe-jev-pricing), [jev101 privacy guide](https://jev101.org/guides/jev-privacy-guide) | Secondary; DPA not read |
 | Plans | No published SLA, no free tier, no committed-use discount. Higher limits through sales@typesafe.ai. | [opper](https://opper.ai/typesafe/jev-1-13-0), [eesel](https://www.eesel.ai/blog/typesafe-jev-pricing) | Secondary |
-| SDKs | Python `typesafe-sdk` 0.7.2 (2026-09-26, Python ≥3.10). JS `@typesafe-ai/sdk` 0.6.0 (Node ≥20). Default: 2 retries on 408/429/5xx, 10 s timeout. | [PyPI](https://pypi.org/project/typesafe-sdk/), [JS SDK](https://github.com/typesafe-ai/typesafe-sdk-js) | Verified |
+| SDKs | Python `typesafe-sdk` 0.7.2 (2026-09-26, Python ≥3.10). JS `@typesafe-ai/sdk` 0.6.0 (2026-09-15, Node ≥20, MIT). Default: 2 retries on 408/429/5xx, 10 s timeout. Environment variables `TYPESAFE_API_KEY`, `TYPESAFE_BASE_URL`, `TYPESAFE_DEFAULT_MODEL` (default `jev-latest`, so pin explicitly). | [PyPI](https://pypi.org/project/typesafe-sdk/), [JS SDK](https://github.com/typesafe-ai/typesafe-sdk-js) | Verified |
 | Errors | 401, 422 (validation), 429 (honour `retry-after`), 529 (overloaded) | [snapshot](https://github.com/aaddrick/building-with-typesafe-jev) | Verified |
 
 ### 1.2 The three question types and the wire format
@@ -98,7 +98,7 @@ Content-Type: application/json
 
 ### 1.3 Documented weak spots and how the design answers them
 
-TypeSafe lists nine "jaggedness" failure modes for `jev-1.13` ([docs](https://docs.typesafe.ai/model-jaggedness/jev-1.13), secondary). Each one maps to a design rule in §2.3.
+TypeSafe lists nine "jaggedness" failure modes for `jev-1.13` ([docs](https://docs.typesafe.ai/model-jaggedness/jev-1.13), secondary; the page itself was not reachable). The seven recorded in the research brief are below, each mapped to a design rule in §2.3. The other two are to be read from the page (§13).
 
 | Weak spot | Where it would hurt the twin | Design answer |
 |---|---|---|
@@ -128,13 +128,13 @@ TypeSafe lists nine "jaggedness" failure modes for `jev-1.13` ([docs](https://do
 
 | Date (2026) | Event | Source |
 |---|---|---|
-| 15 Sep | Came out of stealth with Jev and a US$40M seed | [flaviocopes](https://flaviocopes.com/jev/) |
+| 15 Sep | Came out of stealth with Jev and a US$40M seed; JS SDK 0.6.0 published | [flaviocopes](https://flaviocopes.com/jev/), [JS SDK](https://github.com/typesafe-ai/typesafe-sdk-js) |
 | 20 Sep | Waitlist dropped, with a US$5 credit | [explainx](https://explainx.ai/blog/jev-general-availability-no-waitlist-2026) |
 | 22 Sep | New signups paused | [aifront-page](https://aifront-page.com/typesafe-ai-reopens-jev-sign-ups-free-credit-suspended/) |
-| ≈29 Sep | Signups reopened **without** the credit | same |
 | 26 Sep | Python SDK 0.7.2 released (0.6.0 and 0.7.0 were breaking changes) | [PyPI](https://pypi.org/project/typesafe-sdk/) |
+| ≈29 Sep | Signups reopened **without** the credit ("about a week later"; press reports, not confirmed at the console) | [aifront-page](https://aifront-page.com/typesafe-ai-reopens-jev-sign-ups-free-credit-suspended/) |
 
-TypeSafe is two weeks past launch. Capacity-driven signup pauses, a withdrawn credit policy, no SLA and a single US region are the reasons why fallback backends (c) and (d) in §5 are **required, not optional** (D17).
+TypeSafe is two weeks past launch. Capacity-driven signup pauses, a withdrawn credit policy, no published SLA and a single US West Coast location are the reasons why fallback backends (c) and (d) in §5 are **required, not optional** (D17).
 
 ### 1.6 Consequences for the twin
 
@@ -197,7 +197,7 @@ flowchart TD
 | R8 | **Hard rules precede Jev.** Where a code rule applies (for example "gauge above danger level ⇒ run"), Jev is not consulted. Jev can make a gate stricter, never looser. |
 | R9 | **No side effects from Jev.** Allowed automatic effects are internal only: labelling, queueing, routing, paging the internal duty officer, and compute runs inside a pre-approved per-cycle budget. Publishing, contacting the public, dispatching resources, changing official content and spending above a cap always need a human. |
 | R10 | **Escalate to Gemini selectively.** Only uncertain items that are high value or need extraction or reasoning go to Gemini. Gemini's output is re-checked by code and a Jev battery. If it is still uncertain, a human decides. |
-| R11 | **Humans own public outputs.** Reports and bulletins need *firma técnica* (FR-046). AI-drafted text carries label D12 and Jev classifications carry label D13 ([02 §8.5](./02-users-requirements-ux.md)). |
+| R11 | **Humans own public outputs.** Reports and bulletins need *firma técnica* (FR-046). AI-drafted text carries disclaimer D12 and Jev classifications carry disclaimer D13 ([02 §8.5](./02-users-requirements-ux.md); these are disclaimer keys, not spine decisions D12/D13). |
 | R12 | **Log everything.** Pin `jev-1.13.0`. Log `response.model`, the raw probabilities, the policy string, the request hash, the template id and version, and the backend. Thresholds are re-applied to stored probabilities without new calls. |
 | R13 | **Data-class gate in code.** C2/C3 data is pseudonymised before any call; C3 goes only to backends cleared for it; C4 never goes to any model (§10.2). |
 | R14 | **Small states.** Keep every state ≤6,000 tokens. This improves Jev accuracy and keeps the open-weight fallback, with its 8,192-token window, usable. |
@@ -238,7 +238,7 @@ The review band cannot all go to people. At peak about 125,000 items a month wou
 | P3 audit | Stratified random sample for drift (§9.6) | ≈870 (200/week) | Weekly |
 | Others | Stored as *sin confirmar*, counted in parish aggregates, never mapped as confirmed | ≈108,000 | None |
 
-This comes to ≈17,400 items/month, or ≈580/day. At 30 s per item and about 6 productive hours per shift, one analyst clears ≈720 items per shift, so the national load is about **one analyst-shift per day** (estimate). Who staffs these queues nationally (SNGR/COE MTT staff under the *convenio*) is **(to confirm)**. If the P1 or P2 backlog exceeds 2 h, event-mode policy raises the P2 entry rule to severity level 4 and records the change in `decision_log.note`.
+This comes to 5,500 + 11,000 + 870 ≈ 17,400 items/month, or ≈580/day. At 30 s per item and about 6 productive hours per shift, one analyst clears 6 × 3,600 / 30 = 720 items per shift, so the national load is about **one analyst-shift per day** (estimate). The ≤10-minute P1 target is the tighter constraint: it needs one trained reviewer on duty around the clock in event mode, i.e. 168 h/week ≈ 4.2 full-time equivalents for one seat (estimate), which is why the queues should sit with staff who are already on shift. Who staffs these queues nationally (SNGR/COE MTT staff under the *convenio*) is **(to confirm)**. If the P1 or P2 backlog exceeds 2 h, event-mode policy raises the P2 entry rule to severity level 4 and records the change in `decision_log.note`.
 
 ---
 
@@ -246,9 +246,9 @@ This comes to ≈17,400 items/month, or ≈580/day. At 30 s per item and about 6
 
 ### 3.1 Why the build phase is where Jev pays off most
 
-The twin has to be built **while El Niño is active**. Phase 1 runs from 19 Oct to 27 Nov 2026, and peak impacts are expected from Nov 2026 to Mar 2027 (spine §7). The binding constraint is **analyst time**, not cloud money. Ecuador's useful data is spread across GeoNodes, ArcGIS servers, CKAN portals, WordPress sites and PDF archives. Place names are not coded, and there is no national impact database in machine-readable form ([EcuDataMCP research notes](https://github.com/DweskZ/EcuDataMCP/blob/main/docs/RESEARCH.md)).
+The twin has to be built **while El Niño is active**. Phase 1 runs from 19 Oct to 27 Nov 2026, and peak impacts are expected from Nov 2026 to Mar 2027 (spine §7). The binding constraint is **analyst time**, not cloud money. Ecuador's useful data is spread across GeoNodes, ArcGIS servers, CKAN portals, WordPress sites and PDF archives ([EcuDataMCP research notes](https://github.com/DweskZ/EcuDataMCP/blob/main/docs/RESEARCH.md)). Place names in SNGR, MSP and ECU 911 sources are not coded ([sgr_client.py](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/sgr_client.py)). SNGR publishes its impact record mainly as SITREP PDFs, and the machine-readable DesInventar inventory is reachable only through a third-party reuse with licence **(to confirm)** (§3.5).
 
-Estimated, the curation backlog is ≈3,600 analyst-hours: two people for about 45 weeks. That would finish after the season. With Jev batteries B1–B4, the human share falls to ≈620 hours, about two analysts for 8 weeks, and Phase 0–1 can absorb that. Jev's API bill for the whole build is under US$20 per pass. The Gemini-only alternative costs about 12× more in API fees. More important, its verbalised probabilities are less well calibrated (JevBench calibration 68.1 against 82.7), so fewer items can be accepted automatically.
+Estimated, the curation backlog is ≈3,600 analyst-hours (§3.7): 3,608 h ÷ 2 people ÷ 40 h/week ≈ 45 weeks. That would finish after the season. With Jev batteries B1–B4, the human share falls to ≈620 hours (617 ÷ 2 ÷ 40 ≈ 8 weeks for two analysts), and Phase 0–1 can absorb that. Jev's API bill for the whole build is under US$20 per pass. The Gemini-only alternative costs about 12× more in API fees. More important, its verbalised probabilities are less well calibrated (JevBench calibration 68.1 against 82.7), so fewer items can be accepted automatically.
 
 ```mermaid
 flowchart LR
@@ -281,7 +281,7 @@ flowchart LR
 | `impact_events` (`commons_internal` → `commons_pub`) | B4 unified history; Jev label columns proposed here (§3.5) | [05 §4.9](./05-data-catalog.md) | After review |
 | `commons_internal.jev_parish_escalation` | S3 per-parish answers used by the risk index | [07 §5](./07-impact-modules-and-triggers.md) | No |
 | `commons_ops.review_queue` | All Commons human queues (`catalog`, `pdf_qa`, `dpa_match`, `impact_label`, `p1_life_safety`, `p2_severity`, `audit`) | [05 §4.9](./05-data-catalog.md) | No |
-| `commons_ops.dq_results`, `commons_ops.source_health` | B5 flags and source status | [11 §7.2](./11-operations-runbook.md) | No |
+| `commons_ops.dq_results`, `commons_ops.source_health` | B5 flags and source status | [11 §4.3, §7.2](./11-operations-runbook.md) | No |
 
 ### 3.2 B1 — Cataloguing thousands of external layers
 
@@ -292,9 +292,11 @@ flowchart LR
 | CIIFEN GeoNode | ≈1,660 climate-risk and vulnerability layers | GeoNode API `/api/layers/`, CSW, WMS/WFS/WCS at `https://geonode.ciifen.org/geoserver/ows` | [dataportals-registry](https://github.com/datenoio/dataportals-registry) |
 | SNGR `/biblioteca/` | ≈1,660 documents in 19 categories. Hazard maps are PDF or images, not vectors. | WordPress | [sgr_publicaciones_client.py](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/sgr_publicaciones_client.py) |
 | INAMHI GeoServer | 222 layers (WRF grids, anomalies, `geoglows_ecuador`) | WMS/WFS, GeoNode `/api/datasets/`, CSW `/catalogue/csw` | [inamhi_client.py](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/inamhi_client.py) |
-| datosabiertos.gob.ec CKAN | MAG 69, CENACE 45 and IGM 25 packages; ECU 911 organisation; others to harvest | `package_search` (returns 403 outside Latin America) | [GEOBLOCK_PLAN.md](https://github.com/DweskZ/EcuDataMCP/blob/main/docs/GEOBLOCK_PLAN.md) |
+| datosabiertos.gob.ec CKAN | MAG 69, CENACE 45 and IGM 25 datasets; ECU 911 organisation (`ecu-911`); others to harvest | `package_search` (returns 403 "fuera de Latinoamérica" outside Latin America) | [RESEARCH.md](https://github.com/DweskZ/EcuDataMCP/blob/main/docs/RESEARCH.md), [GEOBLOCK_PLAN.md](https://github.com/DweskZ/EcuDataMCP/blob/main/docs/GEOBLOCK_PLAN.md) |
+| MAG geoportal | 277 WMS layers (257 also on WFS), incl. 52 agroclimatic-risk layers and the 1:25k flood-susceptibility map; HTTP only | GeoServer WMS/WFS, GeoNetwork CSW | [sipa_geoportal_client.py](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/sipa_geoportal_client.py) |
+| IDE Ambiente GeoNetwork | ≈408 records (host status to recheck: `ambiente.gob.ec` now redirects elsewhere) | CSW, OAI-PMH | [dataportals-registry](https://github.com/datenoio/dataportals-registry/blob/main/data/entities/EC/Federal/geo/ideambientegobec.yaml) |
 | Other portals | INEC GeoNode and GeoServer (7 layers), Manabí GeoNode, Guayaquil ArcGIS, Segura EP layers, Quito, Manta Hub, Charles Darwin Foundation GeoNode, SeaSketch Galápagos (22 layers) | GeoNode, ArcGIS REST, DCAT | [RESEARCH.md](https://github.com/DweskZ/EcuDataMCP/blob/main/docs/RESEARCH.md) |
-| **Total** | **≈5,000 items** (estimate: 1,660 + 1,660 + 222 + ≈300 CKAN + ≈1,000 other) | | |
+| **Total** | **≈4,800 items, budgeted as 5,000** (estimate: 1,660 + 1,660 + 222 + ≈300 CKAN + 277 + ≈408 + ≈300 other ≈ 4,830) | | |
 
 **Procedure**
 
@@ -388,7 +390,7 @@ The twin needs an **impact** history, not only a hazard history. It is used for 
 4. Review bands go to `commons_ops.review_queue` (queue `impact_label`) by priority: severity ≥2 and conflicts first.
 5. **Label columns proposed for `impact_events`** (to agree with 05): `jev_is_hydromet FLOAT64`, `jev_hazard STRING`, `jev_flags ARRAY<STRING>` (Nouls >0.70), `jev_flags_unconfirmed ARRAY<STRING>` (0.30–0.70), `jev_severity_level INT64`, `jev_needs_review BOOL`, `jev_template_version STRING` and `event_uid STRING`.
 
-**Acceptance (B4):** 2016–2026 records labelled by **2026-12-11**; macro-F1 ≥0.80 for hazard type and asset flags on a 3,000-record gold set; precision ≥0.95 for merged duplicates.
+**Acceptance (B4):** 2010–2026 records labelled by **2026-12-11** (DesInventar 2010–2025; SNGR events and SITREPs 2016–2026; the template's backfill range); macro-F1 ≥0.80 for hazard type and asset flags on a 3,000-record gold set; precision ≥0.95 for merged duplicates.
 
 ### 3.6 B5 — Ingestion data-quality flags
 
@@ -439,7 +441,7 @@ Allowing three passes while templates are tuned (English against Spanish instruc
 
 1. The API bill is small with either model. What Jev saves is analyst time and **calendar time**: about 45 two-analyst weeks shrink to about 8, which fits before the Dec–Apr coastal season.
 2. Jev is about 12× cheaper than Flash-Lite for the same checks. Its better calibration also allows a larger auto-accept share. This advantage is claimed from JevBench and has to be confirmed on our gold sets.
-3. At ≤1,000 requests/min (the §5.6 pacing), the 428,000 build requests take about **7.1 hours** of API time in total.
+3. The 428,000 build requests take 428,000 ÷ 1,000/min ≈ **7.1 hours** of API time at the §5.6 pacing cap, or 428,000 ÷ ≈740/min ≈ **9.6 hours** at the throughput that 8 workers deliver at the 0.65 s p50 (estimate). Either way it is a few overnight runs, not a scheduling constraint.
 
 ### 3.8 Build schedule
 
@@ -449,7 +451,7 @@ Allowing three passes while templates are tuned (English against Spanish instruc
 | B1 | Catalogue triage | 2026-10-05 | 2026-10-16 | DL + AI | §3.2 acceptance |
 | B3 | Place resolver | 2026-10-12 | 2026-10-23 | DL | §3.4 acceptance |
 | B2 | SITREP 2026 tables, then MSP gazettes | 2026-10-19 | 2026-11-13 (SITREP 2026), 2026-12-04 (rest) | DL | §3.3 acceptance |
-| B4 | Impact database 2016–2026 | 2026-11-02 | 2026-12-11 | DL + AI | §3.5 acceptance |
+| B4 | Impact database 2010–2026 | 2026-11-02 | 2026-12-11 | DL + AI | §3.5 acceptance |
 
 ---
 
@@ -536,7 +538,7 @@ Records go to `commons_internal.incident_records`; counts go to `commons_pub.imp
 
 ### 4.4 S2 — ECU 911 / SNGR narrative → typed incident record
 
-**What:** turns pseudonymised narratives into an event class, a code-consistency flag, asset Nouls (bridge, road, health, school, water) and `needs_rescue`/`affected_people_stated`. ECU 911 handled **3.2M emergencies in 2025**, about 267k–271k a month, including 1,956 rainy-season alerts ([ECU 911](https://www.ecu911.gob.ec/3-2-millones-de-emergencias-gestionadas-por-el-ecu-911-en-2025/)). **Code first filters by operator code** so that only hydromet-related categories plus unknown codes reach Jev. The peak assumption is 350k narratives a month, including SNGR.
+**What:** turns pseudonymised narratives into an event class, a code-consistency flag, asset Nouls (bridge, road, health, school, water) and `needs_rescue`/`affected_people_stated`. ECU 911 handled **3.2M emergencies in 2025**, about 267k–271k a month, including 1,956 rainy-season alerts ([ECU 911](https://www.ecu911.gob.ec/3-2-millones-de-emergencias-gestionadas-por-el-ecu-911-en-2025/)). **Code first filters by operator code** so that only hydromet-related categories plus unknown codes reach Jev. The brief's peak assumption is 350k narratives a month, including SNGR. That is more than ECU 911's **entire** average monthly volume (≈267k–271k), so after the code filter the real W3 volume should be far lower; 350k (US$16.17/month on Jev) is kept as a conservative upper bound consistent with the spine anchor, and is replaced by the measured filtered volume once the *convenio* feed is live.
 
 ```json
 "state": {"narrative": "{{narrative}}", "operator_code": "{{operator_code}}",
@@ -551,7 +553,7 @@ Records go to `commons_internal.incident_records`; counts go to `commons_pub.imp
 | `needs_rescue` | ≥0.30 → P1 queue |
 | `affected_people_stated` | >0.70 → code regex extracts the number; if the regex fails, Gemini proposes candidates and Jev selects (R3) |
 
-**Data class C3.** S2 runs on the **open-weight backend** (Von in Commons) or on the Gemini adapter in Agent Platform mode, once confirmed, **until** TypeSafe ZDR/enterprise terms and the DPA review are signed (D18, §10). The event classes must be aligned with the SNGR taxonomy used in COE2 and `EVENTOS_X_LLUVIAS` **(to confirm with SNGR)**.
+**Data class C3.** S2 runs on the **open-weight backend** (Von in Commons) or on the Gemini adapter in Agent Platform mode, once confirmed, **until** TypeSafe ZDR/enterprise terms and the DPA review are signed (D18, §10). Von's 8,192-token window is enough for the 6,000-token state cap of this template (R14). The event classes must be aligned with the SNGR taxonomy used in COE2 and `EVENTOS_X_LLUVIAS` **(to confirm with SNGR)**.
 
 ### 4.5 S3 — Parish impact escalation
 
@@ -658,9 +660,12 @@ class DecisionBackend(Protocol):
 Typical use in a Commons job:
 
 ```python
+import os
+from google.cloud import bigquery
 from decision_backend import (TypeSafeHTTPBackend, OpenWeightHTTPBackend, FailoverBackend,
                               render_template, evaluate, build_decision_log_rows)
 
+bq = bigquery.Client(project="ectwin-commons-prod")
 backend = FailoverBackend([
     TypeSafeHTTPBackend(api_key=os.environ["TYPESAFE_API_KEY"]),          # from Secret Manager
     OpenWeightHTTPBackend(os.environ["VON_BASE_URL"]),                     # Cloud Run, IAM invoker
@@ -707,12 +712,16 @@ templates:
     tenant: [typesafe, keyword] # 'keyword' = deterministic router in code; 1200 ms budget
   report_triage:
     commons: [typesafe, open_weight]
-  # Non-urgent work is queued, not failed over (RB-09 step 4): FailoverBackend(failover=False)
+  # Non-urgent work is queued, not failed over (RB-09 step 4): FailoverBackend(failover=False).
+  # The primary is the first listed backend that accepts the item's data class (see data_class_overrides).
   catalog_layer_classifier: {failover: false}
   pdf_table_qa:             {failover: false}
   place_resolution:         {failover: false}
   impact_history_labeler:   {failover: false}
   event_dedupe:             {failover: false}     # live S6 pairs wait; P1 items are never pairs
+data_class_overrides:          # applied before any template order
+  C3: [open_weight, gemini_adapter]   # ECU 911/SNGR narratives, and S6/B4 items that contain them;
+                                      # the guard skips gemini_adapter until Agent Platform mode is confirmed
 policies:                      # replaced per backend after the calibration study (section 9)
   typesafe:       {noul_low: 0.30, noul_high: 0.70, choice_abstain: 0.60, score_confidence_min: 0.50}
   openrouter:     {noul_low: 0.30, noul_high: 0.70, choice_abstain: 0.60, score_confidence_min: 0.50}
@@ -722,8 +731,8 @@ policies:                      # replaced per backend after the calibration stud
 
 ### 5.4 Failover and circuit breaker
 
-- A **retry** inside a backend handles 408/429/5xx/529 with exponential backoff (0.5 s start, 5 s cap, ±25% jitter) and honours `retry-after`. There are at most 2 retries (the SDK default).
-- The **circuit breaker** is per backend and per process, aligned with [11 RB-09](./11-operations-runbook.md). It opens after 5 consecutive failures. After 10 minutes it half-opens and lets 5 canary calls through: it closes if all 5 succeed and re-opens on any failure. The fleet-level trigger (529/5xx above 5% for 5 minutes) is alert OPS-A13, which starts RB-09, and dashboard DB-07 shows the active backend and review-queue depth.
+- A **retry** inside a backend handles 408/429/5xx (including 529) with exponential backoff (0.5 s start, 5 s cap, ±25% jitter) and honours `retry-after` (capped at 60 s). There are at most 2 retries. These are the JS SDK's documented `RetryPolicy` defaults ([SDK notes](https://github.com/aaddrick/building-with-typesafe-jev)).
+- The **circuit breaker** is per backend and per process, aligned with [11 RB-09](./11-operations-runbook.md). It opens after 5 consecutive failures. After 10 minutes it half-opens and lets calls through as canaries: it closes after 5 consecutive successes and re-opens, for another 10 minutes, on any failure (`CircuitBreaker` in the reference module). The fleet-level trigger (529/5xx above 5% for 5 minutes) is alert OPS-A13, which starts RB-09, and dashboard DB-07 shows the active backend and review-queue depth.
 - The **failover order** comes from §5.3. Every answer carries `fallback_from`, for example `('typesafe:unavailable',)`, and it is logged.
 - **Validation errors are not sprayed across backends.** A 4xx from TypeSafe means the request is wrong. The exception is an open-weight 422 for context overflow, which may fall through to the next backend.
 - When all backends fail, the item is queued (Pub/Sub retains it) and the UI shows "Clasificación en revisión manual" ([03 §11.2](./03-architecture.md)). P1 items go straight to a human.
@@ -770,41 +779,52 @@ gcloud run jobs deploy jev-triage-national --project=ectwin-commons-prod --regio
   --cpu=1 --memory=1Gi --tasks=1 --max-retries=1 --task-timeout=3600s
 ```
 
-Open-weight fallback (Von) as a private Cloud Run service. The image is mirrored into Artifact Registry by digest. Upstream publishes `ghcr.io/wfzyx/von:cpu` once its PR #12 lands; until then it is built from that branch's Dockerfile ([Von](https://github.com/wfzyx/von)).
+Open-weight fallback (Von) as a private Cloud Run service. The image is mirrored into Artifact Registry by digest. Upstream publishes `ghcr.io/wfzyx/von:cpu` once its PR #12 lands; until then it is built from that branch's Dockerfile ([Von](https://github.com/wfzyx/von)). `VON_ON_OVERFLOW=refuse` makes an oversize state return HTTP 422 instead of being middle-truncated (the upstream default is `truncate`); `VON_CHAINS_DIR=off` disables the chain-of-options engine, whose date and number chains duplicate work the twin keeps in code and cost seconds per hard item on CPU.
 
 ```bash
 gcloud run deploy ectwin-von --project=ectwin-commons-prod --region=us-central1 \
   --image=us-central1-docker.pkg.dev/ectwin-platform-prod/ectwin/von-cpu@sha256:<DIGEST> \
   --command=von --args=serve,--host,0.0.0.0,--port,8000 --port=8000 \
   --cpu=4 --memory=8Gi --concurrency=4 --min-instances=0 --max-instances=10 \
-  --set-env-vars=VON_ON_OVERFLOW=refuse,VON_MAX_STATE_TOKENS=8192 \
+  --set-env-vars=VON_ON_OVERFLOW=refuse,VON_MAX_STATE_TOKENS=8192,VON_CHAINS_DIR=off \
   --no-allow-unauthenticated
 gcloud run services add-iam-policy-binding ectwin-von --project=ectwin-commons-prod --region=us-central1 \
   --member=serviceAccount:ectwin-decision@ectwin-commons-prod.iam.gserviceaccount.com --role=roles/run.invoker
 ```
 
-Tenant-side, this is an optional module of `infra/tenant-bootstrap/` behind the flag `enable_decision_backend`. The tenant pastes its own key; the key **never passes through the platform** at creation time.
+Tenant-side, the secret already exists: the tenant bootstrap creates `typesafe-api-key` (and `floodforecasting-api-key`) as **placeholders without versions** and grants `ectwin-runner` `roles/secretmanager.secretAccessor` on each (`infra/tenant-bootstrap/main.tf` section 8, variable `secret_ids`; [04](./04-identity-tenancy-byo-gcp.md)). The tenant adds its own key; the key **never passes through the platform** at creation time. The module's resources, as they stand:
 
 ```hcl
-resource "google_secret_manager_secret" "typesafe" {
-  project   = var.tenant_project
-  secret_id = "typesafe-api-key"   # name fixed in 04-identity-tenancy-byo-gcp.md
+resource "google_secret_manager_secret" "placeholders" {
+  for_each = toset(var.secret_ids)   # default ["typesafe-api-key", "floodforecasting-api-key"]
+
+  project   = var.project_id
+  secret_id = each.value
+  labels    = { component = "tenant-secrets" }
+
   replication {
-    user_managed {
-      replicas { location = "us-central1" }
-    }
+    auto {}
   }
-  labels = { app = "ectwin", purpose = "decision-backend" }
+
+  depends_on = [google_project_service.apis]
 }
 
-resource "google_secret_manager_secret_iam_member" "runner_access" {
-  project   = var.tenant_project
-  secret_id = google_secret_manager_secret.typesafe.secret_id
+resource "google_secret_manager_secret_iam_member" "runner_accessor" {
+  for_each = google_secret_manager_secret.placeholders
+
+  project   = var.project_id
+  secret_id = each.value.secret_id
   role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:ectwin-runner@${var.tenant_project}.iam.gserviceaccount.com"
+  member    = google_service_account.runner.member
 }
-# The tenant then runs:  gcloud secrets versions add typesafe-api-key --data-file=-   (in Cloud Shell)
 ```
+
+```bash
+# Run by the tenant in Cloud Shell; the key is typed, never echoed or stored in a file.
+read -rs KEY && printf %s "$KEY" | gcloud secrets versions add typesafe-api-key --data-file=- --project=PROJECT_ID
+```
+
+Automatic replication lets Google choose the storage locations. A tenant that wants location-pinned replication (for example `us-central1` only) needs a `user_managed` option in the module, which is **proposed here and to agree with the [10](./10-setup-and-deployment.md) owners**.
 
 ---
 
@@ -830,7 +850,7 @@ Rules:
 2. **National public goods are paid once.** W1–W5 and W7 run in Commons, and their results are shared through `commons_pub` and the Analytics Hub listing. Tenants never pay again for national triage (AP-03).
 3. **Procurement.** Jev is not billable through GCP. Ecuadorian public entities may not be able to pay a US card-billed SaaS through SERCOP procedures (**to confirm**). Their route is backend (c), billed on the tenant's GCP invoice (through a local reseller where needed), or backend (d).
 4. **Rotation.** The Commons key is rotated every 90 days, and `decision_call` log events must show the new key id ([11](./11-operations-runbook.md)). Tenants rotate their own keys.
-5. **Taxes** on payments abroad for digital services: +15% IVA, and ISD 2.5–5% when paid by card or transfer abroad (**verify with SRI**; see [09](./09-cost-model.md) and [13](./13-governance-legal-risk.md)). At national peak this adds ≈US$20–23 to the ≈US$114 TypeSafe bill (W1–W7 + W8).
+5. **Taxes** on payments abroad for digital services: +15% IVA, and ISD 2.5–5% when paid by card or transfer abroad (**verify with SRI**; see [09](./09-cost-model.md) and [13](./13-governance-legal-risk.md)). At national peak (estimate, 17.5–20% on top): the sponsor's TypeSafe bill of US$90.79 (W1–W5, W7, W8, B5) gains ≈US$15.9–18.2, and tenants' W6 bill of US$27.30 gains ≈US$4.8–5.5; together ≈US$21–24 on US$118.09. Gemini on the GCP invoice follows the GCP tax treatment in [09](./09-cost-model.md).
 
 ---
 
@@ -907,7 +927,7 @@ The brief's alternative of bulletins on 3.8 Flash (≈1,470 bulletins ≈US$17) 
 | **Total decision layer** | | **≈US$196/month**, before IVA and ISD on foreign payments |
 | All-LLM design for comparison | W1–W7 on Flash-Lite (1,450.36) + bulletins (11.18) + W8 on Flash-Lite (24.84M × 0.25 + 8,280 × 150 × 1.50/1M = 6.21 + 1.86) + B5 on Flash-Lite (90M × 0.25 + 150,000 × 120 × 1.50/1M = 22.50 + 27.00) + escalations (66.76) | **≈US$1,586/month** |
 
-The sponsor's decision-layer cost (≈US$144/month at peak) fits within the Commons envelope of US$100–300/month only together with the other Commons items. [09](./09-cost-model.md) must carry it explicitly.
+The sponsor's decision-layer cost (≈US$144/month at peak) is about half of the upper end of the spine's Commons envelope (US$100–300/month) on its own. [09 §4.3.2](./09-cost-model.md) carries it explicitly and shows the Commons total reaching ≈US$260–415 in a full peak month, above the envelope, mostly because of this layer and impact campaigns. The sponsor budget must be set for that.
 
 ### 7.6 Alternative-backend scenarios at peak
 
@@ -917,20 +937,20 @@ The sponsor's decision-layer cost (≈US$144/month at peak) fits within the Comm
 | **Before ZDR:** W3 on Von on Cloud Run (4 vCPU / 8 GiB, request-based, 0.2–1.0 s per request, estimate) | 350,000 × (0.2 to 1.0 s) × (4 × 0.000024 + 8 × 0.0000025 = US$0.000116/s) | **8–41** |
 | **TypeSafe outage for 2 peak days,** all of W1–W7 on the Flash-Lite adapter | 1,450.36 × 2/30 | ≈97 |
 | **TypeSafe outage for 2 peak days,** all of W1–W7 on Von | 4,312,000 × 2/30 × (0.2 to 1.0 s) × 0.000116 | ≈7–33 |
-| **All of W1–W7 on Von for a month** (sovereign mode) | 4,312,000 × (0.2 to 1.0 s) × 0.000116, minus the free tier (≈US$4) | ≈96–496 |
+| **All of W1–W7 on Von for a month** (sovereign mode) | 4,312,000 × (0.2 to 1.0 s) × 0.000116, before any free tier (the Cloud Run free tier, worth ≈US$5, is already used by other Commons jobs) | ≈100–500 |
 | **Price shock:** Jev ×10 | 113.27 × 10 | 1,133, still below Flash-Lite |
 
-Von's per-request compute time at our 300–2,500-token states is **unmeasured**. The published raw p50 is 0.096 s on 4 vCPU for short items, and hard, long items take longer. Test AI-04 measures it.
+Von's per-request compute time at our 300–2,500-token states is **unmeasured**. The published raw p50 of Von 1.2 is 0.096 s on a 4-vCPU Xeon with OpenVINO for benchmark items, but Von 1.3's chain-of-options engine took 4.2 s p50 on hard-tier items on 4 vCPU ([Von](https://github.com/wfzyx/von)). The 0.2–1.0 s range above therefore assumes chains are disabled (`VON_CHAINS_DIR=off`) or served on a GPU. Test AI-04 measures it.
 
 ### 7.7 Throughput and latency check
 
 | Check | Value | Result |
 |---|---|---|
 | Peak monthly volume per Commons account (W1–W5, W7, W8, B5) | 3,470,280 requests ≈ 115,700/day average | ≈80/min average against 1,000/min pacing: OK |
-| Event-night burst (10× average) | ≈800/min | Below pacing; queue absorbs short spikes |
-| Tokens per second at burst | 800/min × 1,000 tokens ≈ 13k tokens/s | Far below 250k/s |
+| Event-night burst (10× average) | ≈800/min | Below the 1,000/min pacing cap but above the ≈740/min that 8 workers deliver at p50; Pub/Sub absorbs the excess (a 1-hour burst leaves ≈60 × 60 = 3,600 items queued, cleared in ≈3,600 ÷ (740 − 80) ≈ 5.5 min afterwards; estimate) |
+| Tokens per second at burst | 800/min × 1,000 tokens ÷ 60 ≈ 13k tokens/s (1,000 tokens/request is conservative: the Commons peak mix averages 2,161.6M ÷ 3,470,280 ≈ 620) | Far below 250k/s |
 | S5 interactive | Jev p50 0.65 s end-to-end (from Germany); Ecuador → `us-central1` → US West adds an estimated 100–150 ms **(unverified)** | 1,200 ms budget; keyword fallback beyond it |
-| Build (§3.7) | 428,000 requests at ≤1,000/min | ≈7.1 h of API time |
+| Build (§3.7) | 428,000 requests at ≤1,000/min (cap) or ≈740/min (8 workers at p50) | ≈7.1–9.6 h of API time |
 
 ---
 
@@ -970,13 +990,13 @@ Phase 3, opt-in per tenant, off by default (FR-062). It runs in the tenant proje
 - **Citations are mandatory.** Every answer lists dataset, `init_time` and method version. An answer without a citation is withheld.
 - **Privacy:** DLP runs on user text before the call. Tenant decision logs, sessions and audit events are excluded from its tool scope.
 - **Limits:** a per-user daily cap (proposed 50 questions) and a tenant monthly budget alert.
-- **Cost estimate per question:** 8,000 tokens in and 600 out. Until 2026-12-31: 0.006 + 0.00225 = **US$0.00825**. From 2027-01-01: **US$0.0165**. A Standard tenant asking 2,000 questions a month pays **US$16.50 → US$33.00**. A Heavy tenant at 50M in / 5M out pays **US$56.25 → US$112.50**, matching the costs brief.
+- **Cost estimate per question:** 8,000 tokens in and 600 out. Until 2026-12-31: 0.006 + 0.00225 = **US$0.00825**. From 2027-01-01: **US$0.0165**. A Standard tenant asking 2,000 questions a month pays **US$16.50 → US$33.00**. A Heavy tenant at 50M in / 5M out pays **US$56.25 → US$112.50**, matching the costs brief. Because the copilot is a Phase 3 feature (pilot by 2027-06-30, AI-24), only the 2027 price applies in production; the 2026 price applies only to the December evaluation runs.
 
 ### 8.3 NL→SQL (inside the copilot)
 
 1. S5 routes to NL→SQL only for data questions.
 2. Gemini receives the question and a **schema card** for allow-listed objects only. From the linked `ectwin_commons`: `parish_exceedance`, `official_alerts`, `river_status`, `enso_indices`, `seasonal_canton`, `verification_scores`, `dim_dpa`. From the tenant's `ectwin`: `aoi_forecast_summary`, `aoi_exceedance`, `observations`. It must return one `SELECT`.
-3. **Code guard.** Parse with an open-source SQL parser (for example sqlglot). Reject anything that is not a single `SELECT`, touches a table off the list, or uses DDL/DML/scripting. Require a partition filter (the tables set `require_partition_filter`) and add `LIMIT 1000`.
+3. **Code guard.** Parse with an open-source SQL parser (for example sqlglot). Reject anything that is not a single `SELECT`, touches a table off the list, or uses DDL/DML/scripting. Require a partition filter on partitioned tables (published Commons tables set `require_partition_filter`, [03 §5.3](./03-architecture.md); `dim_dpa` is not partitioned) and add `LIMIT 1000`.
 4. **Dry run** and set `maximumBytesBilled` to 10 GiB, tighter than the 50 GiB platform default in [03 §6.4](./03-architecture.md). The job is labelled `ectwin_feature=nl2sql` and runs as `ectwin-runner` with the tenant as billing project.
 5. The SQL is shown to the user. The result numbers are rendered by code, and Gemini may only describe them through placeholders.
 
@@ -996,7 +1016,7 @@ Default escalation model: **3.1 Flash-Lite** (≈US$0.0012 each). Only B2 page r
 | Item | To 2026-12-31 | From 2027-01-01 | Action |
 |---|---|---|---|
 | 3.8 Flash per 1M tokens | US$0.75 in / US$3.75 out | **US$1.50 / US$7.50** | Re-baseline budgets by **2026-12-15** (AI-20) |
-| Copilot, Standard tenant (2,000 questions) | US$16.50 | US$33.00 | Tenant budget alerts updated; per-user cap enforced |
+| Copilot, Standard tenant (2,000 questions) | US$16.50 (evaluation only) | US$33.00 (the production price, since the copilot is Phase 3) | Tenant budget alerts set on the 2027 price; per-user cap enforced |
 | Escalations if moved to 3.8 Flash | US$183.94 | US$367.88 | Keep escalations on Flash-Lite (US$66.76, unchanged) |
 | B2 re-extraction (build) | US$20.25 | US$40.50 | Finish B2 bulk before 2026-12-31 |
 | Alternatives to evaluate | — | 3.5 Flash-Lite (US$0.30/US$2.50; Batch US$0.15/US$1.25); 2.5 Flash-Lite (US$0.10/US$0.40) | Run the §9 copilot eval on both in December |
@@ -1019,7 +1039,7 @@ Gemini model ids and versions must be **pinned** in configuration, and deprecati
 | E6 pairs (S6) | 1,000 | B4 candidate pairs, stratified by score | DL | 2026-11-27 |
 | EB1–EB4 | 300 / 500 / 500 / 3,000 | Stratified samples of B1–B4 inputs | DL + AI | With each B workload (§3.8) |
 
-**Size rationale:** for a proportion near 0.9, the 95% interval half-width is ±1.5 points at n = 1,500 (√(0.9 × 0.1/1,500) = 0.0077 × 1.96) and ±2.6 points at n = 500. Ten ECE bins need a few hundred items per question. Labelling E1–E6 takes ≈170 annotator-hours (estimate), on top of the build-phase hours in §3.7.
+**Size rationale:** for a proportion near 0.9, the 95% interval half-width is ±1.5 points at n = 1,500 (√(0.9 × 0.1/1,500) = 0.0077 × 1.96) and ±2.6 points at n = 500. Ten ECE bins need a few hundred items per question. Labelling E1–E6 takes ≈170 annotator-hours (estimate: 6,600 items × 2 annotators × ≈45 s ≈ 165 h, plus adjudication), on top of the build-phase hours in §3.7.
 
 ### 9.2 Labelling protocol
 
@@ -1065,8 +1085,10 @@ ECE uses 10 equal-width bins over the probability used for the decision: the `no
 ### 9.5 Shadow mode
 
 - **Phase 1 (from 2026-11-06 for S3/S4, from 2026-11-13 for S1/S5):** templates run on live inputs, and nothing reaches users. Humans keep working as today, and their decisions are captured (COE confirmations, duty forecaster run decisions) to serve as labels.
-- **Minimum before go-live:** 4 weeks, or ≥500 labelled items per gated question, whichever is later. Gates in §9.3 must pass.
-- **Go/no-go:** 2026-11-27 for enabling the S1 review queue in Phase 2 (AI-16). The decision rests with AI, PM and DPO, and is recorded in [13](./13-governance-legal-risk.md).
+- **Minimum before go-live.** Two levels, because the S1 shadow starts on 2026-11-13 and its go/no-go is two weeks later:
+  - *Review-queue features* (S1, S2 and S6 feeding human queues, where every item still reaches a person or stays *sin confirmar*): the gold-set gates in §9.3 pass on E1/E2/E6 **and** at least 2 weeks of live shadow show no gate regression.
+  - *Automatic effects* (auto-accept, map display as a reported impact, S4 runs without a human, `ri-2.0.0` fusion): 4 weeks of live shadow, or ≥500 labelled items per gated question, whichever is later.
+- **Go/no-go:** 2026-11-27 for enabling the S1 review queue in Phase 2 (AI-16, first level). The decision rests with AI, PM and DPO, and is recorded in [13](./13-governance-legal-risk.md).
 
 ### 9.6 Drift monitoring during peak
 
@@ -1130,7 +1152,7 @@ GROUP BY template_id, question_id;
 
 ### 9.7 Kichwa
 
-- Kichwa has about 527k speakers. It matters mostly for Andean drought and hydro-energy messaging, while coastal flood users are mostly Spanish-speaking ([02 §8.9](./02-users-requirements-ux.md)).
+- Kichwa has about 527k speakers (INEC 2010, secondary). It matters mostly for Andean drought and hydro-energy messaging, while coastal flood users are mostly Spanish-speaking ([02 §8.9](./02-users-requirements-ux.md)). No Kichwa accuracy figures exist for Jev; the vendor says only that non-English languages "work with lower accuracy".
 - **No automatic decision is taken on Kichwa or code-switched text.** If S5 `language = kichwa`, or the report is detected as Kichwa, the item always goes to human review, whatever the probabilities.
 - Kichwa accuracy is **measured** on ≈200 items (part of E1) for information only. Any future use needs a native-reviewer panel, with the institution **(to confirm)**, and its own gate.
 - Gemini translation into Kichwa (Phase 3) is always reviewed by a native speaker before release (FR-076).
@@ -1211,10 +1233,11 @@ Facts are from the governance brief. Legal conclusions are **(to confirm with Ec
 - **Roles.** For tenant channels, the tenant is controller and Google its processor. For national feeds, SNGR/ECU 911 is controller and the Commons operator acts as processor under the *convenio*. **TypeSafe would be a sub-processor.** LOPDP Reglamento Art. 45 allows sub-processing only if the contract provides for it or the controller authorises it in writing ([Reglamento mirror](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/decreto.md)).
 - **Transfers.** Processing by a processor abroad "no constituye transferencia" according to Oficio SPDP-IRD-2026-0300-O, which answers one query and is not law ([Isla Montaña doc](https://github.com/sadie27/IslaMontanaWeb/blob/HEAD/docs/Arquitectura-Despliegue.md)). No adequacy decision exists for the US. TypeSafe has no LATAM residency.
 - **Risk-management carve-out.** LOPDP Art. 2(e) excludes personal data whose processing is governed by specialised disaster-risk rules. It does **not** cover the platform's own user data ([LOPDP mirror](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/lopd.md)).
-- **AI-specific rules.** SPDP Res. 2026-0009-R on personal data in AI systems, amended by 2026-0037-R (RO 373, 21 Sep 2026), must be reviewed before Phase 2 ([catalogue](https://github.com/CarlosJChileS/eculegaldev/blob/HEAD/data/normativa.json)). Its content was not retrieved.
+- **AI-specific rules.** SPDP Res. 2026-0009-R on personal data in AI systems (RO 240, 10 Mar 2026), amended by 2026-0037-R (RO 373, 21 Sep 2026), must be reviewed before Phase 2 ([catalogue](https://github.com/CarlosJChileS/eculegaldev/blob/HEAD/data/normativa.json)). Its content was not retrieved.
+- **Foreign processors.** LOPDP Art. 3 reaches foreign controllers and processors that offer services to residents of Ecuador, and Reglamento Art. 3 requires them to appoint an *apoderado especial* resident in Ecuador unless the processing is occasional and without special categories at scale ([Reglamento mirror](https://github.com/caloloc2/maestria_big_data/blob/HEAD/lopd/decreto.md)). Whether this applies to TypeSafe as a sub-processor is **(to confirm with Ecuadorian counsel)**.
 - **DPIA before processing** (Art. 42; Reglamento Art. 31). A DPIA covering S1, S2, S5 and B4 is drafted by 2026-10-16 and signed before shadow mode on real personal data.
 - **Geolocation.** Res. 2026-0005-R Art. 14 classifies "toda geolocalización" as large-scale processing. Reports are resolved to **parish** level only; no coordinates are stored and device geolocation is off (FR-054).
-- **Breach chain.** Processor → controller within 2 business days; controller → SPDP, ARCOTEL and CSIRT within 5; data subjects within 3 when their rights are at risk. TypeSafe's contract must support this chain, which its public terms do not show **(to confirm)**.
+- **Breach chain.** Processor → controller within 2 business days (*término*); controller → SPDP and the competent regulator (ARCOTEL) within 5 business days, and, since the 22 May 2026 cybersecurity law amended Art. 43, also the CSIRT; data subjects within 3 days when their rights are at risk (Arts. 43 and 46). The SPDP breach-notification technical norm 2026-0040-R (9 Sep 2026) awaits publication in the RO and may add duties. TypeSafe's contract must support this chain, which its public terms do not show **(to confirm)**.
 - **Before any C3 data reaches TypeSafe:** a signed DPA, ZDR on the enterprise plan, a named retention period, sub-processor list, breach notice ≤48 h, and US-location disclosure in the RAT and the privacy notice.
 
 ### 10.6 Human-in-the-loop and side-effect rules
@@ -1289,9 +1312,9 @@ Facts are from the governance brief. Legal conclusions are **(to confirm with Ec
 | AI-14 | S1/S5 shadow; keyword router; broker tenant-key path | AI + PL | 2026-11-13 | S5 p95 ≤1,200 ms or fallback; no key persisted (code review + secret scan) |
 | AI-15 | First evaluation report (E1, E5, EB1–EB3) per backend | AI | 2026-11-20 | Report with ECE, coverage and gates per question |
 | AI-16 | Go/no-go: enable S1 review queue for Phase 2 | AI + PM + DPO | 2026-11-27 | §9.3 gates met, or feature stays in shadow |
-| AI-17 | Bulletin drafts (FR-048) in review-only mode; W8 QA battery | AI + FL | 2026-12-01 | 7 consecutive days drafted before 10:45 UTC; zero unsupported digits |
+| AI-17 | Bulletin drafts (FR-048) in review-only mode; W8 QA battery (shadow drafts from 2026-11-24, costed in the §7.2 pilot month) | AI + FL | 2026-12-01 | 7 consecutive days drafted before 10:45 UTC; zero unsupported digits |
 | AI-18 | Enable S1/S2/S6 queues in event mode; weekly drift report | AI + SRE | 2026-12-07 | P1 ≤10 min in drills; weekly report published internally |
-| AI-19 | B4 impact database 2016–2026 complete; aggregates published | DL | 2026-12-11 | §3.5 acceptance |
+| AI-19 | B4 impact database 2010–2026 complete; aggregates published | DL | 2026-12-11 | §3.5 acceptance |
 | AI-20 | Re-baseline Gemini budgets for the 2027-01-01 price change | AI + PM | 2026-12-15 | Updated budgets in [09](./09-cost-model.md); tenant alerts updated |
 | AI-21 | Weekly drift audit (200 items) during peak | AI | Every Monday, Dec 2026 – Apr 2027 | §9.6 signals within bounds or actioned |
 | AI-22 | Failover drill | SRE | 2026-11-18, then monthly | §11 pass criteria |
@@ -1320,7 +1343,7 @@ gantt
   Go no-go AI-16                            :milestone, m1, 2026-11-27, 0d
   section Phase 2 Peak
   B4 impact database                        :b4, 2026-11-02, 40d
-  Bulletin drafts AI-17                     :a17, 2026-12-01, 30d
+  Bulletin drafts AI-17                     :a17, 2026-11-24, 37d
   Event-mode queues and drift AI-18 AI-21   :a18, 2026-12-07, 145d
   Gemini re-baseline AI-20                  :milestone, m2, 2026-12-15, 0d
   S3 evidence for ri-2.0.0 AI-23            :milestone, m3, 2027-01-08, 0d
@@ -1340,7 +1363,10 @@ gantt
 - **Von compute cost.** Per-request time at our 300–2,500-token states, and whether Von's 8,192-token window forces state trimming in S3/S4.
 - **Who reviews national queues.** P1 and P2 reviewers for Commons triage (SNGR/COE MTT staff, ECU 911 liaison) and the legal basis for the platform to hold ECU 911 narratives (*convenio*, LOPDP Art. 2(e)) are to be agreed with SNGR and ECU 911.
 - **Citizen-report channels.** Which tip-lines and social sources are in scope, with what consent wording and platform terms. Scraping public social media may conflict with platform terms and LOPDP. S1 volumes (2M/month) are the brief's assumption.
-- **Naming extensions proposed here** need confirmation with the owners of [03](./03-architecture.md), [05](./05-data-catalog.md) and [10](./10-setup-and-deployment.md): the *new* Commons tables in §3.1, the Jev label columns on `impact_events` (§3.5), the service account `ectwin-decision@ectwin-commons-prod`, the Cloud Run service `ectwin-von`, the jobs `catalog-triage` and `impact-db-backfill`, `routing.yaml`, the `decision_log` extension columns, and the new `decision_log.context` values. The tenant secret follows 04 (`typesafe-api-key`).
+- **Naming extensions proposed here** need confirmation with the owners of [03](./03-architecture.md), [05](./05-data-catalog.md) and [10](./10-setup-and-deployment.md): the *new* Commons tables in §3.1, the Jev label columns on `impact_events` (§3.5), the service account `ectwin-decision@ectwin-commons-prod`, the Cloud Run service `ectwin-von`, the jobs `catalog-harvest`, `catalog-triage` and `impact-db-backfill`, `routing.yaml` (including `data_class_overrides`), the `decision_log` extension columns, the new `decision_log.context` values, and a `user_managed` replication option for tenant secrets. The tenant secret follows 04 and the bootstrap module (`typesafe-api-key`, created without versions).
+- **S2 volume.** The brief's 350k narratives/month exceeds ECU 911's whole average monthly volume (≈267k–271k in 2025). Replace it with the measured, code-filtered volume once the *convenio* feed exists; until then W3 (US$16.17) is an upper bound.
+- **AI-23 date.** [14](./14-verification-and-validation.md) records the S3 evidence date as 2027-01-11; this document sets AI-23 at 2027-01-08. Both precede the 2027-01-12 sign-off; one date should be adopted in both documents.
+- **Jaggedness list.** Two of TypeSafe's nine documented failure modes were not captured in the research brief (§1.3); read them from the docs page and map them to rules.
 - **DLP pricing** and Spanish name-detection quality are not in the research briefs. Test them in AI-05 and add them to [09](./09-cost-model.md).
 - **Batch turnaround** for Gemini Flash-Lite Batch is not documented in the briefs. If batches often miss 10:45 UTC, adopt the proposed 10:15 UTC online resubmission in RB-10.
 - **S3 horizons.** 07 joins Jev answers per horizon (`d1_3`, `d4_7`, `d8_15`). This document budgets only the 72-h horizon. Approving all three triples W4, to ≈US$40/month at peak.

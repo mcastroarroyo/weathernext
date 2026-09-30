@@ -66,8 +66,9 @@ MAX_CHOICE_OPTIONS = 255
 MIN_SCORE_LEVELS = 2
 MAX_SCORE_LEVELS = 10
 
-# 408 timeout, 429 rate limit, 5xx server errors, 529 overloaded (TypeSafe).
-RETRYABLE_STATUS: frozenset[int] = frozenset({408, 429, 500, 502, 503, 504, 529})
+# 408 timeout, 429 rate limit, every 5xx server error including 529 overloaded (TypeSafe);
+# the same set as the SDK RetryPolicy default (408/429/500-599).
+RETRYABLE_STATUS: frozenset[int] = frozenset({408, 429, *range(500, 600)})
 
 # Which data classes each backend may receive (docs/08 section 10.2).
 #   C0 public, C1 internal non-personal, C2 pseudonymised personal text,
