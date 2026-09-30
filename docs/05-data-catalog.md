@@ -17,7 +17,7 @@ The machine-readable version of this catalogue is [`catalog/data-sources.yaml`](
 9. [Phased data onboarding plan](#9-phased-data-onboarding-plan)
 10. [Open questions](#10-open-questions)
 
-**Owner roles.** This document uses the role codes from [03 §Owner roles](./03-architecture.md): DL (data lead), FL (forecast and hydromet lead), PL (platform lead), FE (front-end lead), AI (AI decision-layer lead), SRE, DPO and PM (programme manager). It adds **PA**, the partnerships and agreements lead, who owns MoUs and focal points. [12-roadmap-team-budget.md](./12-roadmap-team-budget.md) names the people.
+**Owner roles.** This document uses the role codes from [03 §Owner roles](./03-architecture.md): DL (data lead), FL (forecast and hydromet lead), PL (platform lead), FE (front-end lead), AI (AI decision-layer lead), SRE, DPO and PM (programme manager). It uses **PT**, the partnerships lead defined in [12 §4.1](./12-roadmap-team-budget.md), who owns MoUs and focal points. [12-roadmap-team-budget.md](./12-roadmap-team-budget.md) names the people.
 
 **Verification status.** Every catalogue row has a *V* flag, mirrored as `verified: true|false` in the YAML:
 
@@ -93,7 +93,7 @@ The official **alertasecuador.gob.ec** portal (`/lluvia`, `/fenomeno_el_nino/map
 
 Notes:
 
-- **Niño 1+2 is computed two ways, and both are kept.** One is the official ICEN (ERSSTv5, 1991–2020). The other is our own daily value from the OISST `anom` band over 0–10°S, 90–80°W. In September 2026, CN-ERFEN report 009-2026 gave +4.5 °C while a CPC weekly value was ≈+3.4 °C (both from search summaries; different datasets and climatologies), so every value stores `source` and `base_period` ([03 `enso_indices`](./03-architecture.md)).
+- **Niño 1+2 is computed two ways, and both are kept.** One is the official ICEN (ERSSTv5, 1991–2020). The other is our own daily value from the OISST `anom` band over 0–10°S, 90–80°W. In September 2026, CN-ERFEN report 009-2026 gave +4.5 °C while CPC's weekly file for the week of 2026-09-23 gave +4.7 °C conventional / +3.9 °C relative, and a search summary gave +3.4 °C ([01 §5.2](./01-context-el-nino-ecuador.md); different datasets and climatologies), so every value stores `source` and `base_period` ([03 `enso_indices`](./03-architecture.md)).
 - **Excluded or deprioritised:**
   - HYCOM in EE (stops 2024-09-05).
   - MUR SST (the Zarr copy is static and ends ≈2020-01).
@@ -252,11 +252,12 @@ Social-registry data (MIES, now `desarrollohumano.gob.ec`) and Superbancos or in
 | `global_flood_db` | Global Flood Database: 913 MODIS events, 2000-02-17 to 2018-12-10 | EE `GLOBAL_FLOOD_DB/MODIS_EVENTS/V1` (filter on `cc`) ([STAC](https://storage.googleapis.com/earthengine-stac/catalog/GLOBAL_FLOOD_DB/GLOBAL_FLOOD_DB_MODIS_EVENTS_V1.json)) | 250 m (EE gsd 30 m) | Static | **CC BY-NC 4.0 (N)** | C (NC) / QIP | P2 / 1 | V |
 | `copernicus_ems` | Copernicus EMS rapid-mapping activations for Ecuadorian floods: EMSR789 and EMSR796 (2025-02-26), EMSR813 (2025-07-03), EMSR870 (2026-03-02) | Activation pages (URL pattern U); index seen in [monitor.json](https://github.com/18orkidea/monitor-terremoto-colombia/blob/main/data/public/monitor.json) | Event polygons | On activation | Licence U (?) | C / manual | P2 / 1 | V |
 | `nasa_landslide_catalog` | NASA Global Landslide Catalog 1970–2019 | `projects/sat-io/open-datasets/events/global_landslide_1970-2019` | Point | Static | Custom licence (?) | C / QIP | P2 / 2 | V |
+| `igepn_events` | IG-EPN seismic and volcanic event list, for multi-hazard context: a concurrent earthquake or eruption compounds the El Niño response (2016 precedent; CTX-18 in [01 §11.1](./01-context-el-nino-ecuador.md)) | `https://www.igepn.edu.ec/portal/eventos/www/events.csv` (public); full catalogues and volcanic hazard maps need a login ([igepn_client](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/igepn_client.py)) | Point (epicentre); `dpa_parish` by point-in-polygon on `dim_dpa` (NULL offshore) | Recent events (window U); poll every 15 min (initial) | None published; `pending_review` (?) | C / pull | P2 / 2 | V |
 | `ecu911_ckan` | ECU 911 monthly emergency-call statistics (to at least Feb 2025); road-status page `ecu911.gob.ec/consulta-de-vias/` | National CKAN `https://datosabiertos.gob.ec/api/3/action/package_search`, organisation `ecu-911` (403 "fuera de Latinoamérica" outside the region) | Canton (U) | Monthly, stale | CKAN pages show CC Attribution (Y) | C / pull via relay | P2 / 2 | V |
 | `energy_system_ops` | CENACE daily balance (SMEC, from 2016-05-01, 0.40% of days missing), operations snapshot (Plotly blobs), CKAN organisation `cenace` (45 datasets); ARCONEL SSRS reports 1998→ | `https://smec.cenace.gob.ec/SMEC/ResultadoInforme1.do?fecha=YYYY/MM/DD`; `https://www.cenace.gob.ec/info-operativa/InformacionOperativa.htm`; `reportes.arconel.gob.ec` ([cenace_client](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/cenace_client.py), [arconel client](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/arconel_reportes_client.py)) | National / plant | Daily | None published (?) | C / pull | P1 / 1 (archive from Phase 0) | V |
 | `cepal_caf_loss_reports` | Loss figures for 1982-83 and 1997-98: CEPAL "Ecuador: evaluación de los efectos socioeconómicos del fenómeno El Niño 1997-1998"; CAF "Las lecciones de El Niño: Ecuador" (2000) | Documents to retrieve (sector table unconfirmed) | National / sector | Static | Cite figures (?) | C / manual | P3 / 3 | U |
 
-The SNGR SITREPs and ArcGIS events (§2.2) are the **primary national impact record** from 2016 onward. They are unified with the sources above into `commons_pub.impact_events` (§4.9). EM-DAT and UNOSAT are unverified and not planned.
+The SNGR SITREPs and ArcGIS events (§2.2) are the **primary national impact record** from 2016 onward. They are unified with the sources above into `commons_pub.impact_events` (§4.9). EM-DAT and UNOSAT are unverified and not planned. `igepn_events` is new in this revision and still has to be added to `catalog/data-sources.yaml`; it feeds the multi-hazard context layer, not `impact_events`.
 
 ### 2.11 Health
 
@@ -425,7 +426,7 @@ CREATE TABLE `ectwin-commons-prod.commons_pub.dim_hydro_xwalk` (
 
 The matching rule has three parts:
 
-- For each station, choose the reach or outlet with the **largest 2-year flow within 8 km**. This is the method used in the skill analysis in [14](./14-verification-and-validation.md).
+- For each station, choose the reach or outlet with the **largest 2-year flow within 8 km**. This is the pairing used in the GRRR reforecast-versus-reanalysis baseline for 2016 to mid-2023 ([07 §4.1](./07-impact-modules-and-triggers.md)). This section owns the rule; verification in [14](./14-verification-and-validation.md) should take its station–reach pairs from `dim_hydro_xwalk` rather than re-derive them.
 - Accept the match only if the upstream-area ratio is between 0.7 and 1.3 (initial value).
 - Send everything else to manual review with FL and the INAMHI focal point.
 
@@ -500,6 +501,17 @@ Alert policies and runbooks are in [11 §4.5 and §6](./11-operations-runbook.md
 | SNI/IEDG `iedg.sni.gob.ec` | 403 to runners | Relay |
 | Renamed or moved | `ambiente.gob.ec` now redirects to the prison-service site `atencionintegral.gob.ec`; the ministry is at `ambienteyenergia.gob.ec`. `obraspublicas.gob.ec` (TLS mismatch) → `mit.gob.ec`; MIES → `desarrollohumano.gob.ec` | `rename_history` field; `allowed_hosts` updated by PR ([11 RB-07](./11-operations-runbook.md)) |
 | Dead | `srvportal.gestionderiesgos.gob.ec`, `maritime.inocar.mil.ec`, `geoportal.mtop.gob.ec`, `geosalud.msp.gob.ec`, `geoinec`, `sinias.ambiente.gob.ec` | Removed from `allowed_hosts`; probe `verdict` stays `down`; never retried automatically |
+
+**Institution registry (CTX-13 in [01 §11.1](./01-context-el-nino-ecuador.md)).** Ecuadorian institutions change names and domains often, so the source registry also keeps one entry per provider institution, in an `institutions:` block of `catalog/data-sources.yaml` (to add; each source then points to its institution with `provider_id`). Fields: `acronym` (the one used in the UI and in these documents), `name_es` (official full name, with `name_confirmed: true|false`), `aliases` (former names and acronyms, with the date of change), `domains` (current and legacy hosts; they feed `allowed_hosts` and `rename_history`), `probe_url` and `focal_point` (role code; PT by default). `ops-synthetic-probe` also checks each `probe_url` daily. A redirect to a host outside `domains`, or a TLS name mismatch, sets `verdict = moved` and opens a `review_queue` item for PT (name) and DL (hosts), handled under [11 RB-07](./11-operations-runbook.md). Starting entries, with names to confirm under V10 in [01 §5.4](./01-context-el-nino-ecuador.md) (due 2026-10-16):
+
+| Acronym used | Former names or acronyms | Domains (current; legacy) | Status |
+|---|---|---|---|
+| SNGR | SGR | `gestionderiesgos.gob.ec`, `sgrportal.gestionderiesgos.gob.ec`; `srvportal.gestionderiesgos.gob.ec` (dead) | Renamed by Decreto Ejecutivo 641, Jan 2023 (secondary source in [01](./01-context-el-nino-ecuador.md)) |
+| MIT | MTOP | `mit.gob.ec`; `obraspublicas.gob.ec` (TLS mismatch), `geoportal.mtop.gob.ec` (dead) | Full name to confirm ("…y Transporte" or "…y Tecnología") |
+| MAG | MAGP (reported) | `agricultura.gob.ec`, `geoportal.agricultura.gob.ec` (HTTP only), `sipa.agricultura.gob.ec` | Rename to confirm |
+| Ambiente y Energía | MAATE; energy ministry possibly merged | `ambienteyenergia.gob.ec`; `ambiente.gob.ec` (now redirects to `atencionintegral.gob.ec`), `sinias.ambiente.gob.ec` (dead) | Merger to confirm |
+| MINEDUC | MINEDEC | `educacion.gob.ec` | Acronym to confirm |
+| MIES | — | `desarrollohumano.gob.ec` (current) | Domain moved; name to confirm |
 
 ### 4.3 Getting around geoblocking
 
@@ -693,7 +705,7 @@ Jev QA request, using the `/v1/systemone` shape (the backend is selected by `Dec
 - Every published number traces to a PDF hash and page.
 - Jev QA flags every seeded error in a mutation test (10 deliberately corrupted rows).
 
-**Cost** is negligible: Cloud Run inside the free tier, and Jev at ≈US$0.04 per 1,000 decisions ([08](./08-ai-decision-layer-jev.md)).
+**Cost** is negligible: Cloud Run inside the free tier, and Jev at ≈US$0.04 per 1,000 decisions ([08](./08-ai-decision-layer-jev.md)). Analyst-hour savings and API arithmetic: [08 §3.3 and §3.7](./08-ai-decision-layer-jev.md) (≈3,608 → ≈617 h across B1–B4).
 
 ### 4.6 Raw-capture archiving
 
@@ -817,7 +829,7 @@ The tables below extend [03 §5.3](./03-architecture.md) and must be reconciled 
 
 ### 5.1 Licence classes
 
-These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open`, `nc`, `sa`, `wn_nrva`, `wn_historic_ccby`). Three classes are added (`official_verbatim`, `agreement`, `pending_review`). `agreement` data never appears raw in any listing. `pending_review` is gated exactly like `nc`: it may appear only in the noncommercial listing (`commons_pub_nc`), and only after the interim check in rule G-12 finds nothing in the source terms that forbids noncommercial redistribution.
+These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open`, `nc`, `sa`, `wn_nrva`, `wn_historic_ccby`). Three published-side classes are added (`official_verbatim`, `agreement`, `pending_review`), plus the broker-side class `wn_internal` for WeatherNext data that must stay inside a licensee's project ([06 §3.4](./06-forecast-model-stack.md); enforced by the broker in [13 §4.2](./13-governance-legal-risk.md)). `agreement` data never appears raw in any listing, and `wn_internal` never appears in any listing. `pending_review` is gated exactly like `nc`: it may appear only in the noncommercial listing (`commons_pub_nc`), and only after the interim check in rule G-12 finds nothing in the source terms that forbids noncommercial redistribution.
 
 | `licence_class` | Meaning | Examples (catalogue ids) | Commercial tenants | Noncommercial tenants | Published via |
 |---|---|---|---|---|---|
@@ -829,6 +841,7 @@ These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open
 | `official_verbatim` | Official statements shown exactly as issued, with source, number and link | `sngr_wp_alerts`, `inamhi_advertencias`, `cnerfen_bulletins`, `enfen_peru` communiqués | Yes (display with attribution) | Yes | `official_alerts` in `commons_pub` |
 | `agreement` | Usable only under a signed agreement or provider terms; internal inputs only | `inamhi_visor_stations`, `inocar_tides`, `mit_roads_bridges`, `sigacua_shrimp_farms`, `ciifen_geonode`, `google_maps_tiles` (tenant's own) | Derived outputs only, if the agreement allows | Same | Never raw; derived products per MoU |
 | `pending_review` | No licence published, or unclear | `sngr_sitreps` figures, `msp_gacetas_*`, `glofas_*`, `c3s_seasonal`, `floodhub_api`, `cmems_sealevel_l4_nrt`, `ioc_uhslc_sealevel`, `mag_*`, `energy_system_ops`, `jrc_gsw`, `copernicus_dem_glo30` | **Treated as `nc`** until cleared | Yes, after the G-12 interim check | `commons_pub_nc` until cleared |
+| `wn_internal` | Real-time, unmodified WeatherNext data and Retrievable VAS (parish p10–p90, fan charts, member series); broker-side only, never a `commons_pub` row in `layer_registry` (G-03) | Tables `commons_internal.wn2_parish_72h`, tenant `ectwin.aoi_*` ([06 §8](./06-forecast-model-stack.md)) | Only inside a licensee's project (tenants with their own WeatherNext approval) | Same | Never published |
 
 ### 5.2 Matrix of attribution and obligations for the main sources
 
@@ -857,7 +870,7 @@ These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open
 | G-01 | Every published layer has `licence`, `licence_class`, `commercial_use` and `attribution`; there is no default. | CI on the YAML and STAC; publish step | A missing field fails the build (FR-019) |
 | G-02 | `nc` and `pending_review` layers exist only in `commons_pub_nc`. The linked dataset `ectwin_commons_nc` is offered only to tenants whose `licence_profile='noncommercial'`. | Listing subscription in onboarding; broker `/v1/layers` | A commercial test tenant can reach no NC layer, by API or tile URL (FR-073) |
 | G-03 | WeatherNext: Commons publishes only NRVA products (probabilities, indices, risk levels) and derivatives of ≥1 h-old data under CC BY 4.0. Raw, subset or recoloured fields are never published. | Publish-step allow-list of WeatherNext-derived tables | A static check fails if a `weathernext_*` column is selected unchanged into `commons_pub` |
-| G-04 | Tenant exports that include WeatherNext-derived data ship the ToU notice and citation. A Retrievable VAS goes only to identified parties for internal use. | Export service (FR-068) | Export bundle contains `WEATHERNEXT_TERMS.txt` |
+| G-04 | Tenant exports that include WeatherNext-derived data ship the ToU notice and citation. A Retrievable VAS goes only to identified parties for internal use. | Export service (FR-068) | Export bundle contains `WEATHERNEXT_TERMS.pdf`, `LEGALLY_BINDING_TERMS_OF_USE.txt`, `COPYRIGHT.txt` and `MODIFICATIONS.txt` for real-time or Retrievable-VAS data; `wn_nrva` and `wn_historic_ccby` exports contain `LICENSES.txt` and `WEATHERNEXT_CITATION.txt` ([13 §4.2](./13-governance-legal-risk.md)) |
 | G-05 | **Derived layers inherit the most restrictive input class** unless legal records an exception in `layer_registry.exceptions` (e.g. aggregate statistics judged a Produced Work under ODbL). | Build jobs compute `licence_class` from inputs | A unit test combines `open` + `nc` → `nc` |
 | G-06 | SA/ODbL: exports carry the licence text; derivative databases carry the same licence; the attribution line appears on maps. | Export and tile styles | Snapshot test of the attribution control |
 | G-07 | Official texts (`official_verbatim`) are shown unmodified with issuer, number, timestamp and link, above platform products (D1). | Renderer, PDF template, API `official_alerts` field | Vocabulary guard and verbatim hash check (DQ-21) |
@@ -865,14 +878,14 @@ These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open
 | G-09 | IGM and agency vectors under `agreement` or restrictive terms are never redistributed raw; only derived indicators are. | Publish allow-list | Static check |
 | G-10 | Tenant-side licences (e.g. their own WeatherNext, Maps key or Flood API key) stay in the tenant; Commons never re-serves them. | Architecture ([03 §2.4](./03-architecture.md)) | Isolation tests |
 | G-11 | A licence change at a source (detected via terms-page hash or legal notice) freezes publication of the affected layers within 24 h, pending review. | `source_health` terms probe; runbook | Drill once per phase |
-| G-12 | Before any `pending_review` layer enters `commons_pub_nc`, PA and DPO record an **interim check** (target: 3 business days) that the source terms do not forbid noncommercial redistribution; legal then clears P1 `pending_review` sources within **10 business days** of onboarding (targets). Both results are recorded in `layer_registry.review` (who, when, basis). | PA + DPO process | Registry audit; a `pending_review` layer without an interim-check entry fails the publish step |
+| G-12 | Before any `pending_review` layer enters `commons_pub_nc`, PT and DPO record an **interim check** (target: 3 business days) that the source terms do not forbid noncommercial redistribution; legal then clears P1 `pending_review` sources within **10 business days** of onboarding (targets). Both results are recorded in `layer_registry.review` (who, when, basis). | PT + DPO process | Registry audit; a `pending_review` layer without an interim-check entry fails the publish step |
 
 ```sql
 CREATE TABLE `ectwin-commons-prod.commons_pub.layer_registry` (
   layer_id        STRING NOT NULL,     -- e.g. 'exposure_parish', 'river_status'
   source_ids      ARRAY<STRING>,       -- catalogue ids used (BigQuery arrays cannot be NOT NULL; DQ-23 checks non-empty)
   licence         STRING NOT NULL,     -- SPDX where possible
-  licence_class   STRING NOT NULL,     -- open | sa | nc | wn_nrva | wn_historic_ccby | official_verbatim | pending_review
+  licence_class   STRING NOT NULL,     -- open | sa | nc | wn_nrva | wn_historic_ccby | official_verbatim | agreement | pending_review | wn_internal (never in commons_pub)
   commercial_ok   BOOL   NOT NULL,
   attribution     STRING NOT NULL,
   obligations     ARRAY<STRING>,       -- 'share_alike', 'no_logo', 'weathernext_notice', 'no_block_level'
@@ -889,16 +902,16 @@ CREATE TABLE `ectwin-commons-prod.commons_pub.layer_registry` (
 
 ### 6.1 Agreements needed
 
-The instrument is a *convenio de cooperación interinstitucional*, or a technical annex to one. Its legal basis and whether the platform operator can be a party are covered in [13](./13-governance-legal-risk.md). The INAMHI–GEOGloWS/EcoCiencia partnership is the template to follow. Dates are targets; PA owns each agreement, with the technical lead named.
+The instrument is a *convenio de cooperación interinstitucional*, or a technical annex to one. Its legal basis and whether the platform operator can be a party are covered in [13](./13-governance-legal-risk.md). The INAMHI–GEOGloWS/EcoCiencia partnership is the template to follow. Dates are targets aligned with P0-02 and §6.3 of [12](./12-roadmap-team-budget.md); PT owns each agreement, with the technical lead named.
 
 | # | Counterpart | Data and services requested | Why it matters | Mechanism | Priority | Letter sent / annex agreed / signed (targets) |
 |---|---|---|---|---|---|---|
-| A1 | **INAMHI** | Documented API and SLA for real-time station data; historical series beyond 92 days (hourly and daily, QC flags); discharge for ≈182 stations; official *umbrales* and climatological-day convention; *advertencias* feed; WRF grids; static-IP allow-list or push; redistribution licence for derived products; joint validation | Bias correction (D12), verification, thresholds, the credibility of every product | Convenio + technical annex; WIS2 or push | P1 | 2026-10-02 / 2026-10-30 / 2026-11-27 |
-| A2 | **SNGR** | Machine-readable feed of alert resolutions; `COE2`/SAT access and history; vector hazard and susceptibility layers (flood, mass movement); SITREP tables in native form; 3,113 km road and 94-structure inventories; protocol for sending outputs as *insumo técnico* to the *mesas técnicas*; naming and vocabulary rules | Official band (D1), impact history, exposure | Convenio | P1 | 2026-10-02 / 2026-10-30 / 2026-11-27 |
-| A3 | **INOCAR / CN-ERFEN** | Real-time tide gauges (La Libertad, Esmeraldas, Manta, Puerto Bolívar, Galápagos (U)), coastal SST stations, tide predictions in machine form, ERFEN bulletins feed, cruise CTD summaries; licence for derived coastal products; classification clauses (Navy) | Coastal compound flooding (D4a); ENSO panel | Convenio | P1 | 2026-10-06 / 2026-11-06 / 2026-12-15 |
-| A4 | **CELEC / CENACE / ARCONEL** | Reservoir levels, inflows and operating rules (Paute–Mazar–Sopladora, Coca Codo Sinclair, Daule-Peripa); plant data; SLA; TLS fix | Hydro-energy pathway (D4b) | Convenio | P1 | 2026-10-06 / 2026-11-13 / 2027-01-15 |
-| A5 | **MSP** | Weekly dengue, leptospirosis and malaria counts by province and health district, preferably parish (machine-readable); facility registry with coordinates; redistribution terms | Health module; replaces PDF extraction | Convenio + LOPDP annex (aggregates only) | P1 | 2026-10-06 / 2026-11-13 / 2026-12-15 |
-| A6 | **MAG** | Rural cadastre (WFS disabled); ESPAC at parish level; HTTPS fix; crop calendars; AgroProtege exposure (to confirm) | Agriculture module | Convenio | P2 | 2026-10-16 / 2026-12-01 / 2027-01-31 |
+| A1 | **INAMHI** | Documented API and SLA for real-time station data; historical series beyond 92 days (hourly and daily, QC flags); discharge for ≈182 stations; official *umbrales* and climatological-day convention; *advertencias* feed; WRF grids; static-IP allow-list or push; redistribution licence for derived products; joint validation | Bias correction (D12), verification, thresholds, the credibility of every product | Convenio + technical annex; WIS2 or push | P1 | 2026-10-02 / 2026-10-30 / 2026-11-06 |
+| A2 | **SNGR** | Machine-readable feed of alert resolutions; `COE2`/SAT access and history; vector hazard and susceptibility layers (flood, mass movement); SITREP tables in native form; 3,113 km road and 94-structure inventories; protocol for sending outputs as *insumo técnico* to the *mesas técnicas*; naming and vocabulary rules | Official band (D1), impact history, exposure | Convenio | P1 | 2026-10-02 / 2026-10-30 / 2026-11-06 |
+| A3 | **INOCAR / CN-ERFEN** | Real-time tide gauges (La Libertad, Esmeraldas, Manta, Puerto Bolívar, Galápagos (U)), coastal SST stations, tide predictions in machine form, ERFEN bulletins feed, cruise CTD summaries; licence for derived coastal products; classification clauses (Navy) | Coastal compound flooding (D4a); ENSO panel | Convenio | P1 | 2026-10-02 / 2026-11-06 / 2026-12-15 |
+| A4 | **CELEC / CENACE / ARCONEL** | Reservoir levels, inflows and operating rules (Paute–Mazar–Sopladora, Coca Codo Sinclair, Daule-Peripa); plant data; SLA; TLS fix | Hydro-energy pathway (D4b) | Convenio | P1 | 2026-10-02 / 2026-11-13 / 2027-01-31 |
+| A5 | **MSP** | Weekly dengue, leptospirosis and malaria counts by province and health district, preferably parish (machine-readable); facility registry with coordinates; redistribution terms | Health module; replaces PDF extraction | Convenio + LOPDP annex (aggregates only) | P1 | 2026-10-02 / 2026-11-13 / 2026-12-15 |
+| A6 | **MAG** | Rural cadastre (WFS disabled); ESPAC at parish level; HTTPS fix; crop calendars; AgroProtege exposure (to confirm) | Agriculture module | Convenio | P2 | 2026-10-02 / 2026-12-01 / 2026-12-15 |
 | A7 | **INEC** | Sector cartography at scale; census aggregates at sector level for exposure; certificate fix; DPA change notifications | Exposure and keys | Convenio or formal request | P1 | 2026-10-06 / 2026-10-30 / 2026-12-15 |
 | A8 | **MIT (ex-MTOP)** | Road network, bridges and closures | Roads and bridges module | Convenio | P2 | 2026-10-16 / 2026-12-01 / 2027-02-15 |
 | A9 | **ECU 911** | Geolocated incident aggregates (hydromet event classes) daily; road status | Verification, impact triage (D16) | Convenio + DLP/pseudonymisation annex | P2 | 2026-10-16 / 2026-12-15 / 2027-02-28 |
@@ -1003,7 +1016,7 @@ HAVING COUNT(*) >= 6;
 | GEOGloWS raw bias (mean-flow ratio ≈2.3×; median KGE −0.57) | `geoglows_v2` | Flow-duration-curve bias correction before display |
 | INAMHI river levels arrive 9–24 days late; station gaps (e.g. Songa 14–17 Sep) | `inamhi_visor_stations` | Freshness badges; do not use for nowcast triggers |
 | `COE2` uses place names, and its layer id changes | `sngr_arcgis_events` | Resolve layer id each run; name matcher |
-| CN-ERFEN vs CPC Niño 1+2 values differ (+4.5 vs ≈+3.4 °C, Sep 2026, search summaries); ICEN uses a third basis (ERSSTv5, 1991–2020) | `cnerfen_bulletins`, `cpc_enso`, `enfen_peru` | Store `source` and `base_period`; show both with an explanation |
+| CN-ERFEN vs CPC Niño 1+2 values differ (+4.5 °C ERFEN vs +4.7 °C conventional / +3.9 °C relative CPC weekly; +3.4 °C in an unattributed search summary; Sep 2026); ICEN uses a third basis (ERSSTv5, 1991–2020) | `cnerfen_bulletins`, `cpc_enso`, `enfen_peru` | Store `source` and `base_period`; show each with an explanation |
 | Overture places licence conflicts (ODbL vs CDLA) | `overture_maps_bq` | Treat as SA until resolved |
 | GOES-19 flood product does not cover Galápagos south of the equator | `goes19_abi_flood` | Use S1 for Galápagos; badge |
 | OpenDengue provincial weekly series is patchy and ends 2020 | `opendengue` | Use MSP extraction for 2021 onward |
@@ -1030,9 +1043,9 @@ The Commons SLO "official-alert freshness ≤15 min in 99% of polls while the so
 | Vectors (boundaries, exposure, facilities, roads) | **GeoParquet** (EPSG:4326, WKB geometry; spec version to confirm) plus BigQuery `GEOGRAPHY` | `curated/` and bulk bucket | H3 columns for joins |
 | Rasters (DEM derivatives, hazard, anomalies, nowcasts) | **COG** (tiled 512×512, internal overviews, DEFLATE or ZSTD) | `cog/<layer>/v<ver>/` | Served by TiTiler on Cloud Run (min instances 0) only for dynamic styling ([03 §8.1](./03-architecture.md)) |
 | Multidimensional (ensembles, reanalysis subsets, GRRR subset, hindcasts) | **Zarr**: v3 for new stores where tooling allows; read v2 sources (GRRR) as-is | `curated/zarr/<product>/<init>.zarr` | Chunk by time for point series and by space for maps; Ecuador only |
-| Display tiles | **PMTiles** (vector and raster) | `tiles/static/…`, `tiles/forecast/…`, `tiles/offline/canton=<dpa4>/…` | Range-read from GCS; CDN above ≈1.1 TiB/month ([03 §11.1](./03-architecture.md)) |
+| Display tiles | **PMTiles** (vector and raster) | `tiles/static/…`, `tiles/forecast/…`, `tiles/offline/canton=<dpa4>/…` | Range-read from GCS; CDN above ≈1.5 TiB/month (break-even ≈1,526 GiB incl. request charges, [09 §4.2.3](./09-cost-model.md); decided at M2.1) |
 | Catalogue | **STAC** (static JSON) | Control plane `/stac/catalog.json` | Custom `ectwin:` fields ([03 §5.7](./03-architecture.md)) |
-| Downloads | Daily canton PDFs (T0); parish and AOI tables as CSV, GeoJSON, GeoPackage (T1+); bulk GeoParquet, NetCDF, Zarr, COG (T2+) | Commons public bucket for T0 PDFs; tenant bucket `exports/` for T1+ | Always with `LICENSES.txt` and, where applicable, the WeatherNext files (FR-068); licence gating per FR-073 |
+| Downloads | Daily canton PDFs (T0); parish and AOI tables as CSV, GeoJSON, GeoPackage (T1+); bulk GeoParquet, NetCDF, Zarr, COG (T2+) | Commons products bucket `ectwin-commons-prod-products` (private; 60-min V4 signed URLs to signed-in users, [10 §5.3](./10-setup-and-deployment.md)) for T0 PDFs; tenant bucket `exports/` for T1+ | Always with `LICENSES.txt` and, where applicable, the WeatherNext files (FR-068); licence gating per FR-073 |
 
 **CRS and area rules.**
 
@@ -1131,7 +1144,7 @@ gantt
   Geoblock test M0.3 :milestone, m03, 2026-10-09, 0d
   Static backfills - GRRR, inundation, SITREP crawl, SMEC, tides :p0e, 2026-10-01, 15d
   Licence review of P1 sources :p0f, 2026-10-01, 15d
-  MoU letters sent :p0g, 2026-10-02, 10d
+  MoU letters sent :p0g, 2026-10-02, 1d
   section Phase 1 MVP
   Exposure release 2026.10 :p1a, 2026-10-19, 12d
   PDF extractor v1 - MSP vectoriales then SITREPs :p1b, 2026-10-19, 28d
@@ -1152,9 +1165,11 @@ gantt
   Registry and archive hand-over :p4a, 2027-10-04, 60d
 ```
 
+The Jev build batteries that support this plan are scheduled in [08 §3.8](./08-ai-decision-layer-jev.md): catalogue triage (B1, 2026-10-05 → 10-16), place resolution (B3, 2026-10-12 → 10-23) and SITREP and gazette extraction QA (B2, from 2026-10-19).
+
 ### 9.3 Phase contents, owners and acceptance criteria
 
-**Phase 0: Mobilise (2026-09-29 → 2026-10-16).** Owner DL; PA for agreements; FL for forecast access.
+**Phase 0: Mobilise (2026-09-29 → 2026-10-16).** Owner DL; PT for agreements; FL for forecast access.
 
 | Day | Action | Catalogue ids |
 |---|---|---|
@@ -1163,7 +1178,7 @@ gantt
 | 10-01 → 10-06 | ENSO (CPC, ENFEN, ICEN, OISST boxes); GloFAS daily; GEOGloWS Ecuador `river_id` forecasts; hydroviewer `get-alerts`; CELEC ORDS; CENACE SMEC; INOCAR tides; CN-ERFEN PDFs | `cpc_enso`, `enfen_peru`, `oisst_v21`, `glofas_forecast`, `geoglows_v2`, `inamhi_hydroviewer`, `celec_ords_reservoirs`, `energy_system_ops`, `inocar_tides`, `cnerfen_bulletins` |
 | 10-01 → 10-09 | Backfills: GRRR, inundation history, OpenDengue, SITREP crawl, MSP gazette crawl, DPA classifier and boundaries (via relay if needed) | `grrr`, `inundation_history`, `opendengue`, `sngr_sitreps`, `msp_gacetas_vectoriales`, `inec_dpa_classifier`, `hdx_cod_ab_ecu`, `inec_geoportal` |
 | 10-09 | M0.3 geoblock report; relay go/no-go | All `.gob.ec` |
-| 10-16 | Licence review of P1 sources complete; MoU letters for A1–A7 and A12 sent | §5, §6 |
+| 10-16 | Licence classes assigned for all P1 sources (`pending_review` items cleared by 2026-11-13, GOV-M6 in [13](./13-governance-legal-risk.md)); letters for A1–A6 and A12 sent on 2026-10-02 (P0-02 in [12](./12-roadmap-team-budget.md)), A7 by 10-06 | §5, §6 |
 
 *Acceptance (Phase 0):*
 
@@ -1194,7 +1209,7 @@ gantt
 
 - Nowcast: `gsmap_v8`, `oya_precip`, `goes19_abi_flood`, `sentinel1_grd`.
 - Sector data: `mag_geoportal`, `sigacua_shrimp_farms` (if A10 is signed), `gmw_mangroves`, `global_landcover`, `mit_roads_bridges` (if A8 is signed), `ecu911_ckan` or the A9 feed.
-- Hazard: `lhasa_nowcast` inputs (`smap_soil_moisture`), `nasa_landslide_catalog`, `hand_100`, `deltadtm`, `fabdem` (NC).
+- Hazard: `lhasa_nowcast` inputs (`smap_soil_moisture`), `nasa_landslide_catalog`, `hand_100`, `deltadtm`, `fabdem` (NC), and `igepn_events` for multi-hazard context (CTX-18).
 - Impacts: `impact_events` unification (SNGR, DesInventar, Groundsource, GFD, EMS).
 - Health: `msp_gacetas_otras` (leptospirosis, ETAS).
 - **Event mode:** SITREP polling becomes hourly, and `ingest-sngr-alerts` (WordPress and `COE2`) goes from 10 to 5 minutes in posture N2+ ([11 §3](./11-operations-runbook.md)), with a Tier-A INAMHI boost (only if A1 raises the rate limit).
@@ -1217,7 +1232,7 @@ gantt
 
 *Acceptance (Phase 3):* the Caravan extension passes the Caravan checks for ≥20 Ecuadorian basins (target, estimate), and the post-season verification report cites only archived, hashed inputs.
 
-**Phase 4: Institutionalise (2027-10 →).** Owners: PM, PA.
+**Phase 4: Institutionalise (2027-10 →).** Owners: PM, PT.
 
 - Transfer the registry, archive and agreements to the national host (SNGR/INAMHI consortium).
 - Convert MoUs into permanent convenios.
@@ -1234,7 +1249,7 @@ gantt
 - **Legal basis for undocumented endpoints.** The INAMHI Visor API, CELEC ORDS and the SNGR hosted layers are unofficial and can change without notice. MoUs A1–A4 are the durable route. **Who signs for a multi-tenant platform** is unresolved ([13](./13-governance-legal-risk.md)).
 - **Flood API terms.** The "primarily non-commercial" wording and redistribution rights are unverified. This document places snapshots in `commons_pub_nc` until they are confirmed, which refines the `commons_pub` placement in [03 §5.3](./03-architecture.md). The 03 owners must reconcile the two.
 - **Copernicus-family licences.** Commercial redistribution of derived products for C3S seasonal (listed as "other", per contributing centre), GloFAS, the Copernicus DEM, CMEMS sea level and Copernicus EMS needs legal confirmation. Until then these sources are `pending_review` (gated as NC), which would hide seasonal and river products from commercial tenants. **Clearing them is a Phase 0 priority.**
-- **New licence classes.** This document adds `official_verbatim`, `agreement` and `pending_review` to the STAC classes of [03 §5.7](./03-architecture.md). `agreement` data is never published raw; `pending_review` is published only in `commons_pub_nc`, after the G-12 interim check. Confirm with the 03 owners, whose §5.2 table lists only NC layers in `commons_pub_nc`.
+- **New licence classes.** This document adds `official_verbatim`, `agreement` and `pending_review` to the STAC classes of [03 §5.7](./03-architecture.md), plus the broker-side `wn_internal` (never catalogued publicly). `agreement` data is never published raw; `pending_review` is published only in `commons_pub_nc`, after the G-12 interim check. Confirm with the 03 owners, whose §5.2 table lists only NC layers in `commons_pub_nc`.
 - **INAMHI access.** The historical record beyond 92 days, the rate-limit exception, official *umbrales*, the climatological-day convention and the public path of the Django Swagger docs all remain open. The INAMHI rotation arithmetic in §4.4 is an estimate that depends on whether `get_precipitation` returns many stations per call.
 - **Missing national vector data.** No openly downloadable official vector hazard layers (flood, mass movement), Pfafstetter units, road or bridge network, MSP facility registry with coordinates, or AMIE school coordinates were found. They depend on A2, A5, A8 and A11.
 - **Health data currency.** 2026 dengue counts exist only in geoblocked gazette PDFs. The leptospirosis series location, the epidemiological-week definition and parish-level counts need MSP confirmation.
