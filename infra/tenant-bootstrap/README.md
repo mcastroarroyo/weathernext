@@ -515,9 +515,10 @@ bq update --source /tmp/ds.json PROJECT_ID:weathernext_3
 | Tier | Query usage per day | Reasoning |
 |---|---|---|
 | T1/T2 | 1 TiB | Standard-tenant use is about 0.675 TiB/month, inside the 1 TiB free tier |
-| T3 | 1 TiB, raised to 3 TiB in peak months | About 5 TiB/month in use |
+| T3 | 2 TiB ([04 §8.2](../../docs/04-identity-tenancy-byo-gcp.md)) | About 5 TiB/month in use |
+| T4 | 1 TiB | As T1/T2; the sponsor may set it per project |
 
-**Terraform alternative.** Set `bq_query_usage_per_day_mib = 1048576` (1 TiB in MiB). Only do this after confirming the unit:
+**Terraform alternative.** Set `bq_query_usage_per_day_mib = 1048576` (1 TiB in MiB; 2097152 for T3). Only do this after confirming the unit:
 
 ```bash
 gcloud beta quotas info describe QueryUsagePerDay --service=bigquery.googleapis.com --project=PROJECT_ID   # command to confirm
