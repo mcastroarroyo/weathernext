@@ -1343,7 +1343,7 @@ c.retrieve("seasonal-monthly-single-levels", {
 
 ## 6. Tenant onboarding walkthrough (P3)
 
-This section follows one organisation from "we want to save our work" to its first pipeline run. The example is a municipal risk unit, *GAD* Portoviejo, T1, project `gad-portoviejo-ectwin` (illustrative, as in the bootstrap examples). The design is in [04 §4](./04-identity-tenancy-byo-gcp.md#4-connecting-a-project-mechanisms-ad); the full bootstrap manual is [infra/tenant-bootstrap/README.md](../infra/tenant-bootstrap/README.md).
+This section follows one organisation from "we want to save our work" to its first pipeline run. The example is a municipal risk unit, *GAD* Portoviejo, T1, project `gad-portoviejo-ectwin` (illustrative, as in the bootstrap examples). The design is in [04 §4](./04-identity-tenancy-byo-gcp.md#4-connecting-a-project-mechanisms-ad); the full bootstrap manual is [infra/tenant-bootstrap/README.md](../infra/tenant-bootstrap/README.md). The Portoviejo and Chone names are illustrative, not pilots. The nominated pilots have their own briefs, with project ids, tier budgets and onboarding dates: [GAD Otavalo](../outreach/pilots/otavalo.md) (T4 sponsored, T1 profile) and [MIT](../outreach/pilots/mit.md) (T2). Status and gaps are in [outreach/pilots](../outreach/pilots/README.md) (2 of 3–5 nominated on 2026-09-30).
 
 ```mermaid
 flowchart TD

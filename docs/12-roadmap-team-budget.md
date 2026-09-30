@@ -154,7 +154,7 @@ Filing pack and live status (2026-10-01): [outreach/access-requests/README.md](.
 | OPS-M0 | Pager rota, channels, contacts register, status page | 2026-10-09 | SRE | Test page acknowledged within 10 min |
 | IT-M3 | Bootstrap v0.1.x (script and Terraform) on 2 internal tenants | 2026-10-09 | PL | PF-01–PF-12 green |
 | P0-05 | Steering Committee constituted; first meeting held | 2026-10-14 | PM | Terms of reference approved; minutes |
-| P0-06 | 3–5 pilot tenants shortlisted, with letters of intent (≥1 T4 GAD, ≥1 T2 public, ≥1 commercial private tenant, e.g. a CNA shrimp cluster or an AgroProtege insurer) | 2026-10-16 | PT | Signed letters of intent |
+| P0-06 | 3–5 pilot tenants shortlisted, with letters of intent (≥1 T4 GAD, ≥1 T2 public, ≥1 commercial private tenant, e.g. a CNA shrimp cluster or an AgroProtege insurer). **Status (2026-09-30): 2 of 3–5 nominated: GAD Otavalo (T4 with a T1 profile, or T1 on its own project) and MIT (T2). A coastal GAD and the commercial private tenant are still open** ([pilot briefs](../outreach/pilots/README.md)) | 2026-10-16 | PT | Signed letters of intent |
 | P0-07 | Procurement kit v0: terms-of-reference template, tax note v0, reseller route. The SERCOP OCDS search for past GCP purchases follows by 10-23 (PT, [13 §7.1](./13-governance-legal-risk.md)); the signed tax and procurement memo by 11-06 (GOV-M5) | 2026-10-16 | PM, DPO | Reviewed by counsel |
 | P0-08 | DPIA v0, RAT template and processor-contract template | 2026-10-16 | DPO | Counsel review scheduled |
 | P0-09 | Verification backlog V1–V12 closed or re-dated | 2026-10-16 | Per [01 §5.4](./01-context-el-nino-ecuador.md) | Each item has a result or a new date |
@@ -170,7 +170,7 @@ Filing pack and live status (2026-10-01): [outreach/access-requests/README.md](.
 - (c) ≥10 FTE are under contract.
 - (d) Bridge funding is committed.
 - (e) At least INAMHI and SNGR have named focal points (LI, LS).
-- (f) ≥3 pilot letters of intent are signed.
+- (f) ≥3 pilot letters of intent are signed. On 2026-09-30, 2 pilots were nominated (P0-06), so a third is needed.
 - (g) Jev B1 catalogue triage is accepted (P0-11).
 
 A failed G0 does not stop Phase 1. The SC instead switches to the minimum variant (§5.5) and records the scope cuts.
@@ -820,6 +820,8 @@ Product and UX metrics follow [02 §10](./02-users-requirements-ux.md); verifica
 ## 9. Pilot go/no-go checklist
 
 There are two gates in Phase 1. **G1a, pilot rollout (Fri 2026-11-06)**, decides whether real users in 3–5 pilot tenants may start using the alpha. **G1b, MVP go-live decision (Tue 2026-11-24)**, decides whether the release promoted on Wed 25 Nov becomes the season service on Fri 27 Nov (M1.5). The SC decides both, on the PM's recommendation, with the evidence attached. **B** marks a blocking item: a single red B item means no-go.
+
+**Pilot status (2026-09-30).** GAD Otavalo (T4) and MIT (T2) are nominated; both have noncommercial licence profiles. Until a commercial private pilot is added, B5 has no pilot tenant in which to produce its evidence. With only 2 pilots, IT-M8 and ST-30 ([10 §7](./10-setup-and-deployment.md#7-smoke-tests-and-acceptance-checks)) cannot be met as written. See the [pilot gap note](../outreach/pilots/README.md#gap-what-these-two-pilots-do-not-cover).
 
 | # | Check | Evidence | Owner | G1a | G1b |
 |---|---|---|---|---|---|
