@@ -59,6 +59,7 @@ locals {
     var.enable_vertex ? ["aiplatform.googleapis.com"] : [],
     var.enable_batch ? ["batch.googleapis.com", "compute.googleapis.com"] : [],
     var.enable_flood_forecasting_api ? ["floodforecasting.googleapis.com"] : [],
+    var.enable_artifact_registry ? ["artifactregistry.googleapis.com"] : [],
     var.extra_services,
   ))
 

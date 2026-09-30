@@ -64,6 +64,7 @@ ENABLE_VERTEX="${ENABLE_VERTEX:-false}"
 ENABLE_BATCH="${ENABLE_BATCH:-false}"
 ENABLE_MANAGED_PIPELINES="${ENABLE_MANAGED_PIPELINES:-false}"
 ENABLE_FLOOD_API="${ENABLE_FLOOD_API:-false}"
+ENABLE_ARTIFACT_REGISTRY="${ENABLE_ARTIFACT_REGISTRY:-false}"
 CONNECTION_CODE="${CONNECTION_CODE:-}"
 APP_ORIGINS="${APP_ORIGINS:-}" # comma-separated https origins for bucket CORS
 SCRATCH_RETENTION_DAYS="${SCRATCH_RETENTION_DAYS:-7}"
@@ -115,6 +116,7 @@ Feature flags:
   --enable-batch               T3: batch + compute APIs + Batch roles
   --enable-managed-pipelines   Let the platform (via ectwin-runner) deploy/pause tenant jobs
   --enable-flood-api           Enable floodforecasting.googleapis.com (own allow-listed access)
+  --enable-artifact-registry   T3: artifactregistry API for custom-model images (FR-078)
   --app-origins LIST           Comma-separated https origins for bucket CORS (signed URL reads)
   --subscribe-commons          Subscribe the Commons listing into dataset ectwin_commons
                                (only after the listing is published; request shape to confirm)
@@ -240,6 +242,7 @@ parse_args() {
     --enable-batch) ENABLE_BATCH=true; shift ;;
     --enable-managed-pipelines) ENABLE_MANAGED_PIPELINES=true; shift ;;
     --enable-flood-api) ENABLE_FLOOD_API=true; shift ;;
+    --enable-artifact-registry) ENABLE_ARTIFACT_REGISTRY=true; shift ;;
     --app-origins) APP_ORIGINS="${2:?}"; shift 2 ;;
     --subscribe-commons) SUBSCRIBE_COMMONS=true; shift ;;
     --allow-non-us-bigquery) ALLOW_NON_US_BQ=true; shift ;;
@@ -363,7 +366,7 @@ confirm() {
   BigQuery           : ${PROJECT_ID}:ectwin, ${PROJECT_ID}:ectwin_scratch in ${BQ_LOCATION}
   Bucket             : gs://${PROJECT_ID}-ectwin in ${GCS_LOCATION}
   Firestore          : (default) FIRESTORE_NATIVE in ${FIRESTORE_LOCATION}
-  Flags              : vertex=${ENABLE_VERTEX} batch=${ENABLE_BATCH} managed_pipelines=${ENABLE_MANAGED_PIPELINES} flood_api=${ENABLE_FLOOD_API}
+  Flags              : vertex=${ENABLE_VERTEX} batch=${ENABLE_BATCH} managed_pipelines=${ENABLE_MANAGED_PIPELINES} flood_api=${ENABLE_FLOOD_API} artifact_registry=${ENABLE_ARTIFACT_REGISTRY}
   Dry run            : ${DRY_RUN}
 EOF
   if ! is_true "$ASSUME_YES" && ! is_true "$DRY_RUN"; then
@@ -390,6 +393,7 @@ enable_apis() {
   if is_true "$ENABLE_VERTEX"; then services+=(aiplatform.googleapis.com); fi
   if is_true "$ENABLE_BATCH"; then services+=(batch.googleapis.com compute.googleapis.com); fi
   if is_true "$ENABLE_FLOOD_API"; then services+=(floodforecasting.googleapis.com); fi
+  if is_true "$ENABLE_ARTIFACT_REGISTRY"; then services+=(artifactregistry.googleapis.com); fi
 
   local enabled_now s to_enable=()
   enabled_now="$(gcloud services list --enabled --project="$PROJECT_ID" --format='value(config.name)' 2>/dev/null || true)"
