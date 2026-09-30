@@ -42,7 +42,7 @@ The design places each cost with the party that benefits (AP-02, AP-03 in [03 §
 - **P1, the control plane**, is paid by the **operator**. It covers identity, the broker, the registry, images and IaC.
 - **P2, the Commons**, is paid by a **sponsor**, for example SNGR/INAMHI with a multilateral lender or credits **(to confirm)**. It computes national public goods once.
 - **P3, each tenant project**, is paid by the **tenant organisation**: its own queries, storage, jobs, Earth Engine and heavy runs.
-- The **T0 delivery block ("Block D")** serves the read-only national view to signed-in users who have no project (D6): static layers in `ectwin-commons-prod-public` (public-read) and forecast-derived tiles, national JSON, bulletins, cards and canton PDFs in the private `ectwin-commons-prod-products` bucket, served by 60-minute V4 signed URLs ([10 §5.3](./10-setup-and-deployment.md); decision M1.2), with egress and later Cloud CDN on both. It is billed in the Commons project. It is shown separately because it scales with users, not with tenants.
+- The **T0 delivery block ("Block D")** serves the read-only national view to signed-in users who have no project (D6): static layers in `ectwin-commons-prod-public` and forecast-derived tiles, national JSON, bulletins, cards and canton PDFs in `ectwin-commons-prod-products`, both private and served by 60-minute V4 signed URLs (FR-001; [10 §5.3](./10-setup-and-deployment.md); decision M1.2), with egress and later Cloud CDN on both. It is billed in the Commons project. It is shown separately because it scales with users, not with tenants.
 
 ```mermaid
 flowchart LR
@@ -68,7 +68,7 @@ flowchart LR
 | Identity Platform MAU, broker, registry, Artifact Registry, platform logs | Operator | Resources in `ectwin-platform-prod` | [04 §7](./04-identity-tenancy-byo-gcp.md) rows 1–3, 23 and 29 |
 | Ingestion, forecast cycle, tiles, PDFs, verification, national Jev and Gemini | Sponsor | Resources and keys in `ectwin-commons-prod` | [08 §6](./08-ai-decision-layer-jev.md) |
 | Storage behind the `ectwin_commons_v1` / `ectwin_commons_nc_v1` listings | Sponsor | "Publisher pays storage" ([BigQuery pricing](https://cloud.google.com/bigquery/pricing)) | — |
-| Tiles, national JSON, canton PDFs (Block D, T0 delivery) | Sponsor | Storage, operations and egress of `ectwin-commons-prod-public` (static layers, public-read) and `ectwin-commons-prod-products` (forecast-derived objects, signed URLs) | §4.2.3 |
+| Tiles, national JSON, canton PDFs (Block D, T0 delivery) | Sponsor | Storage, operations and egress of `ectwin-commons-prod-public` (static layers) and `ectwin-commons-prod-products` (forecast-derived objects), both via signed URLs | §4.2.3 |
 | Bulk downloads from `ectwin-commons-prod-bulk` | Requester | Requester Pays, `userProject` | — |
 | Queries on `ectwin_commons`, `weathernext_3`, `weathernext_2` | Tenant | "You are charged for queries run against shared data. The data owner is not charged." ([BigQuery pricing](https://cloud.google.com/bigquery/pricing)) | — |
 | WN3 full-member Zarr reads | Tenant (T3) or Commons (Phase 2) | Requester Pays bucket in `us-east1` | — |
@@ -276,7 +276,7 @@ At 100,000 MAU, Identity adds (100,000 − 50,000) × 0.0055 = US$275/month. Tha
 
 #### 4.2.3 Block D: T0 delivery (billed in Commons)
 
-Tiles, national JSON and canton PDFs are served straight from GCS: static layers from `ectwin-commons-prod-public` (public-read), and forecast-derived tiles, national JSON, bulletins, cards and canton PDFs from the private `ectwin-commons-prod-products` bucket through 60-minute V4 signed URLs to signed-in users ([10 §5.3](./10-setup-and-deployment.md); [03 §5.1](./03-architecture.md); decision M1.2). Both buckets are in the Commons project; the figures below cover them together. At 50 KiB per object, 1 GiB ≈ 20,972 requests. Storage is 150 GiB (300 GiB at national scale); free tiers are 100 GB egress and 50,000 Class B operations; the CDN columns assume a 10% miss rate (cache fill at US$0.02/GiB, miss operations at the Class B rate).
+Tiles, national JSON and canton PDFs are served straight from GCS: static layers from `ectwin-commons-prod-public` and forecast-derived tiles, national JSON, bulletins, cards and canton PDFs from `ectwin-commons-prod-products`, both private, through 60-minute V4 signed URLs to signed-in users (FR-001; [10 §5.3](./10-setup-and-deployment.md); [03 §5.1](./03-architecture.md); decision M1.2). Both buckets are in the Commons project; the figures below cover them together. At 50 KiB per object, 1 GiB ≈ 20,972 requests. Storage is 150 GiB (300 GiB at national scale); free tiers are 100 GB egress and 50,000 Class B operations; the CDN columns assume a 10% miss rate (cache fill at US$0.02/GiB, miss operations at the Class B rate).
 
 | Scale | GCS direct: storage + Class B + egress | GCS US$ | Cloud CDN: storage + egress + fill + LB + lookups + miss ops | CDN US$ | Choice |
 |---|---|---|---|---|---|
