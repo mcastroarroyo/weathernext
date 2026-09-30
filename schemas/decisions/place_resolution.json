@@ -1,0 +1,85 @@
+{
+  "x-ectwin": {
+    "template_id": "place_resolution",
+    "template_version": "1.0.0",
+    "use_case": "B3",
+    "decision_log_context": "place_resolve",
+    "doc": "docs/08-ai-decision-layer-jev.md section 3.4",
+    "runs_in": "Step 5 of the gazetteer matcher (libs/ectwin_core/gazetteer.py, docs/05-data-catalog.md section 3.2) when exact, alias and fuzzy matching are ambiguous; batch over distinct unresolved strings",
+    "payer": "Commons sponsor",
+    "data_class": "C1",
+    "data_class_rule": "Only the place mention and at most 300 characters of pseudonymised context are sent.",
+    "max_state_tokens": 1500,
+    "placeholders": {
+      "raw_place_text": "Place text exactly as in the source (e.g. 'Rosa Zarate', 'Qninde', 'Parroquia 5 de Agosto')",
+      "source_name": "e.g. 'SNGR COE2', 'EVENTOS_X_LLUVIAS', 'SITREP table', 'MSP gaceta', 'ECU 911 CKAN', 'DesInventar'",
+      "context_text": "Up to 300 characters of surrounding pseudonymised text, or empty string",
+      "province_hint": "Province name if the source record has one, else empty string",
+      "canton_hint": "Canton name if the source record has one, else empty string",
+      "candidates": "Object c1..c5 (the matcher's top 5 candidates within the parent unit); values 'Parroquia X (rural|urbana), Canton Y, Provincia Z'; code keeps the cN -> DPA mapping",
+      "candidate_criteria": "Object with the same keys as candidates mapped to null, plus \"none\": \"None of these candidates\""
+    },
+    "code_decides_without_jev": [
+      "Steps 1-4 of the matcher in docs/05 section 3.2 (normalise, exact, alias via commons_internal.dim_dpa_alias, fuzzy Jaro-Winkler >= 0.92 with margin >= 0.03) resolve names without any Jev call.",
+      "Strings already in dim_dpa_alias are never re-sent; confirmed answers are written back to dim_dpa_alias."
+    ],
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "match": {
+        "c*": "write_alias_to_dim_dpa_alias_with_evidence_jev",
+        "none": "review_queue_new_alias_or_non_dpa_locality",
+        "abstain": "review_queue_show_top_three"
+      },
+      "mention_level": {
+        "any": "store_level",
+        "no_es_lugar": "drop_mention",
+        "abstain": "store_unknown"
+      },
+      "is_ecuador": {
+        "yes": "none",
+        "review": "review_queue",
+        "no": "drop_mention"
+      }
+    },
+    "owner": "DL with AI",
+    "notes": [
+      "INEC DPA reference files list 24 provinces, 226 canton codes and 1,041 parishes (CLASIFICADOR_GEOGRAFICO_2024); use the official list loaded in dim_dpa.",
+      "Recintos and sitios below parish level map to their parish when the candidate text says so; otherwise the analyst decides."
+    ],
+    "human_queue": "commons_ops.review_queue (queue 'dpa_match')"
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "mention": {
+      "text": "{{raw_place_text}}",
+      "source": "{{source_name}}",
+      "context": "{{context_text}}",
+      "province_hint": "{{province_hint}}",
+      "canton_hint": "{{canton_hint}}"
+    },
+    "candidates": "{{candidates}}"
+  },
+  "questions": {
+    "match": {
+      "type": "choice",
+      "instructions": "Which entry in `candidates` is the place that `mention.text` refers to, taking `mention.context`, `mention.province_hint` and `mention.canton_hint` into account?",
+      "criteria": "{{candidate_criteria}}"
+    },
+    "mention_level": {
+      "type": "choice",
+      "instructions": "What kind of place is `mention.text`?",
+      "criteria": {
+        "provincia": "A province",
+        "canton": "A canton or its main town",
+        "parroquia": "A parish",
+        "localidad": "A smaller locality: recinto, sitio, comuna, barrio or neighbourhood",
+        "rio_o_accidente": "A river, estuary, road or natural feature",
+        "no_es_lugar": "Not a place name"
+      }
+    },
+    "is_ecuador": {
+      "type": "noul",
+      "instructions": "Is `mention.text` a place in Ecuador?"
+    }
+  }
+}

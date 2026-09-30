@@ -1,0 +1,105 @@
+{
+  "x-ectwin": {
+    "template_id": "ingest_dq_flags",
+    "template_version": "1.0.0",
+    "use_case": "B5",
+    "decision_log_context": "dq_flag",
+    "doc": "docs/08-ai-decision-layer-jev.md section 3.6",
+    "runs_in": "Commons ingest jobs for text-bearing feeds (ingest-sngr-alerts, ingest-inamhi-advertencias, ingest-cnerfen-inocar, SITREP and gaceta harvesters), after the raw capture is written",
+    "payer": "Commons sponsor",
+    "data_class": "C0",
+    "max_state_tokens": 2000,
+    "placeholders": {
+      "source_id": "Source id from catalog/data-sources.yaml",
+      "expected_content": "One-line description of what this endpoint normally returns, from catalog/data-sources.yaml",
+      "http_status_bucket": "Bucket from code: '200 with body', '200 with empty or tiny body', '3xx redirect', '403', '404', '5xx'",
+      "content_type": "Content-Type header value",
+      "body_excerpt": "First 2,000 characters of the response body as text (HTML tags stripped by code)",
+      "previous_title": "Title or first line of the previous successful capture, or empty string"
+    },
+    "hard_rules": [
+      "Every capture from an official source is stored in raw/ regardless of any Jev answer (write-once, AP-09).",
+      "Jev answers only raise flags and route to humans; they never suppress or edit official content (D1)."
+    ],
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "is_error_or_block_page": {
+        "yes": "mark_source_unhealthy_and_try_relay",
+        "review": "dq_flag_warn",
+        "no": "none"
+      },
+      "is_expected_content": {
+        "yes": "none",
+        "review": "dq_flag_warn",
+        "no": "dq_flag_schema_or_content_change"
+      },
+      "announces_official_change": {
+        "yes": "page_duty_officer_to_verify_and_publish_verbatim",
+        "review": "queue_duty_officer_within_30_min",
+        "no": "none"
+      },
+      "is_correction": {
+        "yes": "link_as_supersedes_candidate_for_human_confirmation",
+        "review": "flag",
+        "no": "none"
+      },
+      "doc_type": {
+        "any": "set_doc_type_candidate",
+        "abstain": "set_doc_type_null"
+      }
+    },
+    "owner": "DL with AI",
+    "notes": [
+      "doc_type options mirror official_alerts.doc_type in docs/03-architecture.md section 5.3.",
+      "Catches silent failures such as geoblock pages ('fuera de Latinoamerica'), empty bodies with HTTP 200 and maintenance pages."
+    ],
+    "output": "commons_ops.dq_results (docs/11-operations-runbook.md section 7.2) with check_id 'JEV-DQ-<question>' and severity 'warn'; source status in commons_ops.source_health"
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "fetch": {
+      "source_id": "{{source_id}}",
+      "expected": "{{expected_content}}",
+      "http_status": "{{http_status_bucket}}",
+      "content_type": "{{content_type}}",
+      "body_excerpt": "{{body_excerpt}}"
+    },
+    "previous": {
+      "title": "{{previous_title}}"
+    }
+  },
+  "questions": {
+    "is_error_or_block_page": {
+      "type": "noul",
+      "instructions": "Does `fetch.body_excerpt` look like an error, access-denied, geographic block, captcha, login or maintenance page instead of real content?",
+      "criteria": {
+        "true": "Error message, access denied, 'fuera de Latinoamerica', captcha, login form, maintenance notice, or an empty page",
+        "false": "Real data, a real publication or a real alert"
+      }
+    },
+    "is_expected_content": {
+      "type": "noul",
+      "instructions": "Does `fetch.body_excerpt` match what `fetch.expected` describes?"
+    },
+    "announces_official_change": {
+      "type": "noul",
+      "instructions": "Does `fetch.body_excerpt` announce a new or changed official alert, advertencia, El Nino status or emergency declaration?"
+    },
+    "is_correction": {
+      "type": "noul",
+      "instructions": "Does `fetch.body_excerpt` say that it corrects, replaces, updates or cancels an earlier publication?"
+    },
+    "doc_type": {
+      "type": "choice",
+      "instructions": "What type of publication is `fetch.body_excerpt`?",
+      "criteria": {
+        "alerta": "An alert declaration or change of alert state",
+        "advertencia": "A hydrometeorological warning (advertencia)",
+        "comunicado": "An official statement or communique",
+        "sitrep": "A situation report",
+        "aviso": "A notice or advisory",
+        "otro": "Anything else"
+      }
+    }
+  }
+}

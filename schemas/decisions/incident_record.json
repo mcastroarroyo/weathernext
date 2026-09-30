@@ -1,0 +1,130 @@
+{
+  "x-ectwin": {
+    "template_id": "incident_record",
+    "template_version": "1.0.0",
+    "use_case": "S2",
+    "decision_log_context": "triage",
+    "doc": "docs/08-ai-decision-layer-jev.md section 4.4",
+    "runs_in": "Commons job jev-triage-national, triggered by Pub/Sub on a new SITREP or ECU 911 batch",
+    "payer": "Commons sponsor",
+    "data_class": "C3",
+    "data_class_rule": "ECU 911 / SNGR operational narratives. DLP pseudonymisation is mandatory; send to the TypeSafe backend only after zero-data-retention (enterprise) terms and the DPA review are signed. Until then route to open_weight or to gemini_adapter in Agent Platform mode (to confirm).",
+    "max_state_tokens": 6000,
+    "placeholders": {
+      "narrative": "Pseudonymised free-text narrative, verbatim Spanish, max 3,000 characters",
+      "operator_code": "Existing ECU 911 or SNGR event code as recorded by the operator",
+      "operator_code_label": "Human-readable label of operator_code from the source code list",
+      "reported_place": "Place text as recorded (province, canton, parish or locality); DPA resolution happens separately in B3"
+    },
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "sngr_event": {
+        "any": "set_event_class",
+        "no_hidrometeorologico": "drop_from_el_nino_views_keep_record",
+        "abstain": "review_if_needs_rescue_or_asset_flag_else_store_unclassified"
+      },
+      "code_consistent": {
+        "yes": "none",
+        "review": "data_quality_flag_low",
+        "no": "data_quality_flag_code_mismatch"
+      },
+      "asset_bridge": {
+        "yes": "set_asset_flag",
+        "review": "set_asset_flag_unconfirmed",
+        "no": "none"
+      },
+      "asset_road": {
+        "yes": "set_asset_flag",
+        "review": "set_asset_flag_unconfirmed",
+        "no": "none"
+      },
+      "asset_health": {
+        "yes": "set_asset_flag_and_notify_msp_view",
+        "review": "set_asset_flag_unconfirmed",
+        "no": "none"
+      },
+      "asset_school": {
+        "yes": "set_asset_flag",
+        "review": "set_asset_flag_unconfirmed",
+        "no": "none"
+      },
+      "asset_water": {
+        "yes": "set_asset_flag",
+        "review": "set_asset_flag_unconfirmed",
+        "no": "none"
+      },
+      "needs_rescue": {
+        "yes": "priority_review_within_10_min",
+        "review": "priority_review",
+        "no": "none"
+      },
+      "affected_people_stated": {
+        "yes": "code_regex_extracts_number_else_gemini_proposes_candidates",
+        "review": "code_regex_only",
+        "no": "none"
+      }
+    },
+    "owner": "AI",
+    "notes": [
+      "Numbers of affected people are never asked of Jev; code extracts them with a regex, or Gemini proposes candidates and Jev selects (select, do not generate).",
+      "Event classes to be aligned with the SNGR event taxonomy used in COE2 and EVENTOS_X_LLUVIAS (to confirm with SNGR)."
+    ],
+    "output": "commons_internal.incident_records (typed fields; the narrative text is removed after 90 days, docs/13 section 2.10)",
+    "human_queue": "commons_ops.review_queue (queues 'p1_life_safety', 'p2_severity')"
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "narrative": "{{narrative}}",
+    "operator_code": "{{operator_code}}",
+    "operator_code_label": "{{operator_code_label}}",
+    "reported_place": "{{reported_place}}"
+  },
+  "questions": {
+    "sngr_event": {
+      "type": "choice",
+      "instructions": "Which event class best describes what `narrative` reports?",
+      "criteria": {
+        "inundacion": "Flooding of land, streets or homes, including river overflow",
+        "deslizamiento": "Landslide, mudflow or rockfall",
+        "colapso_estructural": "Collapse of a house, wall or other structure",
+        "socavamiento_via": "Road or embankment undermined or washed out",
+        "vendaval": "Strong wind damage",
+        "oleaje_aguaje": "Coastal swell or high-tide flooding",
+        "incendio_forestal": "Forest or vegetation fire",
+        "no_hidrometeorologico": "Not a weather-, water- or fire-related event (for example traffic, crime or medical)"
+      }
+    },
+    "code_consistent": {
+      "type": "noul",
+      "instructions": "Is `operator_code_label` consistent with what `narrative` describes?"
+    },
+    "asset_bridge": {
+      "type": "noul",
+      "instructions": "Does `narrative` report damage to, or closure of, a bridge?"
+    },
+    "asset_road": {
+      "type": "noul",
+      "instructions": "Does `narrative` report a road blocked, cut, flooded or damaged?"
+    },
+    "asset_health": {
+      "type": "noul",
+      "instructions": "Does `narrative` report a hospital, health centre or clinic affected or cut off?"
+    },
+    "asset_school": {
+      "type": "noul",
+      "instructions": "Does `narrative` report a school or educational unit affected or used as a shelter?"
+    },
+    "asset_water": {
+      "type": "noul",
+      "instructions": "Does `narrative` report drinking-water, sewer or drainage systems affected?"
+    },
+    "needs_rescue": {
+      "type": "noul",
+      "instructions": "Does `narrative` request or describe rescue or evacuation of people?"
+    },
+    "affected_people_stated": {
+      "type": "noul",
+      "instructions": "Does `narrative` state a number of affected, displaced, injured or dead people or families?"
+    }
+  }
+}

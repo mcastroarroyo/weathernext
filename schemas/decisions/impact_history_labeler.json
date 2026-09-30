@@ -1,0 +1,168 @@
+{
+  "x-ectwin": {
+    "template_id": "impact_history_labeler",
+    "template_version": "1.0.0",
+    "use_case": "B4",
+    "decision_log_context": "impact_label",
+    "doc": "docs/08-ai-decision-layer-jev.md section 3.5",
+    "runs_in": "Commons job impact-db-backfill (one-off 2010-2026 backfill, then daily for new records)",
+    "payer": "Commons sponsor (build budget)",
+    "data_class": "C2",
+    "data_class_rule": "Historical records with free text are pseudonymised with Cloud DLP; ECU 911 narratives are C3 and follow the incident_record routing rule.",
+    "max_state_tokens": 3000,
+    "placeholders": {
+      "source_name": "e.g. 'SNGR EVENTOS_X_LLUVIAS', 'SNGR SITREP', 'DesInventar ECU', 'ECU 911 CKAN'",
+      "record_text": "Pseudonymised description or comment text of the record, max 1,500 characters",
+      "event_label_verbatim": "Event type as recorded by the source, verbatim",
+      "cause_verbatim": "Cause as recorded by the source, verbatim, or empty string",
+      "place_label": "Resolved place label (from B3), or raw place text"
+    },
+    "code_decides_without_jev": [
+      "Dates, counts (people, homes, hectares), DPA codes (via B3), ENSO phase at event time (join to enso_indices by date), duplicates by exact source id."
+    ],
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "is_hydromet": {
+        "yes": "label_record",
+        "review": "label_record_and_mark_unconfirmed",
+        "no": "exclude_from_impact_db"
+      },
+      "hazard_type": {
+        "any": "set_hazard",
+        "abstain": "analyst_queue_if_severity_ge_2_else_set_sin_clasificar"
+      },
+      "rain_or_sea_triggered": {
+        "yes": "set_trigger_true",
+        "review": "set_trigger_unknown",
+        "no": "set_trigger_false"
+      },
+      "coastal_compound": {
+        "yes": "set_compound_true",
+        "review": "set_compound_unknown",
+        "no": "none"
+      },
+      "homes_damaged": {
+        "yes": "set_flag",
+        "review": "set_flag_unconfirmed",
+        "no": "none"
+      },
+      "road_or_bridge": {
+        "yes": "set_flag",
+        "review": "set_flag_unconfirmed",
+        "no": "none"
+      },
+      "school_or_health": {
+        "yes": "set_flag",
+        "review": "set_flag_unconfirmed",
+        "no": "none"
+      },
+      "water_or_power": {
+        "yes": "set_flag",
+        "review": "set_flag_unconfirmed",
+        "no": "none"
+      },
+      "crops_livestock_or_aquaculture": {
+        "yes": "set_flag",
+        "review": "set_flag_unconfirmed",
+        "no": "none"
+      },
+      "people_displaced": {
+        "yes": "set_flag",
+        "review": "set_flag_unconfirmed",
+        "no": "none"
+      },
+      "deaths_or_injuries": {
+        "yes": "set_flag_and_check_counts_in_code",
+        "review": "set_flag_unconfirmed",
+        "no": "none"
+      },
+      "severity": {
+        "any_level": "store_level",
+        "low_confidence": "store_level_unconfirmed"
+      }
+    },
+    "owner": "DL with AI",
+    "notes": [
+      "Multi-label questions are one Noul per label (Jev returns no lists).",
+      "Pairs of records that may describe the same event are resolved with event_dedupe (S6)."
+    ],
+    "output": "Label columns on commons_internal.impact_events (docs/05-data-catalog.md section 4.9), promoted to commons_pub after review",
+    "human_queue": "commons_ops.review_queue (queue 'impact_label')"
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "record": {
+      "source": "{{source_name}}",
+      "text": "{{record_text}}",
+      "event_label": "{{event_label_verbatim}}",
+      "cause": "{{cause_verbatim}}",
+      "place": "{{place_label}}"
+    }
+  },
+  "questions": {
+    "is_hydromet": {
+      "type": "noul",
+      "instructions": "Does `record` describe an event caused by rain, rivers, the sea, landslides or wind (not traffic, crime, fire unrelated to weather or medical emergencies)?"
+    },
+    "hazard_type": {
+      "type": "choice",
+      "instructions": "Which hazard does `record` describe?",
+      "criteria": {
+        "inundacion": "Flooding, including river overflow",
+        "deslizamiento": "Landslide, mudflow or rockfall",
+        "oleaje_aguaje": "Coastal swell or high-tide flooding",
+        "colapso_estructural": "Structural collapse after rain",
+        "socavamiento": "Undermining or erosion of roads, banks or foundations",
+        "vendaval": "Wind damage",
+        "sequia_deficit_hidrico": "Drought or water shortage",
+        "otro": "Another hazard"
+      }
+    },
+    "rain_or_sea_triggered": {
+      "type": "noul",
+      "instructions": "According to `record`, was the event triggered by rainfall, rising rivers or sea conditions?"
+    },
+    "coastal_compound": {
+      "type": "noul",
+      "instructions": "Does `record` describe rain or river flooding made worse by high tide, swell or sea level?"
+    },
+    "homes_damaged": {
+      "type": "noul",
+      "instructions": "Does `record` report homes affected, damaged or destroyed?"
+    },
+    "road_or_bridge": {
+      "type": "noul",
+      "instructions": "Does `record` report a road or bridge affected, blocked or destroyed?"
+    },
+    "school_or_health": {
+      "type": "noul",
+      "instructions": "Does `record` report a school or health facility affected?"
+    },
+    "water_or_power": {
+      "type": "noul",
+      "instructions": "Does `record` report drinking water, sewer, electricity or telecommunications affected?"
+    },
+    "crops_livestock_or_aquaculture": {
+      "type": "noul",
+      "instructions": "Does `record` report crops, livestock, shrimp ponds or fisheries affected?"
+    },
+    "people_displaced": {
+      "type": "noul",
+      "instructions": "Does `record` report people or families displaced, evacuated or in shelters?"
+    },
+    "deaths_or_injuries": {
+      "type": "noul",
+      "instructions": "Does `record` report people dead, missing or injured?"
+    },
+    "severity": {
+      "type": "score",
+      "instructions": "How severe is the impact described in `record`?",
+      "criteria": [
+        "Minor: nuisance or brief disruption",
+        "Moderate: access cut or property damaged",
+        "Serious: homes destroyed, critical services hit or families displaced",
+        "Severe: deaths, missing people or large-scale displacement"
+      ]
+    }
+  }
+}

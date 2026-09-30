@@ -1,0 +1,70 @@
+{
+  "x-ectwin": {
+    "template_id": "event_dedupe",
+    "template_version": "1.0.0",
+    "use_case": "S6",
+    "decision_log_context": "dedupe",
+    "doc": "docs/08-ai-decision-layer-jev.md section 4.8",
+    "runs_in": "Commons job jev-triage-national (live) and the B4 impact-database backfill (historical)",
+    "payer": "Commons sponsor",
+    "data_class": "C2",
+    "data_class_rule": "Both texts pseudonymised with Cloud DLP; if either record comes from ECU 911 or SNGR narratives, treat the pair as C3.",
+    "max_state_tokens": 4000,
+    "pairing_rule": "Code creates pairs only within the same parish or neighbouring parishes (DPA adjacency) and within a time window of 72 h live or 3 days historical; never all pairs.",
+    "placeholders": {
+      "a_text": "Pseudonymised text of record A",
+      "a_source": "Source of record A, e.g. 'ECU 911', 'SNGR EVENTOS_X_LLUVIAS', 'tip-line', 'SITREP'",
+      "a_place": "Place label of record A",
+      "a_time_bucket": "Time bucket from code, e.g. 'night of 2 Mar (00-06 local)'",
+      "b_text": "Pseudonymised text of record B",
+      "b_source": "Source of record B",
+      "b_place": "Place label of record B",
+      "b_time_bucket": "Time bucket from code"
+    },
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "same_event": {"level:2": "merge_keep_both_sources", "level:1": "review_if_life_threat_or_severity_ge_3_else_link_posible_duplicado", "level:0": "keep_separate", "low_confidence": "link_posible_duplicado"},
+      "b_contradicts_a": {"yes": "put_in_conflicting_block_for_analyst", "review": "flag_possible_conflict", "no": "none"},
+      "b_adds_new_facts": {"yes": "append_b_facts_to_merged_record", "review": "none", "no": "none"}
+    },
+    "owner": "AI with DL",
+    "notes": [
+      "Route on the nearest level: min(int(score + 0.5), 2).",
+      "Time comparison is done in code (time buckets), because comparing dates and times is a documented Jev weak spot."
+    ]
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "a": {
+      "text": "{{a_text}}",
+      "source": "{{a_source}}",
+      "place": "{{a_place}}",
+      "time": "{{a_time_bucket}}"
+    },
+    "b": {
+      "text": "{{b_text}}",
+      "source": "{{b_source}}",
+      "place": "{{b_place}}",
+      "time": "{{b_time_bucket}}"
+    }
+  },
+  "questions": {
+    "same_event": {
+      "type": "score",
+      "instructions": "Do `a` and `b` describe the same physical event (the same flood, landslide or damage) at the same place?",
+      "criteria": [
+        "Different events",
+        "Possibly the same event",
+        "Same event"
+      ]
+    },
+    "b_contradicts_a": {
+      "type": "noul",
+      "instructions": "Does `b.text` contradict a fact stated in `a.text` (for example the type of event, whether people were affected, or whether a road is open)?"
+    },
+    "b_adds_new_facts": {
+      "type": "noul",
+      "instructions": "Does `b.text` report facts about the event that are not in `a.text`?"
+    }
+  }
+}

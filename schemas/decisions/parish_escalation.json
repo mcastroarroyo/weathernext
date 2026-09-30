@@ -1,0 +1,101 @@
+{
+  "x-ectwin": {
+    "template_id": "parish_escalation",
+    "template_version": "1.0.0",
+    "use_case": "S3",
+    "decision_log_context": "escalation",
+    "doc": "docs/08-ai-decision-layer-jev.md section 4.5",
+    "runs_in": "Commons forecast-cycle workflow, step after parish_exceedance (4 cycles per day); tenants may run the same template per AOI in ectwin-aoi-pipeline",
+    "payer": "Commons sponsor (national); tenant for AOI runs",
+    "data_class": "C1",
+    "data_class_rule": "Only bucketised, non-retrievable forecast categories and pseudonymised one-line report summaries. Never raw WeatherNext values.",
+    "max_state_tokens": 6000,
+    "placeholders": {
+      "parish_label": "'Parroquia, Canton, Provincia' text; code keeps the 6-digit DPA code",
+      "rain_72h_vs_clim": "Bucket label from code, e.g. 'normal', 'above normal (75th-90th percentile)', 'very high (90th-99th percentile)', 'extreme (above 99th percentile)'",
+      "ensemble_agreement": "Bucket label from code: 'few members agree', 'about half of members agree', 'most members agree', 'nearly all members agree'",
+      "river_status": "Bucket label from code built from Flood Forecasting API / GEOGloWS / GloFAS, e.g. 'no river signal', 'warning level forecast within 3 days', 'danger level forecast within 3 days', 'no gauge in parish'",
+      "tide_and_sea_level": "Bucket label from code for coastal parishes, e.g. 'not coastal', 'spring tide with positive sea-level anomaly', 'normal tide'",
+      "soil_state": "Bucket label from code, e.g. 'dry', 'wet after recent rain', 'saturated'",
+      "flood_zone_population": "Bucket label from code, e.g. 'none', 'small share of population', 'large share of population'",
+      "critical_sites_in_zone": "Short text from code, e.g. '2 schools, 1 health centre' (counts are exposure facts computed in code)",
+      "recent_reports_summary": "Array (max 10) of pseudonymised one-line report summaries from S1/S2 typed records in the last 24 h for this parish",
+      "official_text": "Only the paragraphs of the latest INAMHI advertencia / SNGR resolution that mention this parish, its canton or its province (extracted by code with the gazetteer); empty string if none"
+    },
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "reports_confirm": {
+        "yes": "flag_F_OBS_candidate_requires_2_independent_deduplicated_reports_docs07",
+        "review": "review_queue_duty_forecaster",
+        "no": "none"
+      },
+      "advisory_covers": {
+        "yes": "flag_F_OFFICIAL_no_numeric_change_docs07",
+        "review": "none",
+        "no": "none"
+      },
+      "evidence_sufficient": {
+        "yes": "none",
+        "review": "lower_confidence_indicator",
+        "no": "lower_confidence_indicator"
+      },
+      "impact_outlook": {
+        "any_level": "J_equals_score_over_4_used_by_ri_2_0_0_only_if_H_ge_0_2",
+        "low_confidence": "store_J_null"
+      }
+    },
+    "owner": "FL (forecast) with AI",
+    "notes": [
+      "The parish nivel de riesgo formula is owned by docs/07-impact-modules-and-triggers.md section 5: ri-1.0.0 has no Jev input; ri-2.0.0 uses R = 0.8 x R_det + 0.2 x J only if H >= 0.2 (shadow from 2026-12-15, promotion planned 2027-01-12 after 4 weeks of shadow scoring and sign-off).",
+      "Code converts every number to a named bucket before this request; Jev fuses qualitative evidence only.",
+      "Default horizon is the next 72 hours (d1_3); other horizons get J = NULL unless per-horizon calls are approved (cost x3)."
+    ],
+    "raw_output_table": "commons_internal.jev_parish_escalation (docs/07 section 5) plus one decision_log row per question"
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "parish": "{{parish_label}}",
+    "hazard": {
+      "rain_72h_vs_clim": "{{rain_72h_vs_clim}}",
+      "weathernext_ensemble_agreement": "{{ensemble_agreement}}",
+      "river_status": "{{river_status}}",
+      "tide_and_sea_level": "{{tide_and_sea_level}}",
+      "soil_state": "{{soil_state}}"
+    },
+    "exposure": {
+      "flood_zone_population": "{{flood_zone_population}}",
+      "critical_sites_in_zone": "{{critical_sites_in_zone}}"
+    },
+    "recent_reports_summary": "{{recent_reports_summary}}",
+    "official_text": "{{official_text}}"
+  },
+  "questions": {
+    "reports_confirm": {
+      "type": "noul",
+      "instructions": "Do the items in `recent_reports_summary` describe flooding, landslides or other water-related damage already happening in `parish`?",
+      "criteria": {
+        "true": "At least one item describes current water-related damage or disruption in this parish",
+        "false": "No items, or items describe other places, old events, forecasts or unrelated matters"
+      }
+    },
+    "advisory_covers": {
+      "type": "noul",
+      "instructions": "Does `official_text` explicitly include `parish`, its canton or its province?"
+    },
+    "evidence_sufficient": {
+      "type": "noul",
+      "instructions": "Is there enough information in `hazard` and `exposure` to judge the likely impact in `parish` over the next 72 hours?"
+    },
+    "impact_outlook": {
+      "type": "score",
+      "instructions": "Given `hazard` and `exposure`, what situation is most likely in `parish` over the next 72 hours?",
+      "criteria": [
+        "No meaningful impact",
+        "Local street flooding, no displacement",
+        "Homes flooded, some families displaced",
+        "Critical sites cut off or damaged",
+        "Mass displacement or loss of life likely"
+      ]
+    }
+  }
+}

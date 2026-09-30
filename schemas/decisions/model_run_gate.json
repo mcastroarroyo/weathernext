@@ -1,0 +1,72 @@
+{
+  "x-ectwin": {
+    "template_id": "model_run_gate",
+    "template_version": "1.0.0",
+    "use_case": "S4",
+    "decision_log_context": "gate_run",
+    "doc": "docs/08-ai-decision-layer-jev.md section 4.6",
+    "runs_in": "Commons forecast-cycle workflow, one request per basin per cycle; Heavy tenants may reuse it before Cloud Batch runs in their own project",
+    "payer": "Commons sponsor (national scenario library); tenant for tenant runs",
+    "data_class": "C0",
+    "max_state_tokens": 6000,
+    "placeholders": {
+      "basin_label": "Basin name, e.g. 'Guayas', 'Chone-Portoviejo', 'Esmeraldas'",
+      "floodhub_signal": "Bucket label from code, e.g. 'no gauge above warning', 'above warning level at 2 gauges', 'above danger level at 1 gauge'",
+      "weathernext_signal": "Bucket label from code, e.g. 'heavy rain probability low', 'heavy rain probability high, rising vs last run'",
+      "last_hires_run_age": "Bucket label from code: 'less than 6 h', '6-24 h', 'older than 24 h', 'never run this season'",
+      "enfen_statement": "Latest CN-ERFEN / ENFEN statement paragraph relevant to the coast (verbatim Spanish), or empty string",
+      "inamhi_special_warning": "Paragraphs of the latest INAMHI advertencia that mention provinces drained by the basin (extracted by code), or empty string"
+    },
+    "hard_rules_before_jev": [
+      "If any gauge in the basin is at or above the danger level: run hires_2d without asking Jev (Jev cannot veto).",
+      "If the per-cycle compute budget cap for the basin is reached: do not run; route to a human who may raise the cap.",
+      "If no new forecast data arrived since the last run: do not run."
+    ],
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "run_hires_inundation": {"yes": "run_within_pre_approved_budget", "review": "ask_duty_forecaster_within_30_min", "no": "skip"},
+      "warning_mentions_basin": {"yes": "attach_warning_to_run_record", "review": "none", "no": "none"},
+      "run_tier": {"none": "keep_current_products", "quick_hand": "run_quick_hand_screening", "hires_2d": "run_hires_2d_if_run_hires_inundation_yes", "full_ensemble": "human_approval_required", "abstain": "use_quick_hand"}
+    },
+    "owner": "FL with AI",
+    "notes": [
+      "Jev can make the gate stricter but never looser: code hard rules always win.",
+      "The full_ensemble tier always needs human approval because of its cost."
+    ]
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "basin": "{{basin_label}}",
+    "signals": {
+      "floodhub": "{{floodhub_signal}}",
+      "weathernext": "{{weathernext_signal}}",
+      "last_hires_run": "{{last_hires_run_age}}"
+    },
+    "enfen_statement": "{{enfen_statement}}",
+    "inamhi_special_warning": "{{inamhi_special_warning}}"
+  },
+  "questions": {
+    "run_hires_inundation": {
+      "type": "noul",
+      "instructions": "Given `signals`, `enfen_statement` and `inamhi_special_warning`, is a new high-resolution inundation model run for `basin` justified now?",
+      "criteria": {
+        "true": "Signals point to significant flooding in the next days and the last high-resolution run is stale or no longer matches the signals",
+        "false": "Signals are weak or unchanged and current products remain adequate"
+      }
+    },
+    "warning_mentions_basin": {
+      "type": "noul",
+      "instructions": "Does `inamhi_special_warning` mention provinces or rivers drained by `basin`?"
+    },
+    "run_tier": {
+      "type": "choice",
+      "instructions": "Which analysis tier fits the situation described by `signals` for `basin`?",
+      "criteria": {
+        "none": "Keep current products",
+        "quick_hand": "Fast terrain-based (HAND) screening",
+        "hires_2d": "High-resolution 2D hydraulic run",
+        "full_ensemble": "Full ensemble downscaling for all members"
+      }
+    }
+  }
+}

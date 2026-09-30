@@ -1,0 +1,81 @@
+{
+  "x-ectwin": {
+    "template_id": "query_router",
+    "template_version": "1.0.0",
+    "use_case": "S5",
+    "decision_log_context": "route",
+    "doc": "docs/08-ai-decision-layer-jev.md section 4.7",
+    "runs_in": "ectwin-api broker on behalf of a tenant (tenant key read from tenant Secret Manager with the runner token); T0 viewers and tenants without a key use the keyword router in code",
+    "payer": "Tenant",
+    "data_class": "C2",
+    "data_class_rule": "Broker scrubs phones, e-mails and cedula numbers with regular expressions before the call; queries are not stored centrally.",
+    "max_state_tokens": 1000,
+    "latency_budget_ms": 1200,
+    "latency_fallback": "If no answer within 1,200 ms, use the keyword router and log outcome 'timeout_keyword_fallback'.",
+    "placeholders": {
+      "query": "The user's question, scrubbed, max 500 characters",
+      "ui_lang": "UI language code: es-EC or en"
+    },
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "is_emergency": {"yes": "show_ecu911_banner_first", "review": "show_ecu911_banner_first", "no": "none"},
+      "intent": {
+        "map_view": "open_map",
+        "parish_risk": "open_place_summary",
+        "forecast_point": "open_place_forecast",
+        "historical_compare": "open_analog_years_panel",
+        "advice_narrative": "copilot_if_enabled_else_curated_guidance_links",
+        "data_download": "open_downloads",
+        "how_to": "open_help",
+        "out_of_scope": "polite_out_of_scope_message",
+        "abstain": "show_top_two_intents_as_buttons"
+      },
+      "names_place": {"yes": "resolve_place_with_gazetteer", "review": "resolve_place_with_gazetteer", "no": "use_home_dpa"},
+      "language": {"kichwa": "show_limited_support_notice_and_spanish_answer_human_follow_up", "other": "answer_in_ui_lang", "abstain": "answer_in_ui_lang"}
+    },
+    "owner": "PL with AI",
+    "notes": [
+      "is_emergency uses a deliberately low bar: the ECU 911 banner is shown from 0.30, not 0.70.",
+      "Only advice_narrative, or an abstained intent with a narrative runner-up, may call Gemini."
+    ]
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "query": "{{query}}",
+    "ui_lang": "{{ui_lang}}"
+  },
+  "questions": {
+    "intent": {
+      "type": "choice",
+      "instructions": "What does the user want from the platform with `query`?",
+      "criteria": {
+        "map_view": "See a map or layer",
+        "parish_risk": "Risk level or situation for a place",
+        "forecast_point": "Rain, river flow or sea forecast at a place",
+        "historical_compare": "Compare with past El Nino years such as 1997-98, 2015-16 or 2023-24",
+        "advice_narrative": "An explanation or recommendations in prose",
+        "data_download": "Download data or a report",
+        "how_to": "Help using the platform",
+        "out_of_scope": "Anything unrelated to weather, water, El Nino risk or the platform"
+      }
+    },
+    "is_emergency": {
+      "type": "noul",
+      "instructions": "Is the user describing an emergency in progress where people need help now and should call ECU 911?"
+    },
+    "names_place": {
+      "type": "noul",
+      "instructions": "Does `query` name a specific place in Ecuador (province, canton, parish, city, river or locality)?"
+    },
+    "language": {
+      "type": "choice",
+      "instructions": "In which language is `query` written?",
+      "criteria": {
+        "es": "Spanish",
+        "en": "English",
+        "kichwa": "Kichwa, or Spanish mixed with Kichwa words",
+        "other": "Another language"
+      }
+    }
+  }
+}

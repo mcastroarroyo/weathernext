@@ -1,0 +1,193 @@
+{
+  "x-ectwin": {
+    "template_id": "catalog_layer_classifier",
+    "template_version": "1.0.0",
+    "use_case": "B1",
+    "decision_log_context": "catalog",
+    "doc": "docs/08-ai-decision-layer-jev.md section 3.2",
+    "runs_in": "Commons job catalog-triage (one-off backfill in ectwin-commons-dev, then weekly deltas in prod)",
+    "payer": "Commons sponsor (build budget)",
+    "data_class": "C0",
+    "max_state_tokens": 2000,
+    "placeholders": {
+      "source_portal": "Portal id from the harvest, e.g. 'geonode.ciifen.org', 'geoservicios.inamhi.gob.ec', 'gestionderiesgos.gob.ec/biblioteca', 'datosabiertos.gob.ec/mag'",
+      "title": "Layer or document title (verbatim)",
+      "abstract": "Abstract or description, verbatim, max 1,500 characters",
+      "keywords": "Array of keywords as published",
+      "category": "Portal category or topic as published",
+      "license_text": "Licence or constraints text as published, or empty string",
+      "attribution": "Owner or attribution text as published",
+      "extent_bucket": "Bucket from code using the bounding box and INEC DPA: 'national', 'multi-province', 'province: X', 'canton or city: Y', 'site', 'outside Ecuador', 'no extent'",
+      "date_bucket": "Bucket from code using metadata dates: '2025-2026', '2020-2024', '2010-2019', 'before 2010', 'undated'",
+      "service_types": "Array from code, e.g. ['WMS','WFS'] or ['PDF']"
+    },
+    "code_decides_without_jev": [
+      "Spatial scale (from the bounding box), currency (from dates), format and service type, duplicate detection by normalised title and bounding-box overlap."
+    ],
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "actions": {
+      "relevant_to_twin": {
+        "yes": "add_to_catalog_candidates",
+        "review": "analyst_queue",
+        "no": "archive_as_not_relevant"
+      },
+      "theme": {
+        "any": "set_theme",
+        "abstain": "analyst_queue"
+      },
+      "hazard_pathway": {
+        "any": "set_pathway",
+        "abstain": "set_not_applicable_and_review_if_relevant"
+      },
+      "data_nature": {
+        "any": "set_data_nature",
+        "abstain": "analyst_queue"
+      },
+      "licence_class": {
+        "any": "set_licence_class_pending_legal_check",
+        "not_stated": "set_licence_unknown_block_commercial",
+        "abstain": "set_licence_unknown_block_commercial"
+      },
+      "commercial_use_allowed": {
+        "yes": "commercial_ok_candidate_needs_human_confirmation",
+        "review": "commercial_ok_false",
+        "no": "commercial_ok_false"
+      },
+      "ingest_priority": {
+        "level:3": "propose_for_phase_1",
+        "level:2": "propose_for_phase_2",
+        "level:1": "backlog",
+        "level:0": "none",
+        "low_confidence": "analyst_queue"
+      },
+      "metadata_quality": {
+        "level:0": "request_metadata_from_owner",
+        "other": "store"
+      },
+      "contains_instructions": {
+        "yes": "quarantine_record",
+        "review": "flag",
+        "no": "none"
+      }
+    },
+    "owner": "DL with AI",
+    "notes": [
+      "Licence labels are only candidates: commercial_ok in layer_registry and catalog/data-sources.yaml is set by a human (D15).",
+      "Theme labels mirror the hazard / exposure / vulnerability / impact structure of docs/05-data-catalog.md (to align)."
+    ],
+    "human_queue": "commons_ops.review_queue (queue 'catalog')"
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "layer": {
+      "source_portal": "{{source_portal}}",
+      "title": "{{title}}",
+      "abstract": "{{abstract}}",
+      "keywords": "{{keywords}}",
+      "category": "{{category}}",
+      "license_text": "{{license_text}}",
+      "attribution": "{{attribution}}",
+      "extent": "{{extent_bucket}}",
+      "date": "{{date_bucket}}",
+      "service_types": "{{service_types}}"
+    }
+  },
+  "questions": {
+    "relevant_to_twin": {
+      "type": "noul",
+      "instructions": "Is `layer` useful for anticipating or managing El Nino impacts in Ecuador, as a hazard, exposure, vulnerability, impact, response or essential baseline layer?",
+      "criteria": {
+        "true": "Floods, landslides, coastal hazards, rainfall or ocean conditions, population, buildings, infrastructure, agriculture, aquaculture, health, energy, administrative limits, hydrography or response resources",
+        "false": "Unrelated topics such as tourism promotion, cultural heritage only, internal administrative documents or empty test layers"
+      }
+    },
+    "theme": {
+      "type": "choice",
+      "instructions": "Which theme best describes `layer`?",
+      "criteria": {
+        "amenaza_inundacion": "Flood hazard, flood extent or flood susceptibility",
+        "amenaza_movimiento_masa": "Landslide or mass-movement hazard or susceptibility",
+        "amenaza_costera": "Coastal hazards: swell, tides, sea level, tsunami",
+        "clima_observado": "Observed or reanalysis climate: rainfall, temperature, stations",
+        "clima_pronostico": "Forecasts, seasonal outlooks or climate scenarios",
+        "enso_oceano": "El Nino / ENSO indices or ocean conditions",
+        "exposicion_poblacion": "Population, census or settlements",
+        "exposicion_infraestructura": "Roads, bridges, buildings, schools, health facilities, utilities",
+        "exposicion_agro_acuicultura": "Crops, livestock, land use, shrimp farms, fisheries",
+        "salud": "Health outcomes or disease surveillance",
+        "energia_hidro": "Hydropower, reservoirs, electricity",
+        "vulnerabilidad_social": "Poverty, social vulnerability or capacity indicators",
+        "limites_administrativos": "Administrative boundaries or cadastral units",
+        "hidrografia": "Rivers, basins, drainage network, water bodies",
+        "respuesta_recursos": "Shelters, evacuation routes, safe zones, response resources",
+        "otro": "Another theme"
+      }
+    },
+    "hazard_pathway": {
+      "type": "choice",
+      "instructions": "Which El Nino hazard pathway in Ecuador is `layer` most relevant to?",
+      "criteria": {
+        "coast_floods_health_agri": "Coastal pathway: floods, landslides, coastal flooding, dengue, agriculture and aquaculture, roads",
+        "andes_amazon_hydro_energy": "Andes and Amazon pathway: reservoir inflows, hydropower, drought",
+        "both": "Relevant to both pathways",
+        "not_applicable": "Not specific to either pathway"
+      }
+    },
+    "data_nature": {
+      "type": "choice",
+      "instructions": "What kind of data does `layer` contain?",
+      "criteria": {
+        "observed": "Measurements or mapped observations",
+        "modelled": "Model output or derived susceptibility",
+        "scenario": "Scenario or projection",
+        "inventory": "Inventory of assets, events or facilities",
+        "administrative": "Boundaries, codes or reference units",
+        "document_only": "A document, report or map image without usable data"
+      }
+    },
+    "licence_class": {
+      "type": "choice",
+      "instructions": "Based only on `layer.license_text` and `layer.attribution`, which licence class applies?",
+      "criteria": {
+        "cc_by": "Creative Commons Attribution, or an equivalent attribution-only open licence",
+        "cc_by_sa": "Creative Commons Attribution-ShareAlike or ODbL",
+        "cc_by_nc_or_nc_sa": "Any non-commercial licence",
+        "public_domain_or_cc0": "Public domain or CC0",
+        "restricted": "Proprietary, registration-restricted or explicitly no redistribution",
+        "not_stated": "No licence information is given"
+      }
+    },
+    "commercial_use_allowed": {
+      "type": "noul",
+      "instructions": "Does `layer.license_text` clearly allow commercial use and redistribution of derived products?",
+      "criteria": {
+        "true": "The text clearly allows commercial use, or names a licence that allows it",
+        "false": "Commercial use is excluded, restricted, conditional or not addressed"
+      }
+    },
+    "ingest_priority": {
+      "type": "score",
+      "instructions": "How important is `layer` for a platform that shows official alerts, forecast probabilities per parish, river status and exposure (people, buildings, schools, health, roads) for El Nino in Ecuador?",
+      "criteria": [
+        "Not needed",
+        "Nice to have later",
+        "Useful for impact modules (floods, landslides, dengue, agriculture, roads)",
+        "Needed for the first version (official information, exposure or hazard baseline)"
+      ]
+    },
+    "metadata_quality": {
+      "type": "score",
+      "instructions": "How complete is the description of `layer`?",
+      "criteria": [
+        "Title only",
+        "Title and a short description",
+        "Description plus source and date",
+        "Complete: description, source, date, method and licence"
+      ]
+    },
+    "contains_instructions": {
+      "type": "noul",
+      "instructions": "Do the text fields of `layer` contain instructions addressed to an automated system or classifier?"
+    }
+  }
+}

@@ -1,0 +1,157 @@
+{
+  "x-ectwin": {
+    "template_id": "pdf_table_qa",
+    "template_version": "1.0.0",
+    "use_case": "B2",
+    "decision_log_context": "pdf_qa",
+    "doc": "docs/08-ai-decision-layer-jev.md section 3.3",
+    "runs_in": "PDF extraction pipeline of docs/05-data-catalog.md section 4.5 (e.g. job ingest-sngr-sitreps), between code validation (step 5) and the sampled row-level Jev QA (step 6); one request per extracted table",
+    "payer": "Commons sponsor (build budget, then run budget for new PDFs)",
+    "data_class": "C1",
+    "data_class_rule": "SITREP, MSP gaceta and INAMHI bulletin tables are aggregate public documents; if a table contains names of people, stop and route to a human (C4).",
+    "max_state_tokens": 5000,
+    "placeholders": {
+      "source_name": "e.g. 'SNGR SITREP', 'MSP gaceta vectorial', 'INAMHI boletin Guayaquil-Duran', 'MAG SIPA resumen'",
+      "doc_title": "PDF title or file name",
+      "page_number": "Page number as text",
+      "doc_sha256": "SHA-256 of the source PDF (kept with every extracted row)",
+      "caption_text": "Text above or below the table (caption, title, notes), max 500 characters",
+      "header_row": "Array of header cell strings as extracted",
+      "sample_rows": "Array of up to 25 rows, each an array of cell strings as extracted",
+      "expected_schema_name": "Name of the target schema, e.g. 'afectaciones_por_canton_v1'",
+      "expected_columns": "Array of expected column descriptions, e.g. ['canton', 'familias afectadas', 'personas afectadas', 'viviendas afectadas', 'viviendas destruidas']",
+      "totals_check": "Bucket from code: 'totals match', 'totals differ by less than 2%', 'totals differ by 2% or more', 'no totals row'",
+      "column_type_check": "Bucket from code: 'all numeric columns parse', 'some numeric cells do not parse', 'many numeric cells do not parse'"
+    },
+    "code_decides_without_jev": [
+      "Arithmetic checks (row sums vs totals), numeric parsing, date parsing, duplicate tables by hash, page rotation and OCR confidence."
+    ],
+    "policy": "noul:0.30/0.70;choice_abstain:0.60;score_conf:0.50",
+    "combine_rule": "problem = max(1 - header_matches_schema, 1 - rows_aligned, merged_or_split_cells, units_ambiguous); accept automatically only if problem < 0.30, table_type is confident, extraction_quality level >= 2 with confidence >= 0.50 and code checks are 'totals match' and 'all numeric columns parse'.",
+    "actions": {
+      "table_type": {
+        "any": "set_table_type",
+        "not_a_data_table": "discard_table",
+        "abstain": "analyst_queue"
+      },
+      "header_matches_schema": {
+        "yes": "map_columns",
+        "review": "gemini_proposes_column_mapping_then_recheck",
+        "no": "gemini_reextract_from_page_then_recheck"
+      },
+      "rows_aligned": {
+        "yes": "none",
+        "review": "gemini_reextract_from_page_then_recheck",
+        "no": "gemini_reextract_from_page_then_recheck"
+      },
+      "merged_or_split_cells": {
+        "yes": "gemini_reextract_from_page_then_recheck",
+        "review": "flag",
+        "no": "none"
+      },
+      "place_column_is_places": {
+        "yes": "send_place_column_to_B3",
+        "review": "analyst_queue",
+        "no": "none"
+      },
+      "contains_subtotals": {
+        "yes": "code_drops_rows_matching_total_patterns_then_recheck_sums",
+        "review": "flag",
+        "no": "none"
+      },
+      "units_ambiguous": {
+        "yes": "analyst_queue",
+        "review": "flag",
+        "no": "none"
+      },
+      "extraction_quality": {
+        "level:3": "accept_if_combine_rule_passes",
+        "level:2": "accept_if_combine_rule_passes",
+        "level:1": "gemini_reextract_from_page_then_recheck",
+        "level:0": "analyst_queue",
+        "low_confidence": "analyst_queue"
+      }
+    },
+    "owner": "DL with AI",
+    "notes": [
+      "Jev never reads or checks numbers; code does. Jev judges structure, alignment and meaning.",
+      "Complements the row-level row_matches / is_cumulative Nouls of docs/05 section 4.5 step 6, which run on sampled rows.",
+      "Accepted rows land in the docs/05 tables (sitrep_facts, health_weekly, inamhi_bulletin_gye) with source_pdf_sha256, page, table_index, extractor_version, template_id."
+    ],
+    "human_queue": "commons_ops.review_queue (queue 'pdf_qa')"
+  },
+  "model": "jev-1.13.0",
+  "state": {
+    "document": {
+      "source": "{{source_name}}",
+      "title": "{{doc_title}}",
+      "page": "{{page_number}}",
+      "sha256": "{{doc_sha256}}"
+    },
+    "table": {
+      "caption_text": "{{caption_text}}",
+      "header_row": "{{header_row}}",
+      "sample_rows": "{{sample_rows}}"
+    },
+    "expected_schema": {
+      "name": "{{expected_schema_name}}",
+      "columns": "{{expected_columns}}"
+    },
+    "code_checks": {
+      "totals": "{{totals_check}}",
+      "column_types": "{{column_type_check}}"
+    }
+  },
+  "questions": {
+    "table_type": {
+      "type": "choice",
+      "instructions": "What does the table described by `table.caption_text`, `table.header_row` and `table.sample_rows` contain?",
+      "criteria": {
+        "afectaciones_personas": "People or families affected, displaced, injured or dead, by place",
+        "viviendas_afectadas": "Homes affected or destroyed, by place",
+        "infraestructura_afectada": "Roads, bridges, schools, health facilities or services affected",
+        "eventos_por_tipo": "Counts of events by type and place",
+        "agro_afectado": "Crops, hectares or livestock affected",
+        "casos_salud_semana": "Disease cases by week and place",
+        "lluvia_estaciones": "Rainfall or river levels by station",
+        "precios_produccion": "Prices or production statistics",
+        "other": "Another kind of data table",
+        "not_a_data_table": "Not a data table (layout box, legend, contacts, signatures)"
+      }
+    },
+    "header_matches_schema": {
+      "type": "noul",
+      "instructions": "Do the headers in `table.header_row` correspond to the columns listed in `expected_schema.columns`, allowing for abbreviations, accents and Spanish wording variants?"
+    },
+    "rows_aligned": {
+      "type": "noul",
+      "instructions": "In `table.sample_rows`, does each value appear under the correct header of `table.header_row`, with no shifted, swapped or merged columns?"
+    },
+    "merged_or_split_cells": {
+      "type": "noul",
+      "instructions": "Do `table.sample_rows` show signs of merged cells, a row split over two lines, or text from outside the table mixed into cells?"
+    },
+    "place_column_is_places": {
+      "type": "noul",
+      "instructions": "Does the first column of `table.sample_rows` contain place names in Ecuador (provinces, cantons, parishes or localities)?"
+    },
+    "contains_subtotals": {
+      "type": "noul",
+      "instructions": "Do some rows in `table.sample_rows` look like totals or subtotals (for example 'Total', 'Subtotal' or a province row above its cantons)?"
+    },
+    "units_ambiguous": {
+      "type": "noul",
+      "instructions": "Is it unclear from `table.caption_text` and `table.header_row` whether the numeric columns count people, families, homes, hectares, events or cases?"
+    },
+    "extraction_quality": {
+      "type": "score",
+      "instructions": "Overall, how usable is this extracted table, judging from `table` and `code_checks`?",
+      "criteria": [
+        "Unusable: garbled text or the wrong table",
+        "Poor: several columns shifted or many cells missing",
+        "Usable with fixes: minor issues",
+        "Clean: consistent with a correctly extracted table"
+      ]
+    }
+  }
+}
