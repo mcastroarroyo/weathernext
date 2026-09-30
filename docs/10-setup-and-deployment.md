@@ -357,9 +357,9 @@ Apply at the `ectwin` folder unless stated. `gcloud org-policies set-policy` tak
 | `iam.disableServiceAccountKeyCreation` | Enforce | AP-06: no keys anywhere | None |
 | `iam.disableServiceAccountKeyUpload` | Enforce | Same | None |
 | `storage.uniformBucketLevelAccess` | Enforce | IAM-only buckets | `ectwin-commons-prod` only if the fine-grained ACL option for the public bucket is chosen (decision by M1.2, §5.3) |
-| `storage.publicAccessPrevention` | Enforce | No accidental public data | `ectwin-commons-{dev,stg,prod}` (static public tiles) and none elsewhere |
+| `storage.publicAccessPrevention` | Enforce | No accidental public data | None on Commons (static tiles are private and signed, FR-001); `ectwin-platform-{dev,stg,prod}` only if the GCS + Cloud CDN app-shell bucket `ectwin-platform-<env>-web` replaces Firebase Hosting ([03 §5.1](./03-architecture.md#51-gcs-buckets-and-prefixes)) |
 | `gcp.resourceLocations` | Allow `in:us-locations` and `in:southamerica-west1-locations` **# verify flag** (value-group names) | BigQuery `US`, GCS/Run `us-central1`, heavy `us-east1`, Firestore and ingestion `southamerica-west1` (D10) | Add `southamerica-east1` only if a tenant region profile needs it in a sponsored project |
-| `iam.allowedPolicyMemberDomains` (domain-restricted sharing) | **Do not enforce** on `ectwin-commons` and `ectwin-platform`; enforcing it on `ectwin-sandbox` is harmless but does **not** rehearse path C1, because the dev and stg brokers belong to the same organisation. AC-09 (2026-11-27) needs a separate secure-by-default test organisation **(to arrange, PL)** | Commons grants external tenant runner accounts (listings, topics) and `allUsers` (public tiles); the platform grants `allUsers` read on the public image repository and needs public Cloud Run ingress | Compensating control: the daily `ops-iam-drift` job ([11 §2.1](./11-operations-runbook.md)) alerts on any external principal not on an allowlist. DPO decision **(to confirm)** |
+| `iam.allowedPolicyMemberDomains` (domain-restricted sharing) | **Do not enforce** on `ectwin-commons` and `ectwin-platform`; enforcing it on `ectwin-sandbox` is harmless but does **not** rehearse path C1, because the dev and stg brokers belong to the same organisation. AC-09 (2026-11-27) needs a separate secure-by-default test organisation **(to arrange, PL)** | Commons grants external tenant runner accounts (listings, topics); the platform grants `allUsers` read on the public image repository and needs public Cloud Run ingress | Compensating control: the daily `ops-iam-drift` job ([11 §2.1](./11-operations-runbook.md)) alerts on any external principal not on an allowlist. DPO decision **(to confirm)** |
 | `compute.skipDefaultNetworkCreation` | Enforce | No default VPCs; Commons creates `ectwin-vpc` explicitly (§5.9) | — |
 
 ### 3.4 Baseline APIs
@@ -562,7 +562,7 @@ gcloud firestore databases create --project=ectwin-platform-$ENV \
   }
   ```
   Deploy with `firebase deploy --only firestore:rules --project ectwin-platform-$ENV` **# verify flag**.
-- **Collections** `tenants`, `memberships`, `invites`, later `wif_issuers`, with the fields in [03 §5.5](./03-architecture.md#55-firestore--platform-registry-ectwin-platform-prod-southamerica-west1). The broker creates them on first write; JSON Schemas live in `schemas/firestore/`.
+- **Collections** `tenants`, `memberships`, `invites`, `accounts` (ToU/privacy acceptance, [13](./13-governance-legal-risk.md) L-14), later `wif_issuers`, with the fields in [03 §5.5](./03-architecture.md#55-firestore--platform-registry-ectwin-platform-prod-southamerica-west1). The broker creates them on first write; JSON Schemas live in `schemas/firestore/`.
 - **Backups.** Daily export to `gs://ectwin-platform-prod-backup` (bucket proposed in [11 §0](./11-operations-runbook.md)) by a scheduled job:
   ```bash
   gcloud firestore export gs://ectwin-platform-prod-backup/registry/$(date -u +%Y%m%d) --project=ectwin-platform-prod
@@ -602,7 +602,7 @@ Terraform creates the secret containers without versions; humans add versions wi
 
 | Service account | Runs | Roles (resource-scoped where possible) |
 |---|---|---|
-| `ectwin-broker@ectwin-platform-prod.iam.gserviceaccount.com` | `ectwin-api` (and, proposed, `ectwin-notifier`, see below) | `roles/datastore.user` on platform-prod (registry); `roles/logging.logWriter`, `roles/monitoring.metricWriter`, `roles/cloudtrace.agent`; `roles/secretmanager.secretAccessor` on `oauth-client-secret` and, while it also runs the notifier, on `email-provider-key`; `roles/iam.serviceAccountTokenCreator` **on itself** (so it can `signBlob` V4 signed URLs); `roles/storage.objectViewer` on the Commons bucket that holds private forecast objects (`ectwin-commons-prod-public` or `-products`, §5.3); Manager of the groups `ectwin-tenants@` and `ectwin-tenants-nc@` so the onboarding service can add runner accounts at `:connect` (§5.6; mechanism and API role **to confirm**, fallback per-principal grants). **No role in any tenant project**: tenants grant it Token Creator on their `ectwin-runner` only ([README §3](../infra/tenant-bootstrap/README.md#3-permission-model)). |
+| `ectwin-broker@ectwin-platform-prod.iam.gserviceaccount.com` | `ectwin-api` (and, proposed, `ectwin-notifier`, see below) | `roles/datastore.user` on platform-prod (registry); `roles/logging.logWriter`, `roles/monitoring.metricWriter`, `roles/cloudtrace.agent`; `roles/secretmanager.secretAccessor` on `oauth-client-secret` and, while it also runs the notifier, on `email-provider-key`; `roles/iam.serviceAccountTokenCreator` **on itself** (so it can `signBlob` V4 signed URLs); `roles/storage.objectViewer` on `ectwin-commons-prod-public` (static layers) and `ectwin-commons-prod-products` (forecast objects), both served only by 60-min signed URLs (§5.3, FR-001); Manager of the groups `ectwin-tenants@` and `ectwin-tenants-nc@` so the onboarding service can add runner accounts at `:connect` (§5.6; mechanism and API role **to confirm**, fallback per-principal grants). **No role in any tenant project**: tenants grant it Token Creator on their `ectwin-runner` only ([README §3](../infra/tenant-bootstrap/README.md#3-permission-model)). |
 | `ectwin-notifier@ectwin-platform-<ENV>` | Reserved | `roles/secretmanager.secretAccessor` on `email-provider-key`; `roles/datastore.user` |
 | `ectwin-idhooks@ectwin-platform-<ENV>` | Blocking functions | `roles/logging.logWriter` only |
 
@@ -618,9 +618,10 @@ for S in oauth-client-secret email-provider-key; do   # secret containers from s
   gcloud secrets add-iam-policy-binding $S --project=$P \
     --member=serviceAccount:$B --role=roles/secretmanager.secretAccessor
 done
-# After §5.3 creates the private products bucket (signed URLs for forecast tiles, JSON, PDFs):
-gcloud storage buckets add-iam-policy-binding gs://ectwin-commons-prod-products \
-  --member=serviceAccount:$B --role=roles/storage.objectViewer
+# After §5.3 creates the private Commons buckets (signed URLs for static and forecast tiles, JSON, PDFs):
+for BK in ectwin-commons-prod-public ectwin-commons-prod-products; do
+  gcloud storage buckets add-iam-policy-binding gs://$BK --member=serviceAccount:$B --role=roles/storage.objectViewer
+done
 ```
 
 **Notifier identity (decision needed by M0.4).** [03 §4.5](./03-architecture.md#45-notification-flow) has the notifier read the user's Web Push endpoint and e-mail from tenant Firestore at send time. Tenants grant Token Creator to `ectwin-broker` only, so a notifier running under its own account could not do that without a second tenant grant. This guide therefore deploys `ectwin-notifier` **under `ectwin-broker@`** (one identity, two services), and keeps `ectwin-notifier@` reserved in case PL prefers the notifier to call an internal broker route instead. Both options keep the single tenant grant.
@@ -919,7 +920,7 @@ mkb $P-raw        $L "--public-access-prevention"
 mkb $P-curated    $L "--public-access-prevention"
 mkb $P-scratch    $L "--public-access-prevention"
 mkb $P-bulk       $L
-mkb $P-public     $L
+mkb $P-public     $L "--public-access-prevention"
 mkb $P-products   $L "--public-access-prevention"          # only if the separate private products bucket is chosen
 mkb $P-archive-scl southamerica-west1 "--public-access-prevention --default-storage-class=ARCHIVE"
 mkb $P-raw-scl     southamerica-west1 "--public-access-prevention"  # fallback write target for official alerts (proposal, 11 §0)
@@ -927,7 +928,7 @@ gcloud storage buckets update gs://$P-raw --versioning --soft-delete-duration=7d
 # Lifecycle rules (raw: Nearline at 90 d, Coldline at 365 d, never deleted; scratch: delete at 7 d; forecast
 # tiles 30 d; bulletins 400 d) are applied by buckets.tf exactly as in 03 §5.1, not by hand.
 gcloud storage buckets update gs://$P-bulk --requester-pays                              # verify flag
-gcloud storage buckets add-iam-policy-binding gs://$P-public --member=allUsers --role=roles/storage.objectViewer
+gcloud storage buckets add-iam-policy-binding gs://$P-public --member=serviceAccount:ectwin-broker@ectwin-platform-prod.iam.gserviceaccount.com --role=roles/storage.objectViewer   # static layers: signed URLs only (FR-001)
 gcloud storage buckets update gs://$P-public --cors-file=infra/commons/cors-public.json   # verify flag
 ```
 
@@ -940,7 +941,7 @@ gcloud storage buckets update gs://$P-public --cors-file=infra/commons/cors-publ
   "maxAgeSeconds": 3600}]
 ```
 
-**Public versus private objects.** [03 §5.1](./03-architecture.md#51-gcs-buckets-and-prefixes) leaves open whether forecast-derived objects share `ectwin-commons-prod-public` with fine-grained ACLs or move to a private `ectwin-commons-prod-products` bucket (decision by M1.2). This guide sets up the second option by default because it keeps uniform bucket-level access everywhere: static layers (`tiles/static/`, `cog/`) go to `-public` with `allUsers` read; forecast tiles, national JSON, bulletins and cards go to `-products` and are served by 60-min V4 signed URLs from the broker (which has `objectViewer` there, §4.8). If PL chooses the ACL option instead, drop `-products` and set the §3.3 exception.
+**Public versus private objects.** [03 §5.1](./03-architecture.md#51-gcs-buckets-and-prefixes) leaves open whether forecast-derived objects share `ectwin-commons-prod-public` with fine-grained ACLs or move to a private `ectwin-commons-prod-products` bucket (decision by M1.2). This guide sets up the second option by default because it keeps uniform bucket-level access everywhere: static layers (`tiles/static/`, `cog/`) go to `-public`, which is also private (the name is historical) and served by 60-min V4 signed URLs (FR-001); forecast tiles, national JSON, bulletins and cards go to `-products` and are served by 60-min V4 signed URLs from the broker (which has `objectViewer` there, §4.8). If PL merges the two buckets instead, keep a single private bucket; Commons needs no public-access exception.
 
 **Requester Pays bulk bucket.** Reading it requires a billing project: `gcloud storage cp gs://ectwin-commons-prod-bulk/curated/... . --billing-project=<YOUR_PROJECT>` **# verify flag**. Publishing policy for `allAuthenticatedUsers` read on selected prefixes is **to confirm** ([03 §5.1](./03-architecture.md#51-gcs-buckets-and-prefixes)).
 
@@ -1397,6 +1398,8 @@ gcloud billing projects link gad-chone-ectwin --billing-account=$SBA
 gcloud projects add-iam-policy-binding gad-chone-ectwin --member=user:$ADMIN --role=roles/owner
 ```
 
+Graduation or end of sponsorship: [04 §10.1](./04-identity-tenancy-byo-gcp.md) ('T4 graduates or sponsorship ends').
+
 Target: request to approved project in ≤2 business days (FR-010).
 
 ### 6.3 Start in the web app
@@ -1502,7 +1505,7 @@ Exit codes: 0 no FAIL (WARN allowed unless `--strict`), 1 at least one FAIL, 2 u
 
 ### 6.8 WeatherNext approval and Analytics Hub subscriptions (T2 and above)
 
-1. **Request.** The person who will subscribe fills in the WeatherNext Data Request form with their institutional account and names the tenant project; approval is per account and takes ≈5–7 business days ([README §7 step 4](../infra/tenant-bootstrap/README.md#step-4--weathernext-data-request-form)). Record the state in the web app's access assistant (FR-011).
+1. **Request.** The person who will subscribe fills in the WeatherNext Data Request form with a role-based institutional account (e.g. `gde-datos@<gad>.gob.ec`, not a personal one; [11 §9.4](./11-operations-runbook.md)) and names the tenant project; approval is per account and takes ≈5–7 business days ([README §7 step 4](../infra/tenant-bootstrap/README.md#step-4--weathernext-data-request-form)). Record the state in the web app's access assistant (FR-011).
 2. **Subscribe** as that approved account, in location `US`, to linked datasets named exactly `weathernext_3` and `weathernext_2` (names fixed by the spine). Either the console (*BigQuery → Sharing (Analytics Hub)* → listing → *Subscribe*), or the Terraform second pass with `listing_subscriptions` (WN2 block in [examples/terraform.tfvars.example](../infra/tenant-bootstrap/examples/terraform.tfvars.example); WN3 listing id to confirm).
 3. **Grant the runner read access.** Add the datasets to `linked_dataset_ids` and re-apply (Terraform), or use the `bq show … | bq update --source` pattern of [README §7 step 5](../infra/tenant-bootstrap/README.md#step-5--analytics-hub-subscriptions-linked-datasets).
 4. **Check** (partition filter and byte cap are mandatory; cost lands on the tenant):
@@ -1634,7 +1637,7 @@ Run in `-dev` first, then `-stg`, then `-prod`. "Gate" names the milestone that 
 | ST-09 | DR copy | Compare object counts of `raw/` and `archive-scl` for yesterday | Equal | SRE | M0.2 |
 | ST-10 | Geoblock probe | `ingest-probe-gobec` report | Route decided per host | DL | M0.3 |
 | ST-11 | Requester Pays | `gcloud storage ls gs://ectwin-commons-prod-bulk/curated/` without and with `--billing-project` **# verify flag** | Fails without, succeeds with | DL | M1.2 |
-| ST-12 | Public static tile range read | `curl -sS -H 'Range: bytes=0-16383' -o /dev/null -w '%{http_code}' https://storage.googleapis.com/ectwin-commons-prod-public/tiles/static/<layer>/v<ver>/<layer>.pmtiles` | 206 | FE | M1.2 |
+| ST-12 | Static tile access is signed-only | (1) An unauthenticated `curl` of `https://storage.googleapis.com/ectwin-commons-prod-public/tiles/static/<layer>/v<ver>/<layer>.pmtiles`; (2) `curl -H 'Range: bytes=0-16383'` on the signed URL returned by `GET /v1/tiles/static/<layer>/<ver>` with an ID token | (1) 401/403; (2) 206 | FE | M1.2 |
 | ST-13 | Private forecast objects not public | Same `curl` on a `-products` object without signature | 403 | FE | M1.2 |
 | ST-14 | Signed URL | `GET /v1/tiles/{product}/{init}` then fetch the URL | 200 within 60 min, 400/403 after | PL | M1.2 |
 | ST-15 | Partition filter enforced | Query `commons_pub.parish_exceedance` without `init_time` filter | Error, no charge | DL | M1.2 |
@@ -1701,6 +1704,8 @@ Roles: incident commander on standby (IC), SRE primary and secondary, FL for cyc
 | +12 h | *Proyecto y costos* live counters: BigQuery bytes today far below the quota; EE EECU far below the cap (month-to-date spend appears only after the ≈24 h billing-export lag, [09 §9](./09-cost-model.md)) |
 | +24 h | Daily preflight (05:00 ECT) green; notifications received for test rules; no "Modo ahorro" |
 | +48 h | Cost trend consistent with the tier anchor (T1 ≈US$0–14/month); support ticket closed or actions listed |
+
+From day 3 the TA follows the routine in [11 §12.5](./11-operations-runbook.md).
 
 ---
 
@@ -1874,7 +1879,7 @@ Tenant-bootstrap problems are covered in [README §10](../infra/tenant-bootstrap
 - **Bootstrap contract, remaining gaps.** [04 §5.8](./04-identity-tenancy-byo-gcp.md) now describes the committed v0.1.0 artefacts (flags, `--connection-code` stored as label `ectwin-connection`, exit codes 0–3). All documents use the artefact topic `ectwin-budget-alerts` (subscription `ectwin-budget-alerts-guard`); PF-09 checks that name. Still open per its §5.8.4: the `ectwin-guard` service account and function (IT-M6, 2026-10-30), and job-level instead of project-level `run.invoker`. The artefacts now use the 04 §8.2 tier budgets (T2 80, T3 1,000) and a 7-day `scratch/` retention, as 03 §5.1 and 04 §5.8.4 require. This guide follows the artefacts.
 - **Tenant table creation.** Preflight PF-05 expects `ectwin.run` to exist at connection, but the bootstrap only creates datasets. This guide proposes that `:connect` applies the tenant DDL with the runner token (§4.9); confirm, or add the DDL to the bootstrap.
 - **Notifier identity.** Running `ectwin-notifier` as `ectwin-broker@` keeps the single tenant grant; the alternative is a notifier that calls an internal broker route. Decide by M0.4.
-- **Public exposure versus domain-restricted sharing** in the operator's own organisation (public images, public tiles, public Cloud Run ingress, external tenant principals in Commons groups). The DPO must approve the §3.3 exceptions and the compensating `ops-iam-drift` control.
+- **Public exposure versus domain-restricted sharing** in the operator's own organisation (public images, public Cloud Run ingress, external tenant principals in Commons groups). The DPO must approve the §3.3 exceptions and the compensating `ops-iam-drift` control.
 - **API domain routing**: Firebase Hosting rewrites versus Cloud Run domain mapping for `api.<DOMAIN>` (timeouts, streaming, cost). Decide by 2026-10-09.
 - **Commons public bucket model**: this guide defaults to a separate private `ectwin-commons-prod-products` bucket; [03 §5.1](./03-architecture.md#51-gcs-buckets-and-prefixes) leaves the decision to M1.2.
 - **WeatherNext approval scope**: whether one approval of `wn-commons@` covers `-dev`, `-stg` and `-prod` Commons projects, and the WN3 listing id.
