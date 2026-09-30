@@ -120,10 +120,11 @@ plane: {national: P2, custom: P3}
 phase: {first_release: 2, ga_target: "2027-02-15"}
 maturity: G1                        # G0 prototype | G1 experimental | G2 validated | G3 GA
 cadence: {library: campaign, matching: "each forecast cycle", event_mode: hourly}
-inputs:
-  - {id: "COPERNICUS/DEM/GLO30_2024_1", licence: "Copernicus GLO-30"}
-  - {id: "projects/sat-io/open-datasets/DELTARES/deltadtm_v1-1", licence: "CC-BY-4.0"}
-  - {id: "gs://flood-forecasting/hydrologic_predictions/model_id_8583a5c2_v0/return_periods.zarr", licence: "CC-BY-4.0"}
+inputs:                             # licence_class per docs/05 section 5.1; outputs inherit the most restrictive (G-05)
+  - {id: "COPERNICUS/DEM/GLO30_2024_1", licence: "Copernicus GLO-30", licence_class: "pending_review"}
+  - {id: "projects/sat-io/open-datasets/DELTARES/deltadtm_v1-1", licence: "CC-BY-4.0", licence_class: "open"}
+  - {id: "projects/sat-io/open-datasets/GMW/annual-extent/GMW_MNG_2020", licence: "CC-BY-SA-4.0", licence_class: "sa"}
+  - {id: "gs://flood-forecasting/hydrologic_predictions/model_id_8583a5c2_v0/return_periods.zarr", licence: "CC-BY-4.0", licence_class: "open"}
   - {id: "commons_pub.parish_exceedance", licence_class: "wn_nrva"}
 models:
   - {name: SFINCS, version: "v2.4.0", repo: "https://github.com/Deltares/SFINCS", licence: "GPL-3.0", image: "ectwin/sfincs"}
@@ -162,7 +163,18 @@ These are additions to the Commons and tenant schemas in [03 §5.3–5.4](./03-a
 
 Internal (non-published) helper tables used by the SQL in this document: `commons_internal.reach_exceedance`, `commons_internal.reach_rp_exposure` (M1), `commons_internal.osm_roads_ecu` (M9), `commons_internal.hazard_components`, `commons_internal.parish_ev_scores`, `commons_internal.jev_parish_escalation` (§5). The tenant table `ectwin.observed_events` holds event records materialised from SITREPs, COE2 captures, Sentinel-1 and FR-075 reports for trigger backtests (§6.5).
 
-`ectwin.evidence_packs` already exists in [03 §5.4](./03-architecture.md); its manifest format is fixed in §6.6.
+`ectwin.evidence_packs` already exists in [03 §5.4](./03-architecture.md); its manifest format is fixed in §6.6. `commons_pub.trigger_indicators` also carries indicators that `parish_exceedance` does not hold, such as the 10-day accumulation `tp_240h` against its local P95 (TR-03), computed from WN2 members in the same forecast-cycle step.
+
+### 2.6 Licence class of impact outputs
+
+Every output row carries `licence_class` from the vocabulary of [05 §5.1](./05-data-catalog.md) (`open`, `sa`, `nc`, `wn_nrva`, `wn_historic_ccby`, plus the internal `agreement` and `pending_review`). The build job computes it from the input classes recorded in `commons_pub.layer_registry`: a derived layer **inherits the most restrictive input class** unless legal records an exception (rule G-05 in [05](./05-data-catalog.md)). Consequences for this document (D15):
+
+- Inputs that are still `pending_review` in [05 §5.1](./05-data-catalog.md) are gated as `nc` until cleared. For impact modules these are GloFAS (`glofas_*`), the Flood Forecasting API (`floodhub_api`), Copernicus DEM GLO-30, JRC Global Surface Water, MSP gazettes (`msp_gacetas_*`), MAG layers (`mag_*`), CELEC/CENACE operational data (`energy_system_ops`) and the IOC/UHSLC tide-gauge series (`ioc_uhslc_sealevel`) behind `SLA_GYE`. Until they clear, products that use them (M1 river impacts, M2 and M3 through the gauge-based sea-level anomaly, the M3 library, M5, M6 cluster cards, M7, the M8 card) are published only through `commons_pub_nc`, and only after the interim check of rule G-12 in [05](./05-data-catalog.md). Commercial tenants see versions built without the uncleared inputs where one exists (for example the IMP-01 risk index with the uncleared river components shown as *sin datos*).
+- `nc` inputs (GEOGloWS return periods, FABDEM, Global Flood Database) never reach `commons_pub`.
+- `sa` inputs (GMW mangroves, HAND, OSM, Healthsites) make the derived map share-alike; exported files carry the share-alike notice.
+- `agreement` inputs (INOCAR tide tables, SIGACUA farm polygons, MIT road data) are used only as the MoU allows; derived products are published only if the agreement says so.
+
+The "Licence class" column in §8 gives the **target** class once pending reviews and agreements are settled.
 
 ---
 
@@ -231,9 +243,9 @@ flowchart TB
 
 | Input | Identifier | Licence | Note |
 |---|---|---|---|
-| GloFAS forecast | EWDS `cems-glofas-forecast`, `river_discharge_in_the_last_24_hours`, 51 members ([request body](https://github.com/OCHA-DAP/ds-aa-som-floods/blob/main/src/monitoring/etl.py)) | CEMS | Via `ingest-glofas` → `river_status` |
-| GEOGloWS | `inamhi.geoglows.org` forecasts (CC BY 4.0); return periods `s3://geoglows-v2/retrospective/return-periods.zarr` | **CC BY-NC-SA 4.0** | Return periods only in `commons_pub_nc` |
-| Flood API | `floodStatus.searchLatestFloodStatusByArea`, `gauges.queryGaugeForecasts`, `gaugeModels.batchGet` ([discovery](https://raw.githubusercontent.com/OCHA-DAP/ds-google-flood-hub/main/api/discovery.json)) | CC BY 4.0; commercial wording **(to confirm)** | `floodhub_status_snapshots` |
+| GloFAS forecast | EWDS `cems-glofas-forecast`, `river_discharge_in_the_last_24_hours`, 51 members ([request body](https://github.com/OCHA-DAP/ds-aa-som-floods/blob/main/src/monitoring/etl.py)) | CEMS (`pending_review` in [05 §5.1](./05-data-catalog.md)) | Via `ingest-glofas` → `river_status` |
+| GEOGloWS | `inamhi.geoglows.org` forecasts (GEOGloWS v2, 52 members to +15 days; CC BY 4.0); return periods (Gumbel fits, 2–100 years) `s3://geoglows-v2/retrospective/return-periods.zarr` | Forecasts CC BY 4.0; return periods **CC BY-NC-SA 4.0** | Return periods only in `commons_pub_nc` |
+| Flood API | `floodStatus.searchLatestFloodStatusByArea`, `gauges.queryGaugeForecasts`, `gaugeModels.batchGet` ([discovery](https://raw.githubusercontent.com/OCHA-DAP/ds-google-flood-hub/main/api/discovery.json)) | CC BY 4.0; "primarily non-commercial" wording **(unverified)**; `pending_review` | `floodhub_status_snapshots` |
 | GRRR return periods | `gs://flood-forecasting/hydrologic_predictions/model_id_8583a5c2_v0/return_periods.zarr` (RP 2–200) | CC BY 4.0 | Commercial-safe thresholds; `grrr_ecuador` |
 | Hazard maps | `JRC/CEMS_GLOFAS/FloodHazard/v2_1` | JRC, no restriction | Static |
 | Inundation history | `gs://flood-forecasting/inundation_history/data/` (12 tiles, 11.3 MB for Ecuador) | CC BY 4.0 | Prior |
@@ -241,40 +253,50 @@ flowchart TB
 **Method.**
 
 1. **Reach registry.** Use the ≈1,840 mainland and 39 Galápagos HydroBASINS outlets in `grrr_ecuador`, matched to GEOGloWS `river_id` and Flood API gauges. Match by **upstream area, not nearest point**: in our decoding of the public GRRR data, the outlet nearest Esmeraldas town (`hybas_6120190490`, mean flow about 13 m³/s) is a small tributary, not the main stem.
-2. **Exceedance.** Each cycle computes `P(Q ≥ RP_k)` per reach and lead from GloFAS members and GEOGloWS, and maps Flood API severities (`ABOVE_NORMAL` ≥ warning, `SEVERE` ≥ danger, `EXTREME` ≥ extreme danger) using thresholds keyed on `gauge_model_id`. `qualityVerified=false` gauges carry a 0.8 quality factor and the label *modelo no verificado*.
+2. **Exceedance.** Each cycle computes `P(Q ≥ RP_k)` per reach and lead from GloFAS members and GEOGloWS, and maps Flood API severities (`ABOVE_NORMAL` ≥ warning, `SEVERE` ≥ danger, `EXTREME` ≥ extreme danger; this correspondence between `severity` and the `warningLevel`/`dangerLevel`/`extremeDangerLevel` thresholds is our assumption, **to confirm** with an approved key, as is whether those thresholds equal the 2-, 5- and 20-year return periods) using thresholds keyed on `gauge_model_id`. `qualityVerified=false` gauges carry a 0.8 quality factor and the label *modelo no verificado*.
 3. **No silent blending.** Sources are shown side by side. A consensus count (number of sources at or above RP2) feeds the confidence rating.
 4. **Precomputed footprint × exposure.** For each (reach, RP class) the exposed counts are precomputed once per exposure snapshot in `commons_internal.reach_rp_exposure`, so each cycle is a cheap join.
 5. **Backwater zones.** The EE catalog entry for `WRI/Aqueduct_Flood_Hazard_Maps/V2` advises against its use on flat lowland rivers with backwater effects ([catalog](https://github.com/google/earthengine-catalog)), and the same limitation applies to the 90 m GloFAS hazard maps in the lower Guayas. Reaches inside the M3 site polygons are flagged `zona_remanso` and defer to M3.
-6. **Tenant high resolution (T3).** LISFLOOD-FP 8.x with FV1/DG2 CUDA solvers ([mirror](https://github.com/Dewberry/lisflood-fp), GPL-2.0) on an L4 GPU for tenant AOIs, then Delft-FIAT ([repo](https://github.com/Deltares/Delft-FIAT), MIT) for damage. Runs are gated by hard rules first ("gauge above danger level ⇒ run") and then Jev S4 `run_hires_inundation` ([08](./08-ai-decision-layer-jev.md)), which can only make the gate stricter.
+6. **Tenant high resolution (T3).** LISFLOOD-FP 8.x with FV1/DG2 CUDA solvers (official code on Zenodo, v8.2, doi:10.5281/zenodo.13121102; [GitHub mirror](https://github.com/Dewberry/lisflood-fp), GPL-2.0) on an L4 GPU for tenant AOIs, then Delft-FIAT ([repo](https://github.com/Deltares/Delft-FIAT), MIT) for damage. Runs are gated by hard rules first ("gauge above danger level ⇒ run") and then Jev S4 `run_hires_inundation` ([08](./08-ai-decision-layer-jev.md)), which can only make the gate stricter.
 7. **Phase 3.** OpenHydroNet `mean_embedding_forecast_lstm` fine-tuned on Ecuadorian basins ([repo](https://github.com/google-research/flood-forecasting), Apache-2.0) is added as a further source; see [06](./06-forecast-model-stack.md).
 
 ```sql
 -- M1: exposed people per reach and lead day, probability-weighted (Commons, each cycle)
+-- licence_class follows docs/05 rule G-05 (most restrictive input). Rows whose class resolves to
+-- 'nc' (GEOGloWS return periods; GloFAS / Flood API while 'pending_review') are written by the same
+-- statement with the filter inverted into commons_pub_nc.river_impact_reach.
 DECLARE init TIMESTAMP DEFAULT @init_time;
 INSERT INTO `ectwin-commons-prod.commons_pub.river_impact_reach`
-SELECT init AS init_time, s.source, s.hybas_id, s.lead_day, e.rp_class,
-       s.prob_exceed,                                   -- P(Q >= RP of that class)
-       e.dpa_parish, e.population, e.buildings, e.schools, e.health_facilities, e.road_km,
-       s.prob_exceed * e.population AS expected_people_exposed,
-       e.zona_remanso, s.quality_factor,
-       @method_version, 'open' AS licence_class, @attribution, CURRENT_TIMESTAMP()
-FROM `ectwin-commons-prod.commons_internal.reach_exceedance` AS s        -- built from river_status + floodhub snapshots
-JOIN `ectwin-commons-prod.commons_internal.reach_rp_exposure` AS e
-  ON e.hybas_id = s.hybas_id AND e.rp_class = s.rp_class
-WHERE s.init_time = init AND s.source IN ('GLOFAS', 'FLOODHUB', 'GEOGLOWS_FC');
+SELECT * FROM (
+  SELECT init AS init_time, s.source, s.hybas_id, s.lead_day, e.rp_class,
+         s.prob_exceed,                                 -- P(Q >= RP of that class)
+         e.dpa_parish, e.population, e.buildings, e.schools, e.health_facilities, e.road_km,
+         s.prob_exceed * e.population AS expected_people_exposed,
+         e.zona_remanso, s.quality_factor,
+         @method_version AS method_version,
+         CASE WHEN 'nc' IN (s.source_licence_class, s.threshold_licence_class, e.licence_class) THEN 'nc'
+              WHEN 'sa' IN (s.source_licence_class, s.threshold_licence_class, e.licence_class) THEN 'sa'
+              ELSE 'open' END AS licence_class,         -- 'pending_review' is mapped to 'nc' upstream
+         @attribution AS attribution, CURRENT_TIMESTAMP() AS created_at
+  FROM `ectwin-commons-prod.commons_internal.reach_exceedance` AS s      -- built from river_status + floodhub snapshots
+  JOIN `ectwin-commons-prod.commons_internal.reach_rp_exposure` AS e   -- e.licence_class = 'sa' if HAND shaped the footprint
+    ON e.hybas_id = s.hybas_id AND e.rp_class = s.rp_class
+  WHERE s.init_time = init AND s.source IN ('GLOFAS', 'FLOODHUB', 'GEOGLOWS_FC')
+)
+WHERE licence_class != 'nc';
 ```
 
-**Outputs.** `commons_pub.river_impact_reach` (columns as in the SQL); `h_river` in `risk_index_parish`; reach cards in the canton PDF; `ectwin.impact_aoi` rows for tenant AOIs.
+**Outputs.** `commons_pub.river_impact_reach` (columns as in the SQL) and its `commons_pub_nc` twin for `nc` rows (§2.6); `h_river` in `risk_index_parish`; reach cards in the canton PDF; `ectwin.impact_aoi` rows for tenant AOIs.
 
 **Run profile.**
 
 | Item | Value |
 |---|---|
 | Cadence and plane | After each `ingest-floodhub-status` (4/day) and `ingest-glofas` (daily, 12 UTC); P2. LISFLOOD-FP and FIAT in P3 |
-| Commons compute (estimate) | 1 vCPU × 5 min × 5 runs/day × 30 = 45,000 vCPU-s/month ≈ US$0.81 list (inside the free tier). One-off footprint × exposure build 20–40 EECU-h = US$8–16 commercial, US$0 noncommercial |
+| Commons compute (estimate) | 1 vCPU × 5 min × 5 runs/day × 30 = 45,000 vCPU-s/month × US$0.000018 ≈ US$0.81 list (the Cloud Run jobs free tier of 240,000 vCPU-s/month per billing account is shared by all Commons jobs). One-off footprint × exposure build 20–40 EECU-h = US$8–16 commercial, US$0 noncommercial |
 | Tenant compute | LISFLOOD-FP under US$0.50 per event on an L4 (Cloud Run L4 about US$0.67/h plus CPU, [pricing](https://cloud.google.com/run/pricing); estimate) |
 
-**Validation.** The GRRR reforecast against Google's own reanalysis gives a baseline of how forcing error alone propagates (not skill against observations): at RP2, lead 1, POD/FAR is 0.89/0.12 at Daule (La Capilla), 0.59/0.39 at Portoviejo, 0.46/0.46 at Chone and 0.33/0.53 at Esmeraldas, degrading by lead 5 (own computation on the public GRRR buckets, pairing each station with the virtual gauge that has the largest 2-year flow within 8 km; method in [14](./14-verification-and-validation.md)). GEOGloWS median KGE in Ecuador is −0.57 raw and 0.33 after bias correction ([validation repo](https://github.com/jorgessanchez7/Global_Forecast_Validation)). Reference events: INAMHI automatic level stations (43 with level or discharge), Sentinel-1 extents, Copernicus EMS EMSR870 (March 2026), Groundsource (`projects/sat-io/open-datasets/groundsource_2026`, CC BY 4.0, about 82% precision, [doc](https://github.com/samapriya/awesome-gee-community-datasets/blob/master/docs/projects/groundsource.md)) and SNGR `EVENTOS_X_LLUVIAS`. **G2 acceptance (targets to agree with INAMHI, estimate):** canton-day hit rate ≥0.6 with FAR ≤0.5 for RP2 at leads 1–3 on the Jan–May 2026 season.
+**Validation.** The GRRR reforecast against Google's own reanalysis gives a baseline of how forcing error alone propagates (not skill against observations): at RP2, lead 1, POD/FAR is 0.89/0.12 at Daule (La Capilla), 0.59/0.39 at Portoviejo, 0.46/0.46 at Chone and 0.33/0.53 at Esmeraldas, degrading by lead 5 (own computation on the public GRRR buckets, pairing each station with the virtual gauge that has the largest 2-year flow within 8 km; method in [14](./14-verification-and-validation.md)). GEOGloWS median KGE in Ecuador is −0.57 raw and 0.33 after bias correction ([validation repo](https://github.com/jorgessanchez7/Global_Forecast_Validation)). Reference events: INAMHI stations that measure level or discharge (43 in the Visor catalogue; river-level telemetry arrives 9–24 days late, so scores are final only after that lag), Sentinel-1 extents, Copernicus EMS EMSR870 (March 2026), Groundsource (`projects/sat-io/open-datasets/groundsource_2026`, CC BY 4.0, about 82% precision, [doc](https://github.com/samapriya/awesome-gee-community-datasets/blob/master/docs/projects/groundsource.md)) and SNGR `EVENTOS_X_LLUVIAS`. **G2 acceptance (targets to agree with INAMHI, estimate):** canton-day hit rate ≥0.6 with FAR ≤0.5 for RP2 at leads 1–3 on the Jan–May 2026 season.
 
 **Phase.** P1: river status × exposure card per reach by **2026-11-20** (IM, DL). P2: probabilistic footprints and Delft-FIAT damage for T3 tenants by 2027-01-15. P3: OpenHydroNet source.
 
@@ -287,7 +309,7 @@ WHERE s.init_time = init AND s.source IN ('GLOFAS', 'FLOODHUB', 'GEOGLOWS_FC');
 | Link | Content |
 |---|---|
 | Hazard | Hourly-intensity and 24/72 h exceedance probabilities (`parish_exceedance` variables `tp_1h_max`, `tp_24h`, `tp_72h`); nowcast from IMERG Early, GSMaP NRT and Oya (`projects/global-precipitation-nowcast/assets/global_estimation`); INAMHI Guayaquil–Durán bulletin (about 25 gauges, `https://www.inamhi.gob.ec/guayaquil/registrodgy.pdf`); Flood API flash floods (24 h, urban tiles about 20 km × 20 km) |
-| Blocking | Predicted tide from INOCAR quarterly tables `https://www.inocar.mil.ec/mareas/TM/{anio}/trimestral/GUAYAQUIL_RIO_{trimestre}.pdf` ([parser](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_inocar_mareas.py)); observed sea level from the IOC service, codes `gyer` (Guayaquil, Río Guayas) and `puna` ([parser](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_marea_observada.py)); La Libertad `lali` and CMEMS `zos` as cross-checks |
+| Blocking | Predicted tide from INOCAR quarterly tables (no published licence; `agreement` class in [05](./05-data-catalog.md)) `https://www.inocar.mil.ec/mareas/TM/{anio}/trimestral/GUAYAQUIL_RIO_{trimestre}.pdf` ([parser](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_inocar_mareas.py)); observed sea level from the IOC service, codes `gyer` (Guayaquil, Río Guayas) and `puna` ([parser](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_marea_observada.py)); La Libertad `lali` and CMEMS `zos` as cross-checks |
 | Exposure | Segura EP layers on ArcGIS Online: `Zonas_Inundables/FeatureServer/28`, `Vías_Inundables/FeatureServer/5`, `Zonas_Seguras/FeatureServer/16`, `Puntos_vulnerables_por_marea_alta/FeatureServer/0` ([source](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_seguraep.py)); Open Buildings v3; M10 population |
 | Vulnerability | Outfalls blocked when river stage at the outfall exceeds its invert (inverts from the utility **(to confirm)**); pump availability; overlap with power rationing (M8) |
 | Impact | Hourly *franja de riesgo compuesto* (level 1–4) per vulnerable point and zone; roads likely impassable; exposed people |
@@ -295,8 +317,8 @@ WHERE s.init_time = init AND s.source IN ('GLOFAS', 'FLOODHUB', 'GEOGLOWS_FC');
 **Method.**
 
 1. **Tide calendar.** Parse INOCAR predictions (the official source). Fill gaps with a pyTMD harmonic prediction ([pyTMD](https://pypi.org/project/pyTMD/), MIT) fitted to `gyer` observations.
-2. **Sea-level anomaly without datum problems.** INOCAR tables, IOC gauges and CMEMS `zos` use different datums **(INOCAR chart datum to confirm)**. The anomaly is therefore computed at the gauge as the 30-day running mean of *observed − predicted*, and cross-checked against the CMEMS `zos` anomaly and La Libertad. The value is stored as `SLA_GYE` in `commons_pub.enso_indices`.
-3. **Blocking threshold per point.** `H_block(z)` is the total water level above which a Segura EP tide-vulnerable point floods. It is calibrated on the 13–16 Aug 2026 tidal-flood events (7 in Guayas, 2 in El Oro, 1 in Esmeraldas, 1 in Manabí, [Primicias](https://www.primicias.ec/sociedad/fenomeno-elnino-ecuador-ascenso-nivel-mar-inundaciones-erosion-playas-calentamiento-oceano-invierno-131023/)) and on Segura EP incident logs **(to request)**.
+2. **Sea-level anomaly without datum problems.** INOCAR tables, IOC gauges and CMEMS `zos` use different datums **(INOCAR chart datum to confirm)**. The anomaly is therefore computed at the gauge as the 30-day running mean of *observed − predicted*, and cross-checked against the CMEMS `zos` anomaly (`COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_PHY_DAILY`, which keeps only a rolling two-year window in EE, so its anomaly baseline is 2022 onward and the derived series is archived) and La Libertad. The value is stored as `SLA_GYE` in `commons_pub.enso_indices`.
+3. **Blocking threshold per point.** `H_block(z)` is the total water level above which a Segura EP tide-vulnerable point floods. It is calibrated on the 11 tidal-flood events of 13–16 Aug 2026 (7 in Guayas, 2 in El Oro, 1 in Esmeraldas, 1 in Manabí, [Primicias](https://www.primicias.ec/sociedad/fenomeno-elnino-ecuador-ascenso-nivel-mar-inundaciones-erosion-playas-calentamiento-oceano-invierno-131023/)) and on Segura EP incident logs **(to request)**.
 4. **Compound level matrix.** For each point and hour, combine the rain probability class with the blocked flag.
 
 ```python
@@ -331,7 +353,7 @@ def strip(points: pd.DataFrame, tide: pd.DataFrame, sla_m: float, rain: pd.DataF
 
 **Outputs.** `commons_pub.compound_tide_calendar` (site, point_id, hour, predicted tide, SLA, total level, blocked flag, rain probabilities, risk level). Tenant AOIs get `ectwin.impact_aoi` rows.
 
-**Run profile.** The calendar is rebuilt weekly for the next 90 days (tides are predictable), and rain columns refresh each cycle. In event mode (FR-059) the strip refreshes hourly and the nowcast every 30 min (`ingest-imerg-gsmap`). Plane P2 for the four FR-031 cities, P3 for custom municipal points. Compute (estimate): 1 vCPU × 1 min × 24 × 30 = 43,200 vCPU-s/month ≈ US$0.78 list, inside the free tier.
+**Run profile.** The calendar is rebuilt weekly for the next 90 days (tides are predictable), and rain columns refresh each cycle. In event mode (FR-059) the strip refreshes hourly and the nowcast every 30 min (`ingest-imerg-gsmap`). Plane P2 for the four FR-031 cities, P3 for custom municipal points. Compute (estimate): 1 vCPU × 1 min × 24 × 30 = 43,200 vCPU-s/month × US$0.000018 ≈ US$0.78 list (before the shared Cloud Run jobs free tier).
 
 **Validation.** Segura EP incident records **(to request)**, ECU 911 calls (CKAN monthly files to at least Feb 2025), citizen reports (FR-075), SNGR `EVENTOS_X_LLUVIAS`, and the February 2026 Guayaquil–Durán–Milagro floods. **G2 acceptance (estimate targets):** at least 70% of recorded tidal-flood events at Segura EP points in August 2026 fall in hours rated level ≥3, with at most 2 false level-≥3 days per month per point.
 
@@ -355,7 +377,7 @@ def strip(points: pd.DataFrame, tide: pd.DataFrame, sla_m: float, rain: pd.DataF
 - **Engine.** SFINCS v2.4.0 "Galibier" (2026-06-15), GPL-3.0, CPU build from source ([repo](https://github.com/Deltares/SFINCS)). The Docker GPU version was removed ([developments.rst](https://github.com/Deltares/SFINCS/blob/main/docs/developments.rst)). Subgrid on; quadtree where the city is small relative to the domain. Curve Number infiltration requires `storecumprcp = 1` in v2.3.0–v2.4.0 (known bug).
 - **Builder.** HydroMT-SFINCS 1.2.2 (GPL-3.0) on HydroMT core 1.4.1 (MIT) ([repo](https://github.com/Deltares/hydromt_sfincs)), following the global compound-flood framework of Eilander et al. 2023 (NHESS 23:823). The build YAML is versioned in `models/sfincs/sites/<site>/build.yml`.
 - **Topography.** `COPERNICUS/DEM/GLO30_2024_1` (the older `COPERNICUS/DEM/GLO30` is deprecated), DeltaDTM `projects/sat-io/open-datasets/DELTARES/deltadtm_v1-1` (CC BY 4.0) for coastal lowlands, and municipal LiDAR where a GAD provides it **(to confirm)**. FABDEM is CC BY-NC-SA and is **not** used in the default library.
-- **Bathymetry.** INOCAR nautical charts appear to be sold and have no published licence ([chart catalogue](https://www.inocar.mil.ec/cartografia/listado.php)); request under MoU **(to confirm)**. A global fallback bathymetry and its licence are **(to confirm)**.
+- **Bathymetry.** INOCAR nautical charts have no published licence and are reported to be sold **(unverified)** ([chart catalogue](https://www.inocar.mil.ec/cartografia/listado.php)); request under MoU **(to confirm)**. A global fallback bathymetry and its licence are **(to confirm)**.
 - **Roughness.** `ESA/WorldCover/v200` classes mapped to Manning's n; mangroves from Global Mangrove Watch v4 (`projects/sat-io/open-datasets/GMW/annual-extent/GMW_MNG_2020`, CC BY-SA 4.0). Using GMW makes derived maps share-alike; the licence flag records it.
 - **Boundaries.** Offshore water level = astronomical tide (pyTMD with a global tide model, **model licence to confirm**) + SLA. Upstream inflow = GRRR discharge for the chosen return period at the outlet matched by upstream area. Rain = spatially uniform 24 h design hyetograph (**INAMHI IDF curves to confirm**).
 
@@ -382,7 +404,7 @@ validation_lhs: {n: 40, seed: 20261001}
 **Emulator and probabilistic matching.**
 
 - **Level A (Phase 2).** Multilinear interpolation of maximum depth per output cell over the 4-D grid. It is exact at grid nodes and costs milliseconds.
-- **Probabilistic mode.** Each cycle draws 1,000 forcing samples: rain from the 64 WN2 members (WN3 members in Phase 2 after the cost spike, [03 ADR-29](./03-architecture.md)), discharge from GloFAS members at the matched outlets, tide from the predicted high water in the window, and SLA from the gauge residual ± its 30-day standard deviation. The emulator gives `P(depth > 0.15 m)` per cell and the expected number of people flooded. This is a Non-Retrievable Value-Added product and can be published.
+- **Probabilistic mode.** Each cycle draws 1,000 forcing samples: rain from the 64 WN2 members (WN3 members in Phase 2 after the cost spike, [03 ADR-29](./03-architecture.md)), discharge from GloFAS members at the matched outlets (each member's peak converted to a return period with GloFAS's own reanalysis thresholds, so that GloFAS and GRRR climatologies are not mixed on the `discharge_rp` axis), tide from the predicted high water in the window, and SLA from the gauge residual ± its 30-day standard deviation. The emulator gives `P(depth > 0.15 m)` per cell and the expected number of people flooded. This is a Non-Retrievable Value-Added product and can be published.
 - **Out-of-library guard.** If any forcing lies outside the grid (for example SLA > 60 cm or Q > RP25), the product is flagged *fuera de biblioteca* and the S4 gate decides whether a live 50-member SFINCS ensemble runs (Commons campaign for national sites, tenant T3 for private AOIs).
 
 ```python
@@ -391,7 +413,9 @@ import numpy as np, xarray as xr
 from scipy.interpolate import RegularGridInterpolator
 
 def load_emulator(site: str, lib: xr.Dataset) -> RegularGridInterpolator:
-    """lib.hmax dims: (tide, sla_cm, discharge_rp, rain_24h_mm, cell); tide coded as metres of high water."""
+    """lib.hmax dims: (tide_m, sla_cm, discharge_rp, rain_24h_mm, cell), each axis strictly ascending.
+    tide_m = site high-water level in metres for HW_p50 ... HAT. For portoviejo-chone the first axis is
+    the antecedent-wetness class coded 0..3 instead of tide_m."""
     axes = [lib[d].values for d in ("tide_m", "sla_cm", "discharge_rp", "rain_24h_mm")]
     return RegularGridInterpolator(axes, lib.hmax.values, bounds_error=True)   # error = out of library
 
@@ -408,7 +432,9 @@ CREATE TABLE `ectwin-commons-prod.commons_pub.sfincs_scenarios` (
   site            STRING NOT NULL,     -- 'guayaquil-duran' | 'machala' | 'portoviejo-chone' | 'esmeraldas'
   scenario_id     STRING NOT NULL,     -- e.g. 'core_v1-t3-s30-q10-r150'
   design_version  STRING NOT NULL,     -- 'core_v1'
-  tide_label      STRING, tide_m FLOAT64, sla_cm FLOAT64, discharge_rp INT64, rain_24h_mm FLOAT64,
+  tide_label      STRING, tide_m FLOAT64, sla_cm FLOAT64,
+  discharge_rp    FLOAT64,             -- return period in years; non-integer for the LHS validation runs
+  rain_24h_mm     FLOAT64,
   antecedent      STRING,
   flooded_km2     FLOAT64,             -- area with depth > 0.15 m
   people_exposed  FLOAT64,             -- from M10 grid
@@ -416,10 +442,10 @@ CREATE TABLE `ectwin-commons-prod.commons_pub.sfincs_scenarios` (
   hmax_uri        STRING NOT NULL,     -- gs://ectwin-commons-prod-bulk/sfincs-library/<site>/<scenario_id>/hmax.tif
   tiles_uri       STRING,              -- tiles/static/sfincs-<site>/v<ver>/...
   model_version   STRING NOT NULL,     -- 'SFINCS v2.4.0 + hydromt_sfincs 1.2.2 + build <git sha>'
-  licence_class   STRING NOT NULL,     -- 'sa' when GMW or other share-alike inputs are used
+  licence_class   STRING NOT NULL,     -- G-05: 'sa' when GMW is used; 'nc' while Copernicus DEM is pending_review (section 2.6)
   attribution     STRING NOT NULL,
   created_at      TIMESTAMP NOT NULL
-) CLUSTER BY site, sla_cm, discharge_rp;
+) CLUSTER BY site, design_version, scenario_id;   -- BigQuery cannot cluster on FLOAT64 columns
 ```
 
 `commons_pub.sfincs_match` holds, per site and init, the scenario ids nearest to the p50 and p90 forcing, the probabilistic summary per parish and the out-of-library flag.
@@ -440,9 +466,9 @@ flowchart LR
   O1 --> O2["sfincs_match, tiles, risk index h_coast"]
 ```
 
-**Licensing.** Our `ectwin/sfincs` image is built from source and its Dockerfile and source are published with it (GPL-3.0). Deltares' prebuilt images are Freeware that forbids redistribution and are never used. Model outputs are data: we release them under CC BY 4.0, or CC BY-SA 4.0 when a share-alike input is used **(legal review to confirm)**.
+**Licensing.** Our `ectwin/sfincs` image is built from source and its Dockerfile and source are published with it (GPL-3.0). Deltares' prebuilt images are Freeware that forbids redistribution and are never used. Model outputs are data: we release them under CC BY 4.0, or CC BY-SA 4.0 when a share-alike input such as GMW is used **(legal review to confirm)**. Until the Copernicus DEM GLO-30 licence clears its `pending_review` status in [05 §5.1](./05-data-catalog.md), library maps built on it are published only through `commons_pub_nc` (§2.6).
 
-**Run profile (estimate).** Library: 1,120 runs × 10–60 min on `c3d-highcpu-16` Spot at US$0.160896/h ([Spot pricing](https://cloud.google.com/spot-vms/pricing)) = 1,120 × (0.167–1.0 h) × 0.161 ≈ US$30–180; doubled for calibration reruns ≈ **US$60–360 one-off**, inside the US$50–500 envelope in the spine. Storage: 1,120 maps × about 50 MB ≈ 56 GB ≈ US$1.1/month. Matching: seconds per cycle. A live 50-member tenant ensemble costs about US$2–8.
+**Run profile (estimate).** Library: 1,120 runs × 10–60 min on `c3d-highcpu-16` Spot at US$0.160896/h ([Spot pricing](https://cloud.google.com/spot-vms/pricing)) = 1,120 × (0.167–1.0 h) × 0.161 ≈ US$30–180; doubled for calibration reruns ≈ **US$60–360 one-off**, inside the US$50–500 one-off library estimate in [03 §7.6](./03-architecture.md). Storage: 1,120 maps × about 50 MB ≈ 56 GB × US$0.020/GiB-month (Standard, `us-central1`) ≈ US$1.1/month. Matching: seconds per cycle. A live 50-member tenant ensemble costs about US$2–8 (50 × US$0.03–0.16 per member).
 
 **Validation.** Aug 2026 tidal-flood events; Segura EP `Zonas_Inundables`; Sentinel-1 flood maps including EMSR870 (March 2026); Google inundation history; GRRR 1998 peaks as an upper-bound sanity check (Daule record 1,989.5 m³/s on 1998-04-02 against RP100 of 2,526). A "what if 1998 happened again" run is a scenario, not verification. **Emulator acceptance (estimate targets):** on the 40 held-out runs, CSI of the 0.15 m extent ≥ 0.80 and depth MAE ≤ 0.10 m in built-up cells.
 
@@ -457,7 +483,7 @@ flowchart LR
 | Link | Content |
 |---|---|
 | Hazard | LHASA 2.1.1 daily probability at about 1 km ([repo](https://github.com/nasa/LHASA)), driven by user-supplied rain and soil moisture, a feature added in 2.1.1 ([CHANGELOG](https://raw.githubusercontent.com/nasa/LHASA/master/CHANGELOG.md)): WN3 `imerg_tp_1hr_p50` and `imerg_tp_1hr_p90` accumulations plus SMAP L4 `NASA/SMAP/SPL4SMGP/008`. Also antecedent 3-day and 30-day rain percentiles (CHIRPS v3, IMERG) |
-| Susceptibility | SNGR and IIGE susceptibility maps (vector versions **to request**; the SNGR library holds them as PDFs) and MAG `agroestadistica/riesgos_agroclimaticos` layers. Phase 3: gradient-boosting susceptibility on `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`, `COPERNICUS/DEM/GLO30_2024_1`, the NASA Global Landslide Catalog and SNGR events |
+| Susceptibility | SNGR susceptibility maps (the SNGR library holds hazard maps as PDFs or images; vector versions **to request**) IIGE maps (existence and format **unverified**); MAG `agroestadistica/riesgos_agroclimaticos` layers. Phase 3: gradient-boosting susceptibility on `GOOGLE/SATELLITE_EMBEDDING/V1/ANNUAL`, `COPERNICUS/DEM/GLO30_2024_1`, the NASA Global Landslide Catalog and SNGR events |
 | Exposure | Roads (GRIP4 CC BY 4.0, OSM ODbL, MS Roads ODbL, SNGR exposed-road inventory **to request**), population (M10), crops |
 | Vulnerability | Road criticality and single-access parishes (M9); building density on steep slopes |
 | Impact | Segments likely blocked; parishes at risk of isolation; people in high-hazard cells |
@@ -466,15 +492,15 @@ flowchart LR
 
 **Outputs.** `commons_pub.landslide_hazard_parish`: `date`, `lead_day`, `forcing_quantile` (`p50`/`p90`), `dpa_parish`, `lhasa_p_mean`, `lhasa_p_max`, `hazard_class`, `road_km_high`, `people_high`; a daily COG in `tiles/forecast/landslide/<init>/`. It feeds `h_landslide` in §5.
 
-**Run profile (estimate).** Daily after the 00Z WN3 cycle; Cloud Run 4 vCPU/16 GiB (about US$0.37/h) × 2 runs × 10 min × 30 days = 10 h ≈ US$3.7/month list. Earthdata credentials sit in Commons Secret Manager. TRIGRS in tenant: under US$0.10 per run.
+**Run profile (estimate).** Plane P2 (national layer); TRIGRS in P3. Daily after the 00Z WN3 cycle; Cloud Run 4 vCPU/16 GiB (4 × US$0.000018 + 16 × US$0.000002 per second ≈ US$0.37/h) × 2 runs × 10 min × 30 days = 10 h ≈ US$3.7/month list. Earthdata credentials sit in Commons Secret Manager. TRIGRS in tenant: under US$0.10 per run.
 
-**Validation.** NASA Global Landslide Catalog `projects/sat-io/open-datasets/events/global_landslide_1970-2019` (custom licence), SNGR COE2 and `EVENTOS_X_LLUVIAS` events for 2025–26 and SITREPs. Metrics: ROC AUC of daily probability against canton-day events, and POD/FAR at the chosen class threshold with ±1 day tolerance. Historical context: Chunchi 1983 (about 100 deaths) and Alausí 2023 (about 65 deaths, unverified). **G2 acceptance (estimate):** ROC AUC ≥0.70 on the Jan–May 2026 season.
+**Validation.** NASA Global Landslide Catalog `projects/sat-io/open-datasets/events/global_landslide_1970-2019` (custom licence), SNGR COE2 and `EVENTOS_X_LLUVIAS` events for 2025–26 and SITREPs. Metrics: ROC AUC of daily probability against canton-day events, and POD/FAR at the chosen class threshold with ±1 day tolerance. Historical context: Chunchi, April 1983 (about 100 deaths) and Alausí, 26 March 2023 (about 65 deaths, **unverified**). **G2 acceptance (estimate):** ROC AUC ≥0.70 on the Jan–May 2026 season.
 
 **Phase.** P2: G1 by **2027-01-15** (IM). P3: TRIGRS corridor template and ML susceptibility.
 
 ### 4.5 M5 Agriculture (banana, cacao, rice, maize)
 
-**Purpose and users.** Flooded and waterlogged hectares by crop and stage, disease-weather risk, sowing advice and evidence for insurance. MAG reports 494,274 ha flood-exposed (Guayas 268,761; Los Ríos 121,289; El Oro 43,858; Manabí 32,006; Esmeraldas 26,776), with up to 2 M ha at risk in a severe scenario ([El Universo](https://www.eluniverso.com/noticias/economia/plan-contingencia-ecuador-fenomeno-el-nino-ministerio-de-agricultura-nota/)). In 1997-98, 843,873 ha were damaged. Users: P06 (MAG/AgroProtege), P10, P11, FAO. Decisions: LT-04, LT-06, LT-15, LT-30.
+**Purpose and users.** Flooded and waterlogged hectares by crop and stage, disease-weather risk, sowing advice and evidence for insurance. MAG reports 494,274 ha flood-exposed (Guayas 268,761; Los Ríos 121,289; El Oro 43,858; Manabí 32,006; Esmeraldas 26,776), with up to 2 M ha at risk in a severe scenario ([El Universo](https://www.eluniverso.com/noticias/economia/plan-contingencia-ecuador-fenomeno-el-nino-ministerio-de-agricultura-nota/)). In 1997-98, 843,873 ha of crops were damaged ([01 §4](./01-context-el-nino-ecuador.md)). Users: P06 (MAG/AgroProtege), P10, P11, FAO. Decisions: LT-04, LT-06, LT-15, LT-30.
 
 **Chain.**
 
@@ -509,12 +535,13 @@ def loss_band(crop: str, days: float, stage: str | None = None) -> tuple[float, 
     return min(low * m, 1.0), min(high * m, 1.0)
 ```
 
-3. **Disease-weather indices.** Black Sigatoka (banana) and pod rot or moniliasis (cacao) are favoured by long leaf wetness and humidity. The weekly index counts hours with relative humidity ≥ 90% (from 2 m temperature and dewpoint with the Magnus formula) or rain > 0.2 mm/h, within a temperature band. All thresholds are **(unverified)** and are co-designed with Acorbanec and MAG **(to confirm)**. Rice spikelet sterility above about 35 °C at anthesis (unverified) is a dry-season index.
-4. **Sowing advice.** Rainy-season rice and maize are sown Dec–Feb, in the middle of the expected peak (unverified calendar). Phase 2 provides a rules-based sowing-window advisory per canton (seasonal terciles from `seasonal_canton` × flood-prone share × analog outcomes). Phase 3 adds AquaCrop-OSPy 3.1.0 ([repo](https://github.com/aquacropos/aquacrop), Apache-2.0) planting-date scenarios for rice and maize. AquaCrop-OSPy has **no salinity stress**, so Guayas rice exposed to saline intrusion is flagged, not modelled. DSSAT ([repo](https://github.com/DSSAT/dssat-csm-os), BSD-3) is the alternative for tenants.
+3. **Waterlogging (no open water).** Banana tolerates only about 24–48 h of waterlogging and maize suffers above 3 days (both **unverified**, [01 §7.2](./01-context-el-nino-ecuador.md)), often without water visible to radar. A parish × crop waterlogging flag counts consecutive days on which SMAP L4 root-zone soil moisture (`NASA/SMAP/SPL4SMGP/008`, band `sm_rootzone_pctl` or a percentile of `sm_rootzone` against the 2015→ record) is above its 90th percentile **and** the 7-day rain surplus (CHIRPS v3 or IMERG observed; WN3 `imerg_tp_1hr_p50` accumulations for days 1–3) exceeds the crop-zone P75. The counts feed the same `loss_band` rules with the waterlogging days in place of submergence days. SMAP L4 is 9 km, so the flag is a parish-level probability, not a field map. Percentile cut-offs are placeholders to co-design with MAG.
+4. **Disease-weather indices.** Black Sigatoka (banana) and pod rot or moniliasis (cacao) are favoured by long leaf wetness and humidity. The weekly index counts hours with relative humidity ≥ 90% (from 2 m temperature and dewpoint with the Magnus formula) or rain > 0.2 mm/h, within a temperature band. All thresholds are **(unverified)** and are co-designed with Acorbanec and MAG **(to confirm)**. Rice spikelet sterility above about 35 °C at anthesis (unverified) is a dry-season index.
+5. **Sowing advice.** Rainy-season rice and maize are sown Dec–Feb, in the middle of the expected peak (unverified calendar). Phase 2 provides a rules-based sowing-window advisory per canton (seasonal terciles from `seasonal_canton` × flood-prone share × analog outcomes). Phase 3 adds AquaCrop-OSPy 3.1.0 ([repo](https://github.com/aquacropos/aquacrop), Apache-2.0) planting-date scenarios for rice and maize. AquaCrop-OSPy has **no salinity stress**, so Guayas rice exposed to saline intrusion is flagged, not modelled. DSSAT ([repo](https://github.com/DSSAT/dssat-csm-os), BSD-3) is the alternative for tenants.
 
-**Outputs.** `commons_pub.agri_impact_parish` (`dpa_parish`, `crop`, `event_date` or `init_time`, `flooded_ha`, `submergence_days_p50`, `loss_low`, `loss_high`, `value_usd_low/high`, `source`); `commons_pub.crop_disease_index` (parish × week × crop × index value and class); `commons_pub.planting_scenarios_canton` (Phase 3).
+**Outputs.** `commons_pub.agri_impact_parish` (`dpa_parish`, `crop`, `event_date` or `init_time`, `flooded_ha`, `submergence_days_p50`, `waterlogging_days`, `loss_low`, `loss_high`, `value_usd_low/high`, `source`; routed to `commons_pub_nc` while MAG layers are `pending_review`, §2.6); `commons_pub.crop_disease_index` (parish × week × crop × index value and class); `commons_pub.planting_scenarios_canton` (Phase 3).
 
-**Run profile (estimate).** Sentinel-1 mapping in event mode: 75–225 EECU-h per season, shared with M6 (US$30–90 at US$0.40/EECU-h, US$0 on a noncommercial tier, [EE pricing](https://cloud.google.com/earth-engine/pricing)). Disease index: one BigQuery pass per cycle over 0.05° cells in banana and cacao parishes (MBs). AquaCrop campaign: 221 cantons × 2 crops × 12 sowing dates × 30 weather years ≈ 159,000 simulations × about 0.5 s ≈ 22 vCPU-h ≈ US$1.4 list.
+**Run profile (estimate).** Plane P2 for national parish × crop products; P3 for insured-parcel indices and AquaCrop campaigns (tenant parcels never enter Commons). Sentinel-1 mapping in event mode: 75–225 EECU-h per season, shared with M6 (75–225 × US$0.40/EECU-h = US$30–90; US$0 on a noncommercial tier, [EE pricing](https://cloud.google.com/earth-engine/pricing)). Disease index: one BigQuery pass per cycle over 0.05° cells in banana and cacao parishes (MBs). AquaCrop campaign: 221 cantons × 2 crops × 12 sowing dates × 30 weather years = 159,120 simulations × about 0.5 s (unverified per-run time) ≈ 22 vCPU-h × US$0.0648/vCPU-h ≈ US$1.4 list.
 
 **Validation.** ESPAC province anomalies for 1998 and 2024 (via relay), MAG SITREPs, AgroProtege claims (not public; request under MoU), field reports. **G2 acceptance (estimate):** flooded rice and maize area within ±30% of MAG-reported affected hectares at province level for the Jan–May 2026 season.
 
@@ -539,7 +566,7 @@ def loss_band(crop: str, days: float, stage: str | None = None) -> tuple[float, 
 
 **Outputs.** `commons_pub.aquaculture_cluster_risk` (cluster or parish × init × lead: rain, river, compound and flooded-pond indicators; level); `commons_pub.marine_heat_index` (zone × day: MHW category, SST anomaly, chlorophyll percentile). Farm-level SIGACUA data stay out of Commons unless the data owner agrees **(to confirm)**.
 
-**Run profile (estimate).** Sentinel-1 shared with M5. Ocean indices about 3 EECU-h/month (US$1.20 commercial). MHW computation: minutes per day.
+**Run profile (estimate).** Plane P2 for clusters, ocean indices and public farm-cluster cards; P3 for tenant farm polygons (J5) and their levee data. Sentinel-1 shared with M5. Ocean indices about 3 EECU-h/month (3 × US$0.40 = US$1.20 commercial). MHW computation: minutes per day. The Copernicus BGC assets in Earth Engine keep only a two-year sliding window, so the derived ocean series are archived in Commons from day 1.
 
 **Validation.** CNA monthly statistics (availability unverified), BCE shrimp export volumes, farm reports from pilot tenants, and the 1997-98 record. MHW against Charles Darwin Foundation observations for Galápagos. **G2 acceptance (estimate):** ≥70% of pilot-tenant-reported pond overtopping events fall on days rated level ≥3 for that cluster.
 
@@ -547,7 +574,7 @@ def loss_band(crop: str, days: float, stage: str | None = None) -> tuple[float, 
 
 ### 4.7 M7 Health (dengue, leptospirosis, malaria, facilities)
 
-**Purpose and users.** Health is core. About 15% of 1997-98 deaths were disease-related; leptospirosis reached 338 confirmed cases in 1998 against 36 in all of 1982–96; malaria rose 37% to 16,530 cases in 1997 ([01 §4](./01-context-el-nino-ecuador.md)). Dengue reached 61,329 cases and 74 deaths in 2024, and 32,576 cases and 35 deaths by epidemiological week 35 of 2026 (Manabí 9,278; Guayas 7,729; Los Ríos 3,865; Santo Domingo 2,269) ([Radio Pichincha](https://www.radiopichincha.com/miles-casos-dengue-muertes-ecuador/)). At least 460 health facilities are at risk. Users: P08 (MSP), municipalities, PAHO **(to confirm)**. Decisions: LT-09, LT-17, LT-28.
+**Purpose and users.** Health is core. About 15% of 1997-98 deaths were disease-related; leptospirosis reached 338 confirmed cases in 1998 against 36 in all of 1982–96; malaria rose 37% to 16,530 cases in 1997 ([01 §4](./01-context-el-nino-ecuador.md)). Dengue reached 61,329 cases and 74 deaths in 2024, and 32,576 cases and 35 deaths by epidemiological week 35 of 2026 (Manabí 9,278; Guayas 7,729; Los Ríos 3,865; Santo Domingo 2,269) ([Radio Pichincha](https://www.radiopichincha.com/miles-casos-dengue-muertes-ecuador/)). At least 460 health facilities are at risk. The 2024 epidemic also hit the Amazon (Napo 6,202 cases, against Manabí 10,450), so the dengue model is national, not coastal-only. Users: P08 (MSP), municipalities, PAHO **(to confirm)**. Decisions: LT-09, LT-17, LT-28.
 
 **Data pipeline.**
 
@@ -555,7 +582,7 @@ def loss_band(crop: str, days: float, stage: str | None = None) -> tuple[float, 
 2. **Backfill.** Wes2024 CSV `dataset/dataset_dengue_2019_2025-final.csv` (8,016 rows, 24 provinces, weekly; code MIT, data compiled from MSP) ([repo](https://github.com/Wes2024/Predicting_dengue_outbreaks_in_Ecuador)); OpenDengue V1.3 (CC BY 4.0; national weekly 2013–2024, provincial weekly 2013–2020) ([repo](https://github.com/OpenDengue/master-repo)). A quality filter removes outliers such as the PAHO 1988 row (420,025 against 25 in Tycho).
 3. **Covariates.** Minimum temperature and rain (ERA5-Land `ECMWF/ERA5_LAND/DAILY_AGGR`, CHIRPS v3, WN3 for weeks 1–2), Niño 1+2 anomaly from `enso_indices`, MAP land-surface temperature layers.
 
-**Dengue model.** Negative-binomial DLNM coupled with a spatio-temporal Bayesian model in R-INLA, adapted from `drrachellowe/hydromet_dengue` ([repo](https://github.com/drrachellowe/hydromet_dengue), GPL-3.0; Lancet Planet Health 2021;5:e209). Unit: province-week first (data exist), canton-week once MSP canton data arrive under MoU. Covariate lags run from 0 to 12 weeks, and the published effect is strongest at 4–12 weeks. For a forecast at lead *L* weeks, lags shorter than *L* use WN3/WN2 covariates when *L* ≤ 2; for longer leads the model is refitted with lags *L*–12 only, so it runs on observed covariates. The output is the probability of exceeding the 75th percentile of the endemic channel (the INS Colombia method), plus p10/p50/p90 expected cases. Baselines for comparison: seasonal naive and endemic channel only, following the Mosqlimate evaluation protocol ([org](https://github.com/Mosqlimate-project)).
+**Dengue model.** Negative-binomial DLNM coupled with a spatio-temporal Bayesian model in R-INLA, adapted from `drrachellowe/hydromet_dengue` ([repo](https://github.com/drrachellowe/hydromet_dengue), GPL-3.0; Lancet Planet Health 2021;5:e209). Unit: province-week first (data exist), canton-week once MSP canton data arrive under MoU. Covariate lags run from 0 to 12 weeks: the minimum viable model in the research uses minimum temperature and rain lagged 4–12 weeks, and the Machala studies report 1–2-month lags **(unverified)**. For a forecast at lead *L* weeks, lags shorter than *L* use WN3/WN2 covariates when *L* ≤ 2; for longer leads the model is refitted with lags *L*–12 only, so it runs on observed covariates. The output is the probability of exceeding the 75th percentile of the endemic channel (the INS Colombia method), plus p10/p50/p90 expected cases. Baselines for comparison: seasonal naive and endemic channel only, following the Mosqlimate evaluation protocol ([org](https://github.com/Mosqlimate-project)).
 
 ```r
 # models/dengue/fit.R  (M7) - sketch adapted from the hydromet_dengue template (GPL-3.0)
@@ -581,11 +608,11 @@ m <- inla(f, family = "nbinomial", offset = log(pop / 1e5), data = df,
 
 **Facilities.** Healthsites (`projects/sat-io/open-datasets/health-site-node`, ODbL) plus the MSP facility list **(to request)**, overlaid on footprints; access loss from the MAP friction surface (`projects/malariaatlasproject/assets/accessibility/friction_surface/2019_v5_1`) with flooded road segments removed (M9).
 
-**Data protection.** Only aggregated counts (province or canton × week) are used; there are no individual records. Health data is a special category under the LOPDP, so counts below 5 are suppressed in published tables (estimate rule; DPO to confirm) and the DPO signs off the pipeline before Phase 2.
+**Data protection.** Only aggregated counts (province or canton × week) are used; there are no individual records. Health data is a special category (*datos sensibles*) under the LOPDP (article **to confirm** with the DPO; [13](./13-governance-legal-risk.md)), so counts below 5 are suppressed in published tables (estimate rule; DPO to confirm) and the DPO signs off the pipeline before Phase 2.
 
 **Outputs.** `commons_pub.health_risk_weekly` (`unit_type`, `unit_id`, `epi_year`, `epi_week`, `lead_weeks`, `p_exceed_p75`, `cases_p10/p50/p90`, `endemic_p75`, `model_version`); `commons_pub.facility_exposure` (shared with M9). The `hydromet_dengue`-derived code is GPL-3.0 and ships as its own image (`ectwin/dengue`).
 
-**Run profile (estimate).** Weekly on Monday after the gazette parse; R-INLA on 4–8 vCPU for minutes, a few cents per run.
+**Run profile (estimate).** Plane P2 only: health counts are never copied into tenant projects beyond the published aggregates. Weekly on Monday after the gazette parse; R-INLA on 4–8 vCPU for minutes, a few cents per run. Outputs stay in `commons_pub_nc` while the MSP gazettes are `pending_review` in [05 §5.1](./05-data-catalog.md).
 
 **Validation.** Leave-one-season-out on 2019–2025, including 2023 and 2024. Metrics: CRPS against the seasonal-naive baseline, and hit rate and FAR of P75 exceedance at 4–8-week lead. **G2 acceptance (estimate, to agree with MSP):** CRPS at least 10% better than seasonal naive, and hit rate ≥0.6 with FAR ≤0.4 on 2024 province-weeks.
 
@@ -593,14 +620,14 @@ m <- inla(f, family = "nbinomial", offset = log(pop / 1e5), data = df,
 
 ### 4.8 M8 Hydropower and drought (Paute–Mazar–Sopladora, Coca Codo Sinclair)
 
-**Purpose and users.** The D4b pathway: drought in the Austro and Amazon basins that feed 76% of hydro generation, while the coast floods. Mazar fell from 2,153.32 masl (26 Jul) to 2,143.72 (9 Sep) and 2,134.2 (28 Sep 2026); the 2024 blackouts began at about 2,115 masl ([Primicias](https://www.primicias.ec/economia/paute-ecuador-hidroelectrica-cota-embalse-mazar-estiaje-nivel-envivo-132362/)). The ministry acknowledges a 1,000–1,200 MW gap, and Colombian imports fell from 281.1 MW to about 2 MW. [01 §7.3](./01-context-el-nino-ecuador.md) estimates the threshold could be reached between early November and late December 2026. Plant specifications (Mazar 170 MW, Molino 1,100 MW, Sopladora 487 MW, Coca Codo Sinclair 1,500 MW run-of-river) are **(unverified)**. Users: P07 (CELEC/CENACE), energy ministry, water utilities, Andean GADs. Decisions: LT-05, LT-13.
+**Purpose and users.** The D4b pathway: drought in the Austro and Amazon basins that feed 76% of hydro generation, while the coast floods. Mazar fell from 2,153.32 masl (26 Jul) to 2,143.72 (9 Sep) and 2,134.2 (28 Sep 2026); the 2024 blackouts began at about 2,115 masl ([Primicias](https://www.primicias.ec/economia/paute-ecuador-hidroelectrica-cota-embalse-mazar-estiaje-nivel-envivo-132362/)). The ministry acknowledges a 1,000–1,200 MW gap and expects the drought to last from September 2026 to March 2027, and Colombian imports fell from an average of 281.1 MW (1–6 Sep) to about 2 MW (9 Sep). The 2024 drought came after El Niño had ended, so the module treats Andean and Amazon hydro-drought as its own pathway, not only as an El Niño side effect. [01 §7.3](./01-context-el-nino-ecuador.md) estimates the threshold could be reached between early November and late December 2026. Plant specifications (Mazar 170 MW, Molino 1,100 MW, Sopladora 487 MW, Coca Codo Sinclair 1,500 MW run-of-river) are **(unverified)**. Users: P07 (CELEC/CENACE), energy ministry, water utilities, Andean GADs. Decisions: LT-05, LT-13.
 
 **Chain.**
 
 | Link | Content |
 |---|---|
 | Hazard | Basin rainfall deficit (SPI-1/3/6, SPEI-3), vegetation stress (VHI), inflow forecasts (0–15 days WN3/WN2-forced; 1–6 months from GloFAS seasonal and C3S terciles) |
-| Exposure | Reservoirs and plants: GDW `projects/sat-io/open-datasets/GDW/GDW_RESERVOIRS_V1_0` and the power-plant database (CC BY 4.0) |
+| Exposure | Reservoirs and plants: GDW `projects/sat-io/open-datasets/GDW/GDW_RESERVOIRS_V1_0` and the power-plant database `projects/sat-io/open-datasets/global_power_plant_DB_1-3` (both CC BY 4.0) |
 | Vulnerability | Storage margin to the operating threshold; thermal and import capacity |
 | Impact | Days to threshold (p10/p50/p90); P(level < threshold by date); Phase 3: energy deficit band (MWh) and rationing-risk probability |
 
@@ -632,7 +659,7 @@ def days_to_threshold(levels: pd.Series, threshold_masl: float = 2115.0,
                     break
         out.append(day if lvl <= -margin else np.nan)
     arr = np.array(out)
-    return {"margin_m": round(margin, 2), "p_reach_180d": float(np.mean(~np.isnan(arr))),
+    return {"margin_m": round(float(margin), 2), "p_reach_180d": float(np.mean(~np.isnan(arr))),
             **{f"days_p{q}": float(np.nanpercentile(arr, q)) for q in (10, 50, 90)}}
 ```
 
@@ -641,7 +668,7 @@ def days_to_threshold(levels: pd.Series, threshold_masl: float = 2115.0,
 
 **Outputs.** `commons_pub.reservoir_watch` (`reservoir`, `date`, `level_masl`, `trend_m_per_day_7d`, `margin_m`, `days_p10/p50/p90`, `p_reach_180d`, `source`, `source_time`); `commons_pub.drought_indices` (canton or basin × month: SPI-1/3/6, SPEI-3, VHI, classes); `commons_pub.inflow_outlook` (Phase 3).
 
-**Run profile (estimate).** Daily ingest and card: seconds. Drought indices: about 26 EECU-h/year (about US$10/year commercial). LSTM training under US$5 on Spot; inference is effectively free.
+**Run profile (estimate).** Plane P2 for the public card, indices and baseline inflow models; P3 for CELEC/CENACE or private generators running their own inflow models and rule curves (T3 or path D). Daily ingest and card: seconds. Drought indices: about 26 EECU-h/year (26 × US$0.40 ≈ US$10/year commercial). LSTM training under US$5 on Spot; inference is effectively free.
 
 **Validation.** 2024 drought: Paute basin mean flow 74.6 m³/s in 2024 against 163.6 m³/s in 2025, and Mazar inflow of 0.142 m³/s in November 2024 ([hydro-look](https://github.com/rengarcia/hydro-look/blob/main/PLAN.md)); CENACE rationing periods from 2023-10-16. **Acceptance (estimate):** the p10–p90 days-to-threshold band, back-tested on 2024 from 60 days before the crossing, contains the realised date in ≥ 80% of daily issues; LSTM NSE ≥ 0.6 on daily Mazar inflow for a 2024–25 holdout.
 
@@ -651,11 +678,11 @@ def days_to_threshold(levels: pd.Series, threshold_masl: float = 2115.0,
 
 **Purpose and users.** Road segments, bridges and critical sites that may be cut or flooded. SNGR counts 3,113 km of state roads highly exposed (1,870 km flood, 1,243 km landslide; Manabí 740, Guayas 594, Los Ríos 222 km flood-exposed) and 94 transport structures; the response plan has 8 Bailey bridges, 73 machines and 5 priority corridors ([El Diario](https://www.eldiario.ec/ecuador/carreteras-de-ecuador-3113-km-riesgo-inundaciones-deslizamientos-22092026)). Also at risk: 3,873 schools, at least 460 health facilities and 368 of 4,492 polling sites for the 29 Nov 2026 elections. Users: MIT, prefectures, P01, P02, CNE, MINEDUC, MSP, utilities. Decisions: LT-03, LT-10, LT-12, LT-24, LT-27, LT-28.
 
-**Data.** OSM from BigQuery `bigquery-public-data.geo_openstreetmap.planet_features` (ODbL), GRIP4 `projects/sat-io/open-datasets/GRIP4/Central-South-America` (CC BY 4.0), MS Roads `projects/sat-io/open-datasets/MSRoads/SouthAmerica` (ODbL); the SNGR exposed-road inventory and MIT data **(to request; the MTOP geoportal is inactive)**; ECU 911 road status (`ecu911.gob.ec/consulta-de-vias/`, link only); bridges from OSM `bridge=yes`; CNE polling sites **(to request)**; MINEDEC registers (coordinates **to confirm**); utility intakes **(to confirm)**.
+**Data.** OSM from BigQuery `bigquery-public-data.geo_openstreetmap.planet_features` (ODbL), GRIP4 `projects/sat-io/open-datasets/GRIP4/Central-South-America` (CC BY 4.0), MS Roads `projects/sat-io/open-datasets/MSRoads/SouthAmerica` (ODbL); the SNGR exposed-road inventory and MIT data **(to request; the MTOP geoportal is inactive and no open road-network download was found at the successor `mit.gob.ec`)**; ECU 911 road status (`ecu911.gob.ec/consulta-de-vias/`, link only); bridges from OSM `bridge=yes`; CNE polling sites **(to request)**; MINEDEC registers (coordinates **to confirm**); utility intakes **(to confirm)**.
 
 **Method.**
 
-1. **Materialise an Ecuador road subset once.** An unclustered join against planet tables cost about US$2.25 per query in a third-party measurement ([cost note](https://github.com/thatapicompany/overture-maps-api/blob/main/etl/bigquery-cost-controls.md)).
+1. **Materialise an Ecuador road subset once** (derived from `commons_internal.osm_ecuador_features` in [05](./05-data-catalog.md), or directly as below). A third-party team measured an unclustered nearest-building join against the global Overture tables at about US$2.25 per query ([cost note](https://github.com/thatapicompany/overture-maps-api/blob/main/etl/bigquery-cost-controls.md)); global OSM planet tables carry the same risk.
 
 ```sql
 -- M9 one-off: Ecuador road and bridge subset (OSM schema field names to confirm)
@@ -678,7 +705,7 @@ WHERE EXISTS (SELECT 1 FROM UNNEST(all_tags) WHERE key = 'highway')
 
 **Outputs.** `commons_pub.road_segment_risk` (segment × init × lead: hazard class by source, ref, km); `commons_pub.isolation_parish` (parish × init: isolated flag, detour factor, people affected); `commons_pub.facility_exposure` (facility × init: type, hazard class, access change).
 
-**Run profile (estimate).** One-off build ≤ US$10. Per cycle: Cloud Run minutes. RA2CE per event: minutes.
+**Run profile (estimate).** Plane P2 for public roads, bridges and facilities; P3 for RA2CE runs on private assets (utilities, ports, exporters). One-off build ≤ US$10. Per cycle: Cloud Run minutes. RA2CE per event: minutes. Outputs built on OSM, MS Roads or Healthsites are `sa` (ODbL).
 
 **Validation.** Daily archive of ECU 911 road status from Phase 1 (scraping method **to confirm**), MIT closure reports, SNGR COE2 events involving roads. **G2 acceptance (estimate):** ≥60% of reported closures on state roads during Jan–Apr 2027 fall on segments rated high at leads 1–3.
 
@@ -688,7 +715,7 @@ WHERE EXISTS (SELECT 1 FROM UNNEST(all_tags) WHERE key = 'highway')
 
 **Purpose and users.** Who is in the footprint, how many may need shelter, and where capacity falls short. About 1.3 M people, including about 390,000 children, live in high-risk areas ([Infobae](https://www.infobae.com/america/america-latina/2026/09/04/el-fenomeno-de-el-nino-amenaza-la-educacion-y-seguridad-de-casi-390000-ninos-en-ecuador/)). Users: P01, P02, P04, Cruz Roja. Decisions: LT-16, LT-19, LT-20, LT-29.
 
-**Data.** INEC Census 2022 block file `BDD_CPV2022_MANLOC_CSV.zip` (geoblocked; relay); WorldPop `WorldPop/GP/100m/pop` (to 2020) and R2025A (not in EE; HTTP path); GHSL `JRC/GHSL/P2023A/GHS_POP` and `GHS_SMOD`; Meta HRSL (Ecuador coverage **unverified**); Open Buildings v3 and 2.5D Temporal (2016–2023); shelters, warehouses and kits from the SNGR *Alístate Ecuador* visualizer (data from GADs; access **to confirm**) and Segura EP `Zonas_Seguras`.
+**Data.** INEC Census 2022 block file `BDD_CPV2022_MANLOC_CSV.zip` (geoblocked; relay); WorldPop `WorldPop/GP/100m/pop` (to 2020) and R2025A (not in EE; HTTP path); GHSL `JRC/GHSL/P2023A/GHS_POP` and `JRC/GHSL/P2023A/GHS_SMOD_V2-0` (the unversioned `GHS_SMOD` asset is deprecated); Meta HRSL (Ecuador coverage **unverified**); Open Buildings v3 and 2.5D Temporal (2016–2023); shelters, warehouses and kits from the SNGR *Alístate Ecuador* visualizer (data from GADs; access **to confirm**) and Segura EP `Zonas_Seguras`.
 
 **Method.**
 
@@ -698,7 +725,7 @@ WHERE EXISTS (SELECT 1 FROM UNNEST(all_tags) WHERE key = 'highway')
 
 **Outputs.** `commons_pub.population_exposure` (parish × hazard source × init × horizon: people p10/p50/p90, children under five and people over 60 where HRSL or census age data allow); `commons_pub.shelter_gap_canton` (canton × init: demand, capacity, gap).
 
-**Run profile (estimate).** One-off grid build 5–20 EECU-h; per cycle a BigQuery join of MBs.
+**Run profile (estimate).** Plane P2 (census-based grid and national tables); tenants join their own AOIs to the published grid. One-off grid build 5–20 EECU-h (US$2–8 commercial); per cycle a BigQuery join of MBs.
 
 **Validation.** SITREP affected counts: for example, 113,000+ affected by 18 May 2026 (Guayas 57,150; Los Ríos 33,634; Esmeraldas 12,486; El Oro 9,092; Manabí 5,843) ([El Diario](https://www.eldiario.ec/ecuador/lluvias-dejan-mas-de-113-mil-afectados-y-17-fallecidos-en-ecuador-durante-2026-18052026/)). **G2 acceptance (estimate):** Spearman rank correlation ≥ 0.7 between predicted exposed and reported affected by province for that season.
 
@@ -725,17 +752,17 @@ For parish *p*, init *t* and horizon band *b* (`d1_3`, `d4_7`, `d8_15`), each ha
 
 **Exposure** `E = 0.5 × pct(people in hazard-prone zone) + 0.3 × pct(critical sites in zone) + 0.2 × pct(crop and pond hectares in zone)`, where `pct` is the national percentile rank among parishes and the hazard-prone zone is the union of Google inundation history (≥ Low), the GloFAS RP100 extent, M3 library extents and high susceptibility classes.
 
-**Vulnerability** `V = 0.4 × pct(poverty by unmet basic needs, Census 2022, availability to confirm) + 0.2 × pct(share of buildings in GHSL SMOD low-density or informal proxy classes) + 0.2 × pct(travel time to health care) + 0.2 × (1 − pct(Meta Relative Wealth Index))`.
+**Vulnerability** `V = 0.4 × pct(poverty by unmet basic needs, Census 2022, availability to confirm) + 0.2 × pct(share of buildings in GHSL SMOD low-density or informal proxy classes) + 0.2 × pct(travel time to health care) + 0.2 × (1 − pct(Meta Relative Wealth Index))`. Sources: GHSL `JRC/GHSL/P2023A/GHS_SMOD_V2-0` (no MIDUVI informal-settlement layer was found), MAP `projects/malariaatlasproject/assets/accessibility/accessibility_to_healthcare/2019` (CC BY 4.0) and `projects/sat-io/open-datasets/facebook/relative_wealth_index` (CC0). All weights are initial (§12).
 
 **Deterministic score** `R_det = H × (0.5 + 0.5 × (0.6 E + 0.4 V))`. Hazard dominates: with no hazard there is no risk, and a certain hazard in a low-exposure parish still scores 0.5.
 
-**Jev fusion (v2.0).** The S3 parish-escalation call ([08](./08-ai-decision-layer-jev.md)) receives bucketised hazard and exposure text, recent citizen or SITREP reports and the official text. Its `impact_outlook` score has 5 ordered criteria (no meaningful impact … mass displacement or loss of life likely). `J = score / 4`. Then `R = 0.8 × R_det + 0.2 × J` **only if H ≥ 0.2**; otherwise `R = R_det`, so Jev cannot create risk where the hazard is negligible.
+**Jev fusion (v2.0).** The S3 parish-escalation call ([08 §4.5](./08-ai-decision-layer-jev.md), template `schemas/decisions/parish_escalation.json`) receives bucketised hazard and exposure text, up to 10 recent pseudonymised report summaries and the official text that mentions the parish. Its `impact_outlook` score has 5 ordered criteria (no meaningful impact … mass displacement or loss of life likely). `J = score / 4`. Then `R = 0.8 × R_det + 0.2 × J` **only if H ≥ 0.2**; otherwise `R = R_det`, so Jev cannot create risk where the hazard is negligible. `J` is NULL, and `R = R_det`, when the score confidence is below 0.50 (template policy) and for the `d4_7` and `d8_15` bands: S3 runs only for the default 72-hour horizon (`d1_3`) until per-horizon calls, about three times the cost, are approved.
 
 **Level mapping** (initial): level 1 if `R < 0.20`; 2 if `0.20 ≤ R < 0.40`; 3 if `0.40 ≤ R < 0.60`; 4 if `R ≥ 0.60`. **Level 4 also requires `H ≥ 0.5`** and either `E ≥ 0.5` or the `F_OBS` flag.
 
 ### 5.2 Flags
 
-Flags never change official information. They adjust the displayed level by at most one step, and only where stated.
+Flags never change official information. Only `F_OBS` changes the level (a floor at level 3, which in `ri-2.0.0` requires observed impacts and is shown only to signed-in analysts as a note until that version is promoted, [08 §4.5](./08-ai-decision-layer-jev.md)); the other flags change the confidence rating, a label or a displayed component.
 
 | Flag | Rule | Effect |
 |---|---|---|
@@ -744,7 +771,7 @@ Flags never change official information. They adjust the displayed level by at m
 | `F_STALE` | Any hazard input older than its freshness target ([02 §6.2](./02-users-requirements-ux.md)) | Confidence *baja*; label *datos desactualizados* |
 | `F_LOWSKILL` | Published CRPSS < 0.1 or BSS < 0 for that region and lead ([14](./14-verification-and-validation.md)) | Confidence *baja* |
 | `F_COUPLING_LOW` | Coupling indicator *bajo* ([01 §11.2](./01-context-el-nino-ecuador.md)) | Shows the 2023-24 message from [02 §8.4](./02-users-requirements-ux.md) |
-| `F_DIVERGE` | WN3, WN2 and IFS probabilities differ by more than 0.3 | Confidence down one step |
+| `F_DIVERGE` | WN3, WN2 and IFS probabilities differ by more than 0.3 | Confidence *baja* (as in [14 §5.3](./14-verification-and-validation.md)) |
 | `F_OUT_OF_LIBRARY` | M3 forcing outside the library | `h_coast` shown as *indeterminado*; S4 gate invoked |
 
 ### 5.3 Computation and schema
@@ -816,7 +843,7 @@ FROM s;
 
 ### 5.4 Confidence
 
-`confidence` combines three inputs, as the UX guidelines require ([02 §8.4](./02-users-requirements-ux.md)): verification skill for the region, lead and product (CRPSS or BSS from `verification_scores`); ensemble agreement (share of members on the same side of the dominant threshold, or source consensus for rivers); and the coupling indicator. Rule: *alta* if all three are favourable; *baja* if any is unfavourable or `F_STALE`/`F_LOWSKILL` is set; otherwise *media*. Before skill exists, confidence is capped at *media* and shows "Confianza: sin verificar aún".
+`confidence` combines three inputs, as the UX guidelines require ([02 §8.4](./02-users-requirements-ux.md)): verification skill for the region, lead and product (CRPSS or BSS from `verification_scores`); ensemble agreement (share of members on the same side of the dominant threshold, or source consensus for rivers); and the coupling indicator. Rule: *alta* if all three are favourable; *baja* if any is unfavourable or `F_STALE`/`F_LOWSKILL`/`F_DIVERGE` is set; otherwise *media*. In `ri-2.0.0`, an S3 `evidence_sufficient` answer at or below 0.70 also lowers the confidence by one step ([08 §4.5](./08-ai-decision-layer-jev.md)). Before skill exists (no score, or fewer than 5 verified events), confidence is capped at *media* and shows "Confianza: sin verificar aún". The favourable/unfavourable cut-offs for each input are fixed in [14 §5.3](./14-verification-and-validation.md).
 
 ### 5.5 Versions, governance and rollout
 
@@ -840,7 +867,7 @@ Rules:
 
 ### 6.1 Principles
 
-1. **Partner-owned triggers.** Following the OCHA framework (financing, pre-agreed activities and trigger, [pa-anticipatory-action](https://github.com/OCHA-DAP/pa-anticipatory-action)) and IFRC staged Early Action Protocols, each trigger belongs to the organisation that funds the action. The twin computes indicators, evaluates the partner's rule, documents it and reproduces it. It never activates anything.
+1. **Partner-owned triggers.** Following the OCHA framework (financing, pre-agreed activities and trigger, [pa-anticipatory-action](https://github.com/OCHA-DAP/pa-anticipatory-action)) and IFRC staged Early Action Protocols, each trigger belongs to the organisation that funds the action. Ecuador has precedent: Cruz Roja Ecuatoriana activated an IFRC flood EAP for El Niño in August 2023 (CHF 114,418, 1,000 families), and its third trigger was reached in November 2023 ([Anticipation Hub](https://www.anticipation-hub.org/news/ecuador-activates-its-early-action-protocol-for-floods-related-to-el-nino), search summary; [01 §10.1](./01-context-el-nino-ecuador.md)); whether an EAP is active for 2026 is **unverified**. The twin computes indicators, evaluates the partner's rule, documents it and reproduces it. It never activates anything.
 2. **Commons publishes indicators; tenants hold triggers.** National indicator series (ENSO categories, seasonal terciles, reach exceedance, LHASA classes, dengue exceedance, reservoir days-to-threshold) go to `commons_pub.trigger_indicators`. Trigger definitions and evaluations live in the partner's tenant (`ectwin.trigger_definition`, `ectwin.trigger_eval`, Firestore `rules/{ruleId}` with `kind: trigger`).
 3. **Staged.** Readiness (seasonal, months), pre-activation (5–15 days), activation (1–7 days), and a **stand-down** rule for each stage.
 4. **Completeness first.** Any *sin datos* input blocks an automatic *cumple*; the officer records a justification (J4 in [02](./02-users-requirements-ux.md)).
@@ -866,8 +893,8 @@ stages:
   - stage: preactivation
     requires_stage: readiness
     all_of:
-      - {indicator: wn_prob_tp_240h_gt_p95, unit: parish, op: ">=", value: 0.40, min_units: 5,
-         units_ref: target_parishes, lead_days: [5, 15]}
+      - {indicator: wn_prob_tp_240h_gt_p95, source: commons_pub.trigger_indicators, unit: parish, op: ">=",
+         value: 0.40, min_units: 5, units_ref: target_parishes, lead_days: [5, 15]}
   - stage: activation
     requires_stage: preactivation
     any_of:
@@ -904,35 +931,37 @@ stateDiagram-v2
 
 ### 6.4 Example triggers
 
-All thresholds are **placeholders** to agree with the owner. "Verification" is how the twin scores the trigger afterwards.
+All thresholds are **placeholders** to agree with the owner. The first column names the indicator and, in brackets, its data source or table. "Verification" is how the twin scores the trigger afterwards; the eligibility criteria each indicator must meet before a partner can use it are in [14 §5.2](./14-verification-and-validation.md).
 
-| ID | Indicator (source) | Threshold (placeholder) | Lead time | Action (owner's) | Owner | Verification |
+| ID | Indicator (data source) | Threshold (placeholder) | Lead time | Action (owner's) | Owner | Verification |
 |---|---|---|---|---|---|---|
 | TR-01 | ICEN category (ENFEN) or CPC probability of very strong event (`enso_indices`) | ICEN ≥ *fuerte* **or** P(very strong) ≥ 60% | 3–6 months | Readiness: framework contracts, staff, kit procurement | Cruz Roja / WFP | DJF coastal rain anomaly > P75 in ≥ 3 of 6 coastal provinces |
 | TR-02 | C3S multi-system tercile probability (`seasonal_canton`) | P(above-normal DJF or JFM rain) ≥ 50% in ≥ 20 coastal cantons | 2–4 months | Seasonal AA: seed protection, livestock feed, cash readiness | FAO / WFP / MAG | CHIRPS seasonal total > upper tercile in those cantons |
-| TR-03 | WN3/WN2 P(10-day rain > P95 of climatology) per parish (`parish_exceedance`) | ≥ 40% in ≥ 5 target parishes | 5–15 days | Pre-activation: move kits, alert volunteers | Cruz Roja (IFRC EAP style) | CHIRPS/INAMHI 10-day total > P95 in ≥ 3 of those parishes |
+| TR-03 | P(10-day rain > local P95) per parish, from WN2 members (`trigger_indicators`, variable `tp_240h`) | ≥ 40% in ≥ 5 target parishes | 5–15 days | Pre-activation: move kits, put volunteers on standby | Cruz Roja (IFRC EAP style) | CHIRPS/INAMHI 10-day total > P95 in ≥ 3 of those parishes |
 | TR-04 | GloFAS P(Q ≥ RP5) at target reaches (`river_status`) | ≥ 50% | 3–10 days | Activation: cash transfers, evacuation support | Cruz Roja; OCHA frameworks | GRRR-type RP5 exceedance at INAMHI gauge ±1 day, or Sentinel-1 flood in reach |
-| TR-05 | Flood API `severity` at quality-verified gauges (Zapotal, Babahoyo, Daule and Pula were reported as the first Ecuador locations, [Primicias](https://www.primicias.ec/noticias/tecnologia/google-ecuador-mapa-inundaciones/); current list to confirm with an approved key) | `SEVERE` or `EXTREME` | 1–5 days | COE pre-emptive evacuation of river margins (LT-20) | Cantonal COE | INAMHI gauge above danger level or SNGR event within ±1 day |
+| TR-05 | Flood API `severity` at quality-verified gauges (`floodhub_status_snapshots`; Zapotal, Babahoyo, Daule and Pula were reported as the first Ecuador locations in a 2023-era article, [Primicias](https://www.primicias.ec/noticias/tecnologia/google-ecuador-mapa-inundaciones/); current list to confirm with an approved key) | `SEVERE` or `EXTREME` | 1–5 days | COE pre-emptive evacuation of river margins (LT-20) | Cantonal COE | INAMHI gauge above danger level or SNGR event within ±1 day |
 | TR-06 | Compound: predicted high water + SLA (`compound_tide_calendar`) and P(24 h rain ≥ 50 mm) | Tide ≥ HW_p99 (*aguaje*) **and** SLA ≥ +30 cm **and** rain prob ≥ 40% | 1–7 days (tide known weeks ahead) | Pumps pre-positioned; underpass closure plan (LT-25) | Segura EP / GAD Guayaquil | Segura EP incident at tide-vulnerable points in window |
 | TR-07 | LHASA class on corridor segments (`landslide_hazard_parish`) + antecedent 30-day rain | Class *alta* on ≥ 3 km **and** 30-day rain > P90 | 1–3 days | Machinery and Bailey-bridge pre-positioning (LT-12, LT-27) | MIT / prefecture | ECU 911 or SNGR landslide on corridor ±2 days |
 | TR-08 | Dengue P(cases > endemic P75) (`health_risk_weekly`) | ≥ 60% at 4–8-week lead | 4–8 weeks | Vector-control campaign, supplies (LT-09) | MSP zonal office | Observed cases > P75 in the target weeks |
-| TR-09 | People in observed flood footprint (Sentinel-1 × M10) | ≥ 1,000 in a parish | 0–7 days after flood | Leptospirosis prophylaxis and surveillance (LT-17) | MSP / municipality | Leptospirosis notifications in weeks 1–3 **(data to confirm)** |
+| TR-09 | People in observed flood footprint (Sentinel-1 `COPERNICUS/S1_GRD` × M10 `population_exposure`) | ≥ 1,000 in a parish | 0–7 days after flood | Leptospirosis prophylaxis and surveillance (LT-17) | MSP / municipality | Leptospirosis notifications in weeks 1–3 **(data to confirm)** |
 | TR-10 | Shrimp cluster: P(72 h rain > INAMHI *alto*) and adjacent reach ≥ RP2 (`aquaculture_cluster_risk`) | ≥ 50% **and** ≥ RP2 | 2–7 days | Early partial harvest; lower stocking (LT-14) | Farm / CNA | Farm-reported overtopping or Sentinel-1 flooded ponds |
 | TR-11 | Parametric crop index: Sentinel-1 flooded share of insured rice area (`agri_impact_parish`, tenant parcels) | ≥ 30% for ≥ 7 consecutive days | Post-event (days) | Claim support and payout calculation (LT-30) | AgroProtege insurers (Hispana, Equisuiza) | Field loss adjustment on a sample of parcels (basis-risk check) |
 | TR-12 | Mazar days to 2,115 masl (`reservoir_watch`) | p50 ≤ 30 days **or** P(reach within 45 days) ≥ 50% | 2–8 weeks | Thermal procurement, import contracts, rationing plans (LT-05, LT-13) | CENACE / energy ministry | Level below 2,115 masl within the window |
 | TR-13 | SPI-3 in Paute basin (`drought_indices`) with seasonal P(below-normal) | SPI-3 ≤ −1.0 **and** P(below) ≥ 50% | 1–3 months | Water-supply contingency, Andean drought advisories | Water utilities, GADs | Observed SPI-3 ≤ −1.0 over the target season |
-| TR-14 | P(24 h rain ≥ *alto*) at polling-site parishes on 27–30 Nov | ≥ 40% at ≥ 10% of the 368 at-risk sites | 1–15 days | Site relocation or reinforcement (LT-03) | CNE with Police/Armed Forces | Observed rain at nearest gauge; incidents at sites |
-| TR-15 | Official emergency declaration + footprint and exposure (`official_alerts`, M1–M10) | Declaration issued (verbatim) | Post-event | Cat-DDO / IDB / CAF drawdown request (LT-02, LT-29) | MEF + SNGR | Lender acceptance of the pack **(to confirm)** |
+| TR-14 | P(24 h rain ≥ *alto*) at polling-site parishes on 27–30 Nov (`parish_exceedance` × CNE site list) | ≥ 40% at ≥ 10% of the 368 at-risk sites | 1–15 days | Site relocation or reinforcement (LT-03) | CNE with Police/Armed Forces | Observed rain at nearest gauge; incidents at sites |
+| TR-15 | Official emergency declaration + footprint and exposure (`official_alerts`, M1–M10) | Declaration issued (verbatim) | Post-event | Drawdown request on the World Bank Cat-DDO (US$200M), IDB contingent loan (US$400M) or CAF contingent line (US$200M) (LT-02, LT-29) | MEF + SNGR | Lender acceptance of the pack **(to confirm)** |
 | TR-16 | Marine heatwave category over Galápagos (`marine_heat_index`) | Category ≥ II for ≥ 14 days | Weeks | Ecosystem monitoring, fisheries measures (LT-32) | CGREG / fisheries authority | CDF field observations |
 
 ### 6.5 Backtesting and threshold tuning
 
 1. **Hindcast sources.** WN2 archive from 2022-01-01 (covers the 2023 coastal Niño and 2023-24); WN3 from 2026-01-01; GRRR reforecast 2016-01-01 to 2023-06-30; GloFAS reforecasts; Flood API statuses from 2025-08-01 (`cutoffTime` backfill); OpenDengue and Wes2024 for health; CELEC levels from 2014 for energy.
 2. **Event definitions.** SNGR SITREPs (54 events 2016–2026, 700+ PDFs for the 2026 rainy season), COE2 archive (captured from day 1), EMSR activations, Groundsource, Sentinel-1, INAMHI gauges. Each trigger names its event definition in `backtest.event_def`.
-3. **Contingency table** per trigger version, with ±1-day tolerance for daily triggers and ±1 week for weekly ones:
+3. **Contingency table** per trigger version, scored against the trigger's target window (its lead time) with ±1-day tolerance for daily triggers and ±1 week for weekly ones:
 
 ```sql
--- contingency table for a trigger version (tenant project)
+-- contingency table for a trigger version (tenant project); one row per evaluation day.
+-- An evaluation on day d "hits" if an observed event falls in its target window
+-- [d + lead_min, d + lead_max], widened by the tolerance (1 day for daily triggers, 7 for weekly).
 WITH e AS (
   SELECT DATE(evaluated_at) AS d, LOGICAL_OR(status = 'cumple') AS fired
   FROM ectwin.trigger_eval
@@ -940,26 +969,36 @@ WITH e AS (
     AND evaluated_at BETWEEN @start AND @end
   GROUP BY 1
 ), o AS (
-  SELECT event_date AS d, TRUE AS observed FROM ectwin.observed_events   -- materialised from SITREP, COE2, S1
-  WHERE event_def = @event_def AND event_date BETWEEN DATE(@start) AND DATE(@end)
+  SELECT DISTINCT event_date AS d FROM ectwin.observed_events            -- materialised from SITREP, COE2, S1
+  WHERE event_def = @event_def
+    AND event_date BETWEEN DATE(@start) AND DATE_ADD(DATE(@end), INTERVAL @lead_max_days + @tolerance_days DAY)
+), x AS (
+  SELECT e.d, e.fired,
+         EXISTS (SELECT 1 FROM o
+                 WHERE o.d BETWEEN DATE_ADD(e.d, INTERVAL @lead_min_days - @tolerance_days DAY)
+                               AND DATE_ADD(e.d, INTERVAL @lead_max_days + @tolerance_days DAY)) AS o_hit
+  FROM e
 )
 SELECT
-  COUNTIF(e.fired AND o_hit)        AS hits,
-  COUNTIF(e.fired AND NOT o_hit)    AS false_alarms,
-  COUNTIF(NOT e.fired AND o_hit)    AS misses,
-  COUNTIF(NOT e.fired AND NOT o_hit) AS correct_negatives,
-  SAFE_DIVIDE(COUNTIF(e.fired AND o_hit), COUNTIF(o_hit))   AS hit_rate,
-  SAFE_DIVIDE(COUNTIF(e.fired AND NOT o_hit), COUNTIF(e.fired)) AS false_alarm_ratio
-FROM (
-  SELECT e.*, EXISTS (SELECT 1 FROM o WHERE o.d BETWEEN DATE_SUB(e.d, INTERVAL 1 DAY) AND DATE_ADD(e.d, INTERVAL 1 DAY)) AS o_hit
-  FROM e
-);
+  COUNTIF(fired AND o_hit)          AS hits,
+  COUNTIF(fired AND NOT o_hit)      AS false_alarms,
+  COUNTIF(NOT fired AND o_hit)      AS misses,
+  COUNTIF(NOT fired AND NOT o_hit)  AS correct_negatives,
+  SAFE_DIVIDE(COUNTIF(fired AND o_hit), COUNTIF(o_hit))     AS hit_rate,
+  SAFE_DIVIDE(COUNTIF(fired AND NOT o_hit), COUNTIF(fired)) AS false_alarm_ratio,
+  SAFE_DIVIDE(COUNTIF(fired AND o_hit),
+              COUNTIF(fired AND o_hit) + COUNTIF(fired AND NOT o_hit) + COUNTIF(NOT fired AND o_hit)) AS csi
+FROM x;
+-- Day-level counts overweight long events; the published backtest also reports episode-level
+-- counts (consecutive 'cumple' days merged), as required by 14 section 5.2.
 ```
 
 4. **Tuning.** For each candidate threshold, compute hit rate, false-alarm ratio, CSI and median lead time. The owner chooses the threshold that maximises CSI subject to its tolerated false-alarm ratio, or uses a cost-loss ratio (cost of acting ÷ loss avoided) when the partner can state one. The twin shows the curve; the owner signs the choice.
 5. **Honest reporting.** Short records (WN3 < 1 year, Flood API from 2025-08) mean wide confidence intervals; they are shown. A trigger with fewer than 5 observed events in the hindcast is labelled *sin evidencia suficiente*.
 
 ### 6.6 Evidence packs, including parametric insurance
+
+The main parametric and contingent-finance users are AgroProtege (US$24.5M over 2026–2029 subsidising 60% of US$40M in premiums for up to 500,000 ha; insurers Hispana de Seguros y Reaseguros and Equisuiza; the sum insured is reported as US$400M by one outlet and US$800M by another, so the sources conflict) and the sovereign contingent lines in TR-15 ([01 §10.1](./01-context-el-nino-ecuador.md); [El Oriente](https://www.eloriente.com/articulo/ecuador-destinara-usd-245-millones-a-un-seguro-agricola-para-mitigar-el-impacto-del-fenomeno-de-el-nino/58045)). Whether AgroProtege policies are indemnity-based or index-based is **to confirm**.
 
 An evidence pack is an immutable snapshot created in the commissioning tenant (FR-072), stored under `gs://<TENANT_PROJECT>-ectwin/evidence/<pack_id>/` and indexed in `ectwin.evidence_packs`. The minimum content is fixed in [01 §10.2](./01-context-el-nino-ecuador.md). Parametric and contingent-finance packs add:
 
@@ -989,7 +1028,7 @@ An evidence pack is an immutable snapshot created in the commissioning tenant (F
  "manifest_sha256": "<hash>"}
 ```
 
-**WeatherNext as a payout index: not recommended.** WeatherNext data is "not intended, validated, or approved for real world use", has no SLA, caps Google's liability at US$500, and Google may introduce fees with one month's notice ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)). The twin therefore recommends that **payout indices use observations** (CHIRPS, INAMHI gauges, Sentinel-1, river gauges) and that forecasts drive only anticipatory stages whose funds are pre-agreed. Any partner that still wants a forecast-based index needs its own legal review.
+**WeatherNext as a payout index: not recommended.** The terms describe WeatherNext data as "not intended, validated, or approved for real world use", cap Google's liability at US$500, and let Google introduce "reasonable fees" with one month's notice ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)). The twin therefore recommends that **payout indices use observations** (CHIRPS, INAMHI gauges, Sentinel-1, river gauges) and that forecasts drive only anticipatory stages whose funds are pre-agreed. Any partner that still wants a forecast-based index needs its own legal review.
 
 ### 6.7 Trigger governance
 
@@ -1035,7 +1074,7 @@ flowchart TB
   OUT --> LOG["decision_log and audit"]
 ```
 
-Scenario runs use the existing `POST /v1/t/{tid}/runs` endpoint with pipeline names `analog`, `sfincs`, `wn2-scenario` or `lever`, and the D10 confirmation above US$1 ([03 §6.2](./03-architecture.md)).
+Scenario runs use the existing `POST /v1/t/{tid}/runs` endpoint ([03 §6.2](./03-architecture.md)) with pipeline names `analog`, `sfincs`, `wn2-scenario` or `lever`: a dry-run estimate first, the cost-confirmation text (disclaimer D10 in [02 §8.5](./02-users-requirements-ux.md), not spine decision D10) above US$1 (FR-066), and Owner approval above the tenant cap.
 
 ```json
 {"pipeline": "wn2-scenario", "idempotency_key": "4f1c-…",
@@ -1050,24 +1089,24 @@ Scenario runs use the existing `POST /v1/t/{tid}/runs` endpoint with pipeline na
 
 ### 7.3 Analog selection
 
-The analog library (CTX-04) holds, for 1982-83, 1997-98, 2015-16, 2017 coastal, 2023 coastal, 2023-24, the 2024 drought and the Jan–May 2026 season: monthly rain anomalies by canton (CHIRPS from 1981, ERA5 before), river peaks (GRRR 1980–2023), sea-level anomalies, recorded impacts ([01 §4](./01-context-el-nino-ecuador.md)) and each event's forecast track record.
+The analog library (CTX-04) holds, for 1982-83, 1997-98, 2015-16, 2017 coastal, 2023 coastal, 2023-24, the 2024 drought and the Jan–May 2026 season: monthly rain anomalies by canton (CHIRPS from 1981, with ERA5 as a cross-check), river peaks (GRRR reanalysis 1980-01-01 to 2023-12-23, so the 2023-24 peak and 2026 need GloFAS reanalysis or observations), sea-level anomalies, recorded impacts ([01 §4](./01-context-el-nino-ecuador.md)) and each event's forecast track record.
 
-**Method.** For the current month, build a standardised state vector: ICEN/Niño 1+2 anomaly, RONI, SLA, 30-day SOI and the 60-day coastal rain anomaly. Compute the weighted Euclidean distance to each analog at the same calendar month (initial weights 0.3, 0.2, 0.2, 0.15, 0.15; estimate). Show the three nearest analogs with inverse-distance weights as envelopes, never as a forecast. The ERFEN caution is always displayed: similarity "does not imply equivalent intensity, duration or impacts" ([Primicias](https://www.primicias.ec/sociedad/fenomeno-elnino-2026-ecuador-pronostico-similitudes-evento-catastrofico-impacto-moderado-lluvias-calentamiento-oceanico-130104/)). 2015-16 is kept as a **false-alarm analog** and 2017 as a **Niño 3.4-would-miss analog**.
+**Method.** For the current month, build a standardised state vector: ICEN/Niño 1+2 anomaly, RONI, SLA, 30-day SOI and the 60-day coastal rain anomaly. Compute the weighted Euclidean distance to each analog at the same calendar month (initial weights 0.3, 0.2, 0.2, 0.15, 0.15; estimate). Show the three nearest analogs with inverse-distance weights as envelopes, never as a forecast. ERFEN compared the 2026 event with 14 past episodes and found "relative similarity" to 1997-98 and 2023-24; its caution is always displayed: similarity "does not imply equivalent intensity, duration or impacts" ([Primicias](https://www.primicias.ec/sociedad/fenomeno-elnino-2026-ecuador-pronostico-similitudes-evento-catastrofico-impacto-moderado-lluvias-calentamiento-oceanico-130104/)). 2015-16 is kept as a **false-alarm analog** and 2017 as a **Niño 3.4-would-miss analog** (a coastal El Niño with near-neutral Niño 3.4, **unverified**).
 
 ### 7.4 WN2 perturbed-SST runs (Phase 3, T3 only)
 
 WeatherNext 2 can run on demand on Vertex AI / Gemini Enterprise Agent Platform with custom initial conditions; the project must be allowlisted and GPU quota starts at 0 ([notebook](https://raw.githubusercontent.com/GoogleCloudPlatform/vertex-ai-samples/main/notebooks/community/weathernext/weathernext_2_dws.ipynb)). The weights licence allows commercial use since 2026-08-06.
 
 1. **Access.** The tenant requests the allowlist and GPU quota for `a3-highgpu-*` (H100) or `a2-ultragpu-*` (A100); scheduling `FLEX_START`, `SPOT` or `STANDARD` (PL guides; TA applies).
-2. **Initial conditions.** Build the input set for `--forecast_init_time` (2024 onward) in the format expected by `--input_data_gcs_dir` (**format and operational analysis source to confirm**; ERA5T in ARCO-ERA5 lags about 6 days, so near-real-time scenarios need another analysis source).
+2. **Initial conditions.** Build the input set for `--forecast_init_time` (2024 onward) in the format expected by `--input_data_gcs_dir` (**format and operational analysis source to confirm**). The operational WN2 checkpoint is fine-tuned on and initialised from ECMWF HRES; ERA5T in ARCO-ERA5 lags about 6 days, so near-real-time scenarios need another analysis source, and whether ECMWF open-data IFS fields are an acceptable substitute is **to confirm** in the Phase 3 spike.
 3. **Perturbation.** Add `scale × pattern` to the SST field, where the pattern is a smoothed composite (e.g. 1997-98 DJF minus 2023-24 DJF over the Niño 1+2 box) with a 3° cosine taper. Scales: −1, 0 (control), +1, +2 °C.
 4. **Run.** Container `us-docker.pkg.dev/vertex-ai-restricted/vertex-vision-model-garden-dockers/weather-next-2-inference.gpu.0-1:latest` as a `CustomContainerTrainingJob` with `--num_samples 64`, `--horizon_hrs 360`, `--model_seed 1..4`, `--input_data_gcs_dir gs://<TENANT_PROJECT>-ectwin/scenarios/<id>/ic/`.
 5. **Impacts.** Push outputs through the same parish exceedance SQL and M1/M3 matching; store deltas against the control.
 6. **Labels.** Every map says *escenario experimental – no es pronóstico*.
 
-**Cost.** About US$2.3–4.6 per 64-member 15-day run on TPU v5p when self-run (cost anchor in [09](./09-cost-model.md); about 1.1 chip-hours at US$2.10–4.20 per chip-hour). Vertex GPU cost has no per-forecast price and is **to be measured** in a Phase 3 spike (estimate ceiling US$15 per run until measured).
+**Cost.** About US$2.3–4.6 per 64-member 15-day run on TPU v5p when self-run from the open weights (cost anchor in [09](./09-cost-model.md): 64 members × just under 1 min ≈ 1.1 chip-hours × US$2.10–4.20 per chip-hour). The Vertex GPU path has no per-forecast price and is **to be measured** in a Phase 3 spike. Until then the request carries a US$15 cap (estimate: if an H100 runs a member in about the same time as a v5p chip, 64 members ≈ 1.1 GPU-hours × US$6.62/h for a Spot `a3-highgpu-1g` ≈ US$7; the cap allows about 2× for initial-condition preparation, start-up and on-demand fallback). FR-039 acceptance requires the pre-run estimate to be within ±30% of the actual cost, so the spike must measure it.
 
-**Scientific caveat.** It is **unverified** whether WN2 treats SST as a persistent input or evolves it, so a perturbation may decay within days. A related study (GenCast forced with persisted or observed SST, [arXiv 2509.06457](https://arxiv.org/abs/2509.06457)) reproduced El Niño rainfall patterns, but that is a different model. Before any use, the engine must pass a sensitivity test on 2023 and 2026 inits: the coastal rain response to +1 °C must be physically plausible (sign and order of magnitude compared with the 1997-98 − 2023-24 difference). Otherwise the feature stays at G0.
+**Scientific caveat.** It is **unverified** whether WN2 treats SST as a persistent input or evolves it, so a perturbation may decay within days. A related study (GenCast forced with persisted or observed SST and compared with SEAS5; Antonio, Strommen and Christensen, [arXiv 2509.06457](https://arxiv.org/abs/2509.06457)) reproduced El Niño rainfall patterns, but that is a different model. Before any use, the engine must pass a sensitivity test on 2023 and 2026 inits: the coastal rain response to +1 °C must be physically plausible (sign and order of magnitude compared with the 1997-98 − 2023-24 difference). Otherwise the feature stays at G0.
 
 ### 7.5 Intervention levers
 
@@ -1087,31 +1126,33 @@ FR-038 acceptance: at least two levers validated with a partner. Target: pumps w
 
 ## 8. Outputs catalogue and phasing
 
-| ID | Product (es) | Module | Table or file | Audience | Cadence | Licence class | Phase | Trace |
+| ID | Product (es) | Module | Table or file | Audience | Cadence | Licence class (target) | Phase | Trace |
 |---|---|---|---|---|---|---|---|---|
-| IMP-01 | *Nivel de riesgo por parroquia* | §5 | `risk_index_parish`; tiles; canton PDF | All | 4×/day | `wn_nrva` | P1 (v1), P2 (v2) | FR-033 |
-| IMP-02 | *Ríos: estado y población expuesta* | M1 | `river_impact_reach` | P01–P05, P09 | 4×/day | open / nc | P1 | LT-20 |
-| IMP-03 | *Calendario marea + lluvia* | M2 | `compound_tide_calendar` | P03, P04 | weekly + per cycle | open | P1 | FR-031, LT-21 |
-| IMP-04 | *Franja horaria de riesgo compuesto* | M2 | same | P03 | hourly (event) | open | P2 | LT-25 |
-| IMP-05 | *Escenarios de inundación costera* | M3 | `sfincs_scenarios`, `sfincs_match`, COG/PMTiles | All (view) | per cycle | open / sa | P2 | FR-035 |
+| IMP-01 | *Nivel de riesgo por parroquia* | §5 | `risk_index_parish`; tiles; canton PDF | All | 4×/day | `wn_nrva` † | P1 (v1), P2 (v2) | FR-033 |
+| IMP-02 | *Ríos: estado y población expuesta* | M1 | `river_impact_reach` | P01–P05, P09 | 4×/day | open, sa † (GEOGloWS RP rows `nc`) | P1 | LT-20 |
+| IMP-03 | *Calendario marea + lluvia* | M2 | `compound_tide_calendar` | P03, P04 | weekly + per cycle | open † ‡ (IOC sea level; INOCAR tides) | P1 | FR-031, LT-21 |
+| IMP-04 | *Franja horaria de riesgo compuesto* | M2 | same | P03 | hourly (event) | open † ‡ | P2 | LT-25 |
+| IMP-05 | *Escenarios de inundación costera* | M3 | `sfincs_scenarios`, `sfincs_match`, COG/PMTiles | All (view) | per cycle | open or sa † | P2 | FR-035 |
 | IMP-06 | *Deslizamientos: amenaza diaria* | M4 | `landslide_hazard_parish` | MIT, COEs | daily | `wn_nrva` | P2 | LT-27 |
-| IMP-07 | *Cultivos expuestos y afectados* | M5 | `agri_impact_parish` | P06, P11 | per S1 pass | open | P1 (exposure), P2 | LT-04, LT-30 |
+| IMP-07 | *Cultivos expuestos y afectados* | M5 | `agri_impact_parish` | P06, P11 | per S1 pass | open † | P1 (exposure), P2 | LT-04, LT-30 |
 | IMP-08 | *Índice Sigatoka / pudrición* | M5 | `crop_disease_index` | P10, Acorbanec | per cycle | `wn_nrva` | P2 | LT-15 |
-| IMP-09 | *Ficha camaronera por clúster* | M6 | `aquaculture_cluster_risk` | P10, CNA | per cycle | open / sa | P1 (basic), P2 | LT-14 |
+| IMP-09 | *Ficha camaronera por clúster* | M6 | `aquaculture_cluster_risk` | P10, CNA | per cycle | open or sa † | P1 (basic), P2 | LT-14 |
 | IMP-10 | *Olas de calor marino* | M6 | `marine_heat_index` | CGREG, IPIAP | daily | open | P3 | LT-32 |
-| IMP-11 | *Dengue: riesgo semanal* | M7 | `health_risk_weekly` | P08 | weekly | open (aggregated) | P1 (data), P2 | LT-09 |
-| IMP-12 | *Exposición post-inundación (leptospirosis)* | M7 | list per parish | P08, municipalities | per event | open | P2 | LT-17 |
-| IMP-13 | *Tarjeta de embalses* | M8 | `reservoir_watch` | P07 | daily | open | P1 | LT-05, LT-13 |
+| IMP-11 | *Dengue: riesgo semanal* | M7 | `health_risk_weekly` | P08 | weekly | open, aggregated † | P1 (data), P2 | LT-09 |
+| IMP-12 | *Exposición post-inundación (leptospirosis)* | M7 | list per parish | P08, municipalities | per event | open † | P2 | LT-17 |
+| IMP-13 | *Tarjeta de embalses* | M8 | `reservoir_watch` | P07 | daily | open † (CELEC data) | P1 | LT-05, LT-13 |
 | IMP-14 | *Sequía: SPI, SPEI, VHI* | M8 | `drought_indices` | P07, utilities | monthly | open | P2 lite, P3 | LT-05 |
-| IMP-15 | *Vías y puentes en riesgo; parroquias aisladas* | M9 | `road_segment_risk`, `isolation_parish` | MIT, COEs | per cycle | open / ODbL | P1 (static), P2 | LT-12 |
+| IMP-15 | *Vías y puentes en riesgo; parroquias aisladas* | M9 | `road_segment_risk`, `isolation_parish` | MIT, COEs | per cycle | sa (ODbL) | P1 (static), P2 | LT-12 |
 | IMP-16 | *Recintos electorales expuestos* | M9 | CSV/PDF | CNE | by 30 Oct + daily 15–29 Nov | open | P1 | LT-03 |
-| IMP-17 | *Establecimientos expuestos* (schools, health) | M9 | `facility_exposure` | MINEDUC, MSP | per cycle | ODbL where OSM/Healthsites | P1 | LT-10, LT-28 |
+| IMP-17 | *Establecimientos expuestos* (schools, health) | M9 | `facility_exposure` | MINEDUC, MSP | per cycle | sa (ODbL) where OSM/Healthsites | P1 | LT-10, LT-28 |
 | IMP-18 | *Población expuesta y brecha de albergues* | M10 | `population_exposure`, `shelter_gap_canton` | COEs, Cruz Roja | per cycle | open / sa | P1, P2 | LT-16 |
 | IMP-19 | *Disparadores* (trigger dashboard) | §6 | `trigger_indicators`; `ectwin.trigger_eval` | P09, P06, P11 | per indicator | tenant | P1 read-only, P2 | FR-037 |
 | IMP-20 | *Paquete de evidencia* | §6.6 | `ectwin.evidence_packs` | Funders, insurers | on demand | tenant | P2 | FR-072 |
 | IMP-21 | *Años análogos* | §7.3 | analog tables | All | monthly | open | P1 | FR-036 |
 | IMP-22 | *¿Qué pasaría si?* | §7.5 | `ectwin.scenario` | P03, P07 | on demand | tenant | P3 | FR-038 |
 | IMP-23 | *Corridas WN2 experimentales* | §7.4 | `ectwin.scenario` | T3 | on demand | tenant | P3 | FR-039 |
+
+† Target class once legal clears the `pending_review` inputs listed in §2.6 (GloFAS, Flood API, Copernicus DEM, MSP gazettes, MAG layers, CELEC/CENACE operational data, IOC/UHSLC sea level). Until then the full product is published through `commons_pub_nc` for noncommercial tenants, and the `commons_pub` version omits the uncleared components (for IMP-01, river components from GloFAS or the Flood API show *sin datos*). ‡ Uses INOCAR tide tables under the `agreement` class: publication of the derived calendar depends on the INOCAR MoU. "tenant" means the product lives only in the tenant project and follows the tenant's own sharing choices.
 
 ```mermaid
 gantt
@@ -1145,7 +1186,7 @@ gantt
 
 **Phase acceptance (summary).**
 
-- **Phase 1 exit (2026-11-27):** IMP-01 v1, IMP-02, IMP-03, IMP-07 (exposure), IMP-09 (basic), IMP-11 (data), IMP-13, IMP-15–18 live for the six P1 provinces (Guayas, Los Ríos, Manabí, El Oro, Esmeraldas, Santa Elena) plus the energy card; every product carries a methodology page and the D1 label; the polling-site list was delivered by 30 Oct.
+- **Phase 1 exit (2026-11-27):** IMP-01 v1, IMP-02, IMP-03, IMP-07 (exposure), IMP-09 (basic), IMP-11 (data), IMP-13, IMP-15–17 and IMP-18 (exposed population; the shelter gap follows in Phase 2) live for the six P1 provinces (Guayas, Los Ríos, Manabí, El Oro, Esmeraldas, Santa Elena) plus the energy card; every product carries a methodology page and the D1 label; the polling-site list was delivered by 30 Oct.
 - **Phase 2 exit (2027-04-30):** four SFINCS sites at G2; M4, M7 and M5 disease index at G2; `ri-2.0.0` promoted; at least three partner trigger sets with signed thresholds and backtests; at least one evidence pack reproduced byte for byte by an external reviewer; weekly verification of IMP-01 published.
 - **Phase 3 exit (2027-09-30):** M8 full module at G2; two levers validated; WN2 scenario engine at G1 or formally parked with the sensitivity-test result published.
 
@@ -1161,21 +1202,23 @@ Estimates, list prices before free tiers (Cloud Run US$0.000018/vCPU-s, [pricing
 | M2 calendar and strip | P2 | — | <US$1 | ≈US$1 |
 | M3 library (1,120 runs, reruns) + storage | P2 | US$60–360 | ≈US$1–2 | ≈US$2 (+ campaigns) |
 | M4 LHASA daily, p50 and p90 forcing | P2 | — | ≈US$4 | ≈US$4 |
-| M5/M6 Sentinel-1 mapping (event mode) | P2 | — | US$0–30 (≈75–225 EECU-h per season) | US$0–45 |
+| M5/M6 Sentinel-1 mapping (event mode) | P2 | — | US$0–18 (75–225 EECU-h = US$30–90 per season, spread over Dec–Apr) | US$0–45 (up to half the season's EECU in one month) |
 | M6 ocean indices | P2 | — | ≈US$1 | ≈US$1 |
 | M7 dengue weekly + parser | P2 | — | <US$1 | <US$1 |
 | M8 card + drought indices | P2 | — | <US$1 | <US$1 |
 | M9 build + cycles | P2 | ≤US$10 | ≈US$1 | ≈US$1 |
 | M10 grid + joins | P2 | US$2–8 (EE) | <US$1 | <US$1 |
-| Jev S3 parish escalation (1,200 parishes × 4/day = 144,000/month) | P2 | — | ≈US$13 | ≈US$13 |
-| Jev S4 run gates (150 basins × 4/day = 18,000/month) | P2 | — | ≈US$2 | ≈US$2 |
-| **Commons impact total** | P2 | **≈US$80–400** | **≈US$25–60** | **≈US$30–75** |
+| Jev S3 parish escalation (1,200 parishes × 4 cycles × 30 days = 144,000/month; upper bound, INEC lists 1,041 parishes; `d1_3` only) | P2 | — | ≈US$13 | ≈US$13 |
+| Jev S4 run gates (150 basins × 4 cycles × 30 days = 18,000/month) | P2 | — | ≈US$2 | ≈US$2 |
+| **Commons impact total** | P2 | **≈US$70–395** | **≈US$23–46** | **≈US$26–74** |
 | Tenant: LISFLOOD-FP event | P3 | — | <US$0.50 per event | — |
 | Tenant: live SFINCS 50-member ensemble | P3 | — | US$2–8 per event | — |
 | Tenant: WN2 perturbed run | P3 | — | US$2.3–4.6 per run (TPU self-run); Vertex GPU to measure | — |
-| Tenant: AquaCrop campaign | P3 | — | ≈US$1–2 per campaign | — |
+| Tenant: AquaCrop campaign | P3 | — | ≈US$1–2 per campaign (≈US$1.4 for the national design in M5) | — |
 
-The Commons impact total fits within the Commons envelope of US$100–300/month ([09](./09-cost-model.md)) together with ingestion and forecast processing. EE figures fall to US$0 if the Commons project obtains a noncommercial Partner tier; operational government use in Ecuador may be classed as commercial (see [09](./09-cost-model.md)).
+Arithmetic for the totals (estimate): one-off = M1 US$8–16 + M3 US$60–360 + M9 up to US$10 + M10 US$2–8 ≈ US$70–394; normal month = S3 13 + S4 2 + M4 4 + M3 1–2 + M1 1 + M6 ocean 1 + M9 1 + M5/M6 Sentinel-1 0–18 + the four sub-US$1 lines (M2, M7, M8, M10: 0–4) ≈ US$23–46; peak month = the same with M1 ≈2, M2 ≈1, M3 ≈2, three sub-US$1 lines (0–3) and Sentinel-1 0–45 ≈ US$26–74. Jev costs are the S3/S4 lines of the W4/W5 workloads in [08](./08-ai-decision-layer-jev.md) (US$13.31 and US$1.89).
+
+The Commons impact total fits within the Commons envelope of US$100–300/month ([09](./09-cost-model.md)) together with ingestion and forecast processing. EE figures fall to US$0 if the Commons project qualifies for a noncommercial tier (in force since 2026-04-27: Community 150 EECU-h/month, Contributor 1,000 EECU-h/month with a billing account, Partner by application); whether operational government use in Ecuador qualifies as noncommercial is **unverified** (see [09](./09-cost-model.md)).
 
 ---
 
@@ -1207,9 +1250,10 @@ Regressions: if a published verification score falls below its G2 threshold for 
 9. **Hydropower data.** Reservoir endpoints are unofficial; plant specifications are unverified; energy deficit modelling needs CENACE cooperation.
 10. **Exposure vintage.** Open Buildings inference is from May 2023; WorldPop in EE ends at 2020; census geometry may lag new settlements.
 11. **Short records.** WN3 archive starts 2026-01-01 and Flood API statuses 2025-08-01; trigger backtests on these sources have wide uncertainty.
-12. **Licensing.** Share-alike inputs (GMW, VIDA, HAND) and ODbL (OSM, Healthsites) propagate to derived products; NC inputs are excluded for commercial tenants.
+12. **Licensing.** Share-alike inputs (GMW, VIDA, HAND) and ODbL (OSM, Healthsites) propagate to derived products; NC inputs are excluded for commercial tenants, and inputs still `pending_review` (GloFAS, Flood API, Copernicus DEM, IOC sea level, MSP, MAG, CELEC) are gated the same way until cleared (§2.6).
 13. **Jev.** Jev is strongest in English; Spanish narratives go through human review in the 0.30–0.70 band, and Jev can never raise a level without a hazard guard (§5.1).
 14. **Credibility.** A strong ocean signal without atmospheric coupling produced less coastal rain than expected in 2023-24; the coupling flag and published verification are the safeguards.
+15. **River baselines.** GRRR (`model_id_8583a5c2_v0`) predates Google's current production model and ends on 2023-12-23 (reforecasts on 2023-06-30); Flood API thresholds may not equal GRRR return periods. River climatologies from different models are never mixed on one axis (M1, M3).
 
 ---
 
@@ -1221,11 +1265,13 @@ Regressions: if a published verification score falls below its G2 threshold for 
 4. **INOCAR.** Tide datum, gauge data for Puerto Bolívar, Manta and Esmeraldas, and bathymetry licence for SFINCS (PT).
 5. **MSP.** Canton-level weekly dengue and leptospirosis counts under MoU; DPO review of the aggregation and suppression rule.
 6. **Shrimp.** Whether SIGACUA farm polygons can be used, and at what aggregation, and the MapBiomas Collection 3 asset path (AGR).
-7. **CHIRPS v3 in Earth Engine.** The EE catalog source lists `UCSB-CHC/CHIRPS/V3/DAILY_SAT`, but a separate check of the EE STAC found only `UCSB-CHG/CHIRPS/DAILY` (v2.0). Confirm, and fall back to the CHC COGs (`data.chc.ucsb.edu/products/CHIRPS/v3.0/daily/…`) if needed (DL).
+7. **CHIRPS v3 in Earth Engine.** The research briefs conflict: the EE catalog source (commit of 2026-09-28) lists `UCSB-CHC/CHIRPS/V3/DAILY_SAT`, `DAILY_RNL` and `PENTAD`, while a separate check reported CHIRPS v3 absent and `UCSB-CHG/CHIRPS/DAILY` as v2.0 (to 2026-08-31). Confirm in the Commons EE project on day 1, and fall back to the CHC COGs (`data.chc.ucsb.edu/products/CHIRPS/v3.0/daily/final/{rnl|sat}/cogs/YYYY/`, preliminary under `…/prelim/sat/YYYY/`) if needed (DL).
 8. **IMERG Final.** No permanent IMERG V07 exists after 2025-09-30 (move to V08); validation of 2026 events must use Late/Early or V08 when released (FL).
 9. **Energy module timing (tension with the spine).** The spine schedules the hydro-energy and drought module for Phase 3, but Mazar may reach the 2024 blackout level between early November and late December 2026 ([01 §7.3](./01-context-el-nino-ecuador.md)). This plan keeps the full module in Phase 3 but adds a Phase 1 card and a Phase 2 "lite" drought/inflow product. The sponsor should confirm.
 10. **Risk-index weights.** All weights and level cut-offs are initial; the noisy-OR alternative and the Jev weight (0.2) must be evaluated in shadow mode before `ri-2.0.0` promotion.
-11. **Trigger partners.** Whether Cruz Roja Ecuatoriana has an active 2026 EAP, whether OCHA/CERF and FAO–WFP frameworks include Ecuador, and whether the IDB and CAF contingent lines are parametric or declaration-based.
+11. **Trigger partners.** Whether Cruz Roja Ecuatoriana has an active or updated 2026 EAP (the 2023 EAP was activated in August 2023, §6.1), whether OCHA/CERF (up to US$100M globally for El Niño) and the FAO–WFP joint anticipatory-action appeal include Ecuador-specific frameworks, whether the IDB and CAF contingent lines and the Cat-DDO are parametric or declaration-based, and whether AgroProtege cover is indemnity- or index-based (PT).
 12. **Flood API commercial use.** The "primarily non-commercial" wording is unverified; until confirmed, Flood API-derived indicators are not used in commercial tenants' parametric products.
 13. **WN2 custom initial conditions.** Input format, analysis source for near-real-time inits, and whether SST is evolved or persisted (Phase 3 spike).
 14. **LHASA and TRIGRS licences.** LHASA ships a LICENSE.pdf whose terms were not read; the TRIGRS licence on code.usgs.gov is unconfirmed.
+15. **Licence reviews on the critical path (DPO with legal).** GloFAS, the Flood Forecasting API, Copernicus DEM GLO-30, JRC Global Surface Water, IOC/UHSLC sea level, MSP gazettes, MAG layers and CELEC/CENACE data are `pending_review` in [05 §5.1](./05-data-catalog.md). Until they clear, IMP-01–05, IMP-07, IMP-09 and IMP-11–13 reach commercial tenants only in reduced form (§2.6, §8). GloFAS and Flood API clearance should be decided before the Phase 1 exit (2026-11-27).
+16. **Canton count for campaigns.** Cost arithmetic uses 221 cantons (research brief) while the INEC reference files list 226 canton codes and 1,041 parishes; use the official INEC DPA list for all runs (DL).
