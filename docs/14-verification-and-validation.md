@@ -521,7 +521,7 @@ flowchart LR
   EVV --> PUB
 ```
 
-Jobs `verification-daily`, `verification-weekly` and `verification-monthly` are already named in [11 §2.1](./11-operations-runbook.md) ([03 §7.2](./03-architecture.md) lists `verification-weekly`). This document adds `verification-truth-build`, `verification-hindcast` and `verification-event`.
+Jobs `verification-daily`, `verification-weekly` and `verification-monthly` are already named in [11 §2.1](./11-operations-runbook.md). This document adds `verification-truth-build`, `verification-hindcast` and `verification-event`.
 
 | Job | Trigger (UTC) | Inputs | Outputs | Runtime (estimate) | Owner |
 |---|---|---|---|---|---|

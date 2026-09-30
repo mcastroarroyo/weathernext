@@ -104,7 +104,7 @@ flowchart TB
     WF["Forecast cycle - Workflows"]
     BQC["BigQuery commons datasets - US"]
     HVY["Batch Spot - us-east1 and us-central1"]
-    PUBB["GCS products - signed URLs, plus public static tiles"]
+    PUBB["GCS static and product tiles - 60-min signed URLs"]
     BULK["GCS requester pays bulk"]
     AH["Analytics Hub listings"]
     PS["Pub/Sub commons topics"]
@@ -209,7 +209,7 @@ flowchart TB
 | 21 | WN3 full-member processing (Phase 2) | Cloud Batch on Spot `c2d-standard-16` reading Requester-Pays Zarr | P2 | `us-east1` | Per main cycle | Spot ≈US$0.409/h (us-central1 list price; `us-east1` Spot price **to confirm**) + requester-pays operations | FL |
 | 22 | SFINCS scenario library and other ensembles | Cloud Batch on Spot `c3d-highcpu-16` (CPU build from source) | P2 | `us-central1` | Campaigns | Spot ≈US$0.161/h (Batch itself adds no charge, [batch pricing](https://cloud.google.com/batch/pricing)); library US$60–360 one-off (1,120 runs; [07 M3](./07-impact-modules-and-triggers.md), [09 B13](./09-cost-model.md)) | FL |
 | 23 | Tiles, PDFs and WhatsApp cards | Cloud Run jobs (tippecanoe, rio-cogeo, WeasyPrint) | P2 | `us-central1` | After each cycle; canton PDFs daily | vCPU-s | FE + DL |
-| 24 | Public/authenticated product buckets | GCS `ectwin-commons-prod-public` (static layers) and `ectwin-commons-prod-products` (forecast products, signed URLs) (+ Cloud CDN above ≈1.5 TiB/month: break-even ≈1,526 GiB incl. request charges, [09 §4.2.3](./09-cost-model.md); decided at M2.1 with the measured object size) | P2 | `us-central1` | — | Internet egress US$0.12/GiB: ≈US$11.40/month at pilot, (195 − 100) GiB × 0.12, if the 100 GB Always Free transfer applies to internet egress (wording ambiguous), else ≈US$23.40 | DL |
+| 24 | Product buckets (signed URLs) | GCS `ectwin-commons-prod-public` (static layers) and `ectwin-commons-prod-products` (forecast products); both private, served by 60-min signed URLs (FR-001) (+ Cloud CDN above ≈1.5 TiB/month: break-even ≈1,526 GiB incl. request charges, [09 §4.2.3](./09-cost-model.md); decided at M2.1 with the measured object size) | P2 | `us-central1` | — | Internet egress US$0.12/GiB: ≈US$11.40/month at pilot, (195 − 100) GiB × 0.12, if the 100 GB Always Free transfer applies to internet egress (wording ambiguous), else ≈US$23.40 | DL |
 | 25 | Bulk research bucket | GCS `ectwin-commons-prod-bulk`, **Requester Pays** | P2 | `us-central1` | — | Storage only (requester pays egress/ops) | DL |
 | 26 | Listings | Analytics Hub exchange `ectwin_exchange`, listings `ectwin_commons_v1`, `ectwin_commons_nc_v1` | P2 | `US` | — | Publisher pays storage only | DL |
 | 27 | Commons event bus | Pub/Sub topics `commons-product-ready-v1`, `official-alerts-v1`, `ops-events` (+ inbound `tenant-observations-v1` for opt-in sharing, §4.6) | P2 | Global | — | First 10 GiB/month free, then US$40/TiB ([pricing](https://cloud.google.com/pubsub/pricing)) | DL |
@@ -467,7 +467,7 @@ Buckets are split by **access class** (IAM, public access and Requester Pays are
 |---|---|---|---|---|
 | `ectwin-commons-prod-raw` | Commons / `us-central1` | Private; writers = ingest SAs; versioning + soft delete | `raw/<source>/<dataset>/ingest_date=YYYY-MM-DD/<fetched_at_utc>_<sha8>.<ext>` + `.meta.json` | Standard → Nearline at 90 days → Coldline at 365 days; never deleted |
 | `ectwin-commons-prod-curated` | Commons / `us-central1` | Private; readers = Commons jobs | `curated/<domain>/<dataset>/v<schema>/<partition>/part-*.parquet`, `curated/zarr/<product>/<init>.zarr` | Keep 400 days for forecasts, forever for exposure/hindcast |
-| `ectwin-commons-prod-public` | Commons / `us-central1` | Static layers only, public-read (`allUsers` objectViewer); uniform bucket-level access; CORS for app origins | `tiles/static/<layer>/v<ver>/<layer>.pmtiles`, `cog/<layer>/v<ver>/*.tif` | None (versioned paths) |
+| `ectwin-commons-prod-public` | Commons / `us-central1` | Static layers only (`tiles/static/`, `cog/`); private (public access prevention enforced; the bucket name is historical); uniform bucket-level access; broker `objectViewer`; served only by 60-min V4 signed URLs, like `-products` (FR-001); CORS for app origins | `tiles/static/<layer>/v<ver>/<layer>.pmtiles`, `cog/<layer>/v<ver>/*.tif` | None (versioned paths) |
 | `ectwin-commons-prod-products` (default per [10 §5.3](./10-setup-and-deployment.md); final decision M1.2) | Commons / `us-central1` | Private; uniform bucket-level access; broker `objectViewer`; served only by 60-min V4 signed URLs; CORS for app origins | `tiles/forecast/<product>/<init>/<product>.pmtiles`, `tiles/offline/canton=<dpa4>/<date>.pmtiles`, `national/latest/*.json`, `national/<init>/*.json`, `bulletins/<date>/canton=<dpa4>.pdf`, `cards/<date>/canton=<dpa4>.png` | Forecast tiles and JSON 30 days; bulletins (canton PDFs) 400 days |
 | `ectwin-commons-prod-bulk` | Commons / `us-central1` | **Requester Pays**; `allAuthenticatedUsers` read on selected prefixes **(to confirm policy)** | `curated/` mirror of publishable GeoParquet/COG/Zarr, `hindcast/`, `sfincs-library/<site>/<scenario_id>/` | As curated |
 | `ectwin-commons-prod-scratch` | Commons / `us-central1` | Private | `scratch/<job>/<run_key>/…` | Delete at 7 days |
@@ -475,9 +475,9 @@ Buckets are split by **access class** (IAM, public access and Requester Pays are
 | `ectwin-commons-prod-raw-scl` | Commons / `southamerica-west1` | Private; writers = `.gob.ec` ingest SAs; Standard class | Fallback raw target for official-alert captures when the `us-central1` raw bucket is unreachable; same layout as `raw/`, sidecar `dr=true` ([11 §0](./11-operations-runbook.md)) | Reconciled into `raw/` after recovery **(lifecycle to confirm)** |
 | `ectwin-platform-prod-backup` | Platform / `southamerica-west1` | Private; SRE only; versioned | `registry/<YYYYMMDD>/…` daily Firestore registry exports (§11.4) | **To confirm** with [11](./11-operations-runbook.md) |
 | `ectwin-platform-prod-web` (only if the GCS + Cloud CDN alternative to Firebase Hosting is used) | Platform / `us-central1` | Public (app shell) | `/`, `/assets/<hash>.*`, `/stac/catalog.json` | Immutable hashed assets |
-| `gs://<TENANT_PROJECT>-ectwin` | Tenant / `us-central1` | Private; `ectwin-runner` objectAdmin; uniform bucket-level access | `raw/uploads/<uid_hash>/<upload_id>/…` (AOI files, own station data), `curated/<dataset>/…`, `tiles/<product>/<init>/…pmtiles`, `runs/<run_key>/…`, `reports/<yyyy>/<report_id>.pdf`, `evidence/<pack_id>/…`, `exports/<export_id>/…`, `catalog/` (tenant STAC), `scenarios/<scenario_id>/{ic,out}/…` (WN2 scenario runs, T3; [06](./06-forecast-model-stack.md), [07](./07-impact-modules-and-triggers.md)), `scratch/` | `scratch/` 7 days; `runs/` → Nearline at 90 days; soft delete 7 days |
+| `gs://<TENANT_PROJECT>-ectwin` | Tenant / `us-central1` | Private; `ectwin-runner` objectAdmin; uniform bucket-level access | `raw/uploads/<uid_hash>/<upload_id>/…` (AOI files, own station data), `curated/<dataset>/…`, `tiles/<product>/<init>/…pmtiles`, `runs/<run_key>/…`, `reports/<yyyy>/<report_id>.pdf`, `evidence/<pack_id>/…`, `exports/<export_id>/…`, `catalog/` (tenant STAC), `scenarios/<scenario_id>/{ic,out}/…` (WN2 scenario runs, T3; [06](./06-forecast-model-stack.md), [07](./07-impact-modules-and-triggers.md)), `models/<modelId>/…` (custom-model artefacts and weights, T3, Phase 2–3; config in tenant Firestore `models/{modelId}`, [02 FR-078](./02-users-requirements-ux.md)), `scratch/` | `scratch/` 7 days; `runs/` → Nearline at 90 days; soft delete 7 days |
 
-Naming rules: lowercase, `key=value` Hive-style partitions, UTC timestamps in `YYYYMMDDTHHMMZ`, DPA codes zero-padded, schema version in path. Forecast-derived objects (tiles, national JSON, bulletins, cards) go in the separate private bucket `ectwin-commons-prod-products` by default, so that every bucket keeps uniform bucket-level access ([10 §5.3](./10-setup-and-deployment.md)); the alternative of mixing them into `ectwin-commons-prod-public` would need fine-grained (per-object) ACLs. Final confirmation at M1.2. Storage prices at `us-central1`: Standard US$0.020, Nearline US$0.010, Coldline US$0.004, Archive US$0.0012 per GiB-month; retrieval US$0.01/0.02/0.05 per GiB for Nearline/Coldline/Archive ([storage pricing](https://cloud.google.com/storage/pricing)). Commons bucket Terraform:
+Naming rules: lowercase, `key=value` Hive-style partitions, UTC timestamps in `YYYYMMDDTHHMMZ`, DPA codes zero-padded, schema version in path. Forecast-derived objects (tiles, national JSON, bulletins, cards) go in the separate private bucket `ectwin-commons-prod-products` by default, so that every bucket keeps uniform bucket-level access ([10 §5.3](./10-setup-and-deployment.md)); both buckets are private, so M1.2 only decides whether to merge them. Final confirmation at M1.2. Storage prices at `us-central1`: Standard US$0.020, Nearline US$0.010, Coldline US$0.004, Archive US$0.0012 per GiB-month; retrieval US$0.01/0.02/0.05 per GiB for Nearline/Coldline/Archive ([storage pricing](https://cloud.google.com/storage/pricing)). Commons bucket Terraform:
 
 ```hcl
 resource "google_storage_bucket" "raw" {
@@ -866,6 +866,7 @@ The registry is deliberately small (NFR-013, whose field list gains the coarse m
 | `tenants/{tenantId}` | `tenant_project_id`, `project_number`, `runner_sa_email`, `display_name`, `org_type` (`gad`/`ministerio`/`privado`/`academia`/`ong`), `licence_profile` (`commercial`/`noncommercial`), `tier` (`T1`–`T4`), `region_profile` (`scl`/`gru`/`us`), `connection_path` (`A`–`D`), `status` (`pending`/`verifying`/`active`/`degraded`/`disconnected`/`offboarded`), `last_preflight` (map of check → result, time), `connect_code_sha256`, `connect_code_expires_at` and `connect_uid` (while `status=pending`), `sso_idp`, `created_at`, `updated_at` | `tenantId` is a random 12-char id, never the project id |
 | `memberships/{tenantId}_{uid}` | `tenant_id`, `uid`, `email`, `role` (`owner`/`admin`/`analyst`/`reader`), `status` (`invited`/`active`/`removed`), `invited_by`, `created_at` | Links a person to a tenant; `role` is **authoritative for access control** ([04 §3.4](./04-identity-tenancy-byo-gcp.md)) and mirrored in tenant `members/{uid}`; `ectwin-sync` reconciles nightly and the broker applies the lower rank on mismatch (`role_drift` audit event) |
 | `invites/{inviteId}` | `tenant_id`, `email_hash`, `role`, `token_sha256`, `expires_at` (7 days), `created_by` | Deleted on accept or expiry (FR-014) |
+| `accounts/{uid}` | `tou_version`, `privacy_version`, `accepted_at` | ToU/privacy acceptance, written once per account at first run ([13](./13-governance-legal-risk.md) L-14, PA-01); deleted with the account (`DELETE /v1/me`) or after 24 months without sign-in (13 §2.10) |
 | `wif_issuers/{tenantId}` (Phase 2) | `issuer_url`, `kid`, `audience`, `created_at` | Path C only |
 
 ### 5.6 Firestore – tenant (`<TENANT_PROJECT>`, `(default)`, `southamerica-west1` by default)
@@ -939,6 +940,7 @@ Auth column: **ID** = valid Identity Platform ID token; **T** = active membershi
 | GET | `/v1/national/exposure?dpa=` | Exposure counts | ID |
 | GET | `/v1/national/bulletins/{dpa4}/latest` | 302 to a signed URL of the canton PDF or PNG card | ID |
 | GET | `/v1/tiles/{product}/{init}` | Returns a 60-min signed URL for a forecast PMTiles archive | ID |
+| GET | `/v1/tiles/static/{layer}/{ver}` | Returns a 60-min signed URL for a static PMTiles/COG layer (FR-001) | ID |
 | GET | `/v1/layers` | Layer registry with licence, attribution and commercial flag | ID |
 | POST | `/v1/tenants` | Start "Conectar proyecto"; returns bootstrap parameters and Cloud Shell link | ID + MFA |
 | POST | `/v1/tenants/{tid}:connect` | Paste one-time code; broker mints a token and runs preflight (FR-009) | ID + MFA + Owner |
@@ -1046,6 +1048,8 @@ The WeatherNext line follows the terms of use: anything shared carries the notic
 | `bulletins-canton` | `0 11 * * *` (06:00 ECT, FR-044; PDFs ready ≤06:30 ECT) | `us-central1` | `bulletins/`, `cards/` | `date\|dpa4\|template_version` |
 | `ingest-seasonal` (SEAS5, GloFAS seasonal, NMME, C3S on the 13th at 12 UTC **(unverified)**, CFSv2) | `0 14 5-16 * *` (monthly polling window: SEAS5 ≈5th, GloFAS seasonal 6–10, NMME ≈8–12, C3S 13th with retries to the 16th; each source is skipped once its issue is stored) and `0 9 * * *` (CFSv2 daily) | `us-central1` | `seasonal_canton` | `system\|issue_date` |
 | `verification-weekly` | `0 6 * * 1` | `us-central1` | `verification_scores` | `model\|period\|metric_set_version` |
+| `verification-daily` (N1+ posture only) | `30 6 * * *` | `us-central1` | `verification_scores` (provisional), confidence inputs | `model\|day\|metric_set_version` |
+| `verification-monthly` | `0 6 25 * *` | `us-central1` | `verification_scores` (`score_status='final'`) | `model\|month\|metric_set_version` |
 | `jev-triage-national` | Pub/Sub on new SITREP / ECU 911 batch | `us-central1` | typed records (Commons) | request hash |
 | `raw-dr-copy` | `0 5 * * *` | Storage Transfer **(pricing to confirm)** | `archive-scl` mirror | object generation |
 
@@ -1228,10 +1232,10 @@ A `c3d-highcpu-16` has 16 vCPU and 32 GB; the task asks for slightly less than t
 
 | Layer | Format | Source | Access |
 |---|---|---|---|
-| Basemap (OSM/Overture), DPA boundaries, hydrography | PMTiles vector | `tiles/static/…` | Public |
-| Exposure (buildings, schools, health, roads) | PMTiles vector, H3 aggregates at low zoom | `tiles/static/…` | Public (licence metadata attached) |
+| Basemap (OSM/Overture), DPA boundaries, hydrography | PMTiles vector | `tiles/static/…` | 60-min signed URL via `/v1/tiles/static/…` (FR-001) |
+| Exposure (buildings, schools, health, roads) | PMTiles vector, H3 aggregates at low zoom | `tiles/static/…` | 60-min signed URL via `/v1/tiles/static/…` (FR-001); licence metadata attached |
 | Parish probabilities, *nivel de riesgo* | PMTiles vector per `init_time` | `tiles/forecast/…` | 60-min signed URL via `/v1/tiles/…` |
-| Inundation history, GloFAS hazard, DEM hillshade | COG / raster PMTiles | `cog/…` | Public or signed per licence |
+| Inundation history, GloFAS hazard, DEM hillshade | COG / raster PMTiles | `cog/…` | 60-min signed URL via `/v1/tiles/static/…` (FR-001); nc layers only for licence profiles that allow them |
 | Tenant AOI results | PMTiles in tenant bucket | `gs://<TENANT_PROJECT>-ectwin/tiles/…` | Signed URL via runner `signBlob` |
 | Offline pack per canton | Small PMTiles (≤5 MB) | `tiles/offline/canton=<dpa4>/…` | Signed URL, cached by service worker |
 
@@ -1371,7 +1375,7 @@ ADR-01 to ADR-20 mirror spine decisions D1–D20; ADR-21 onwards are architectur
 | ADR-25 | Cross-plane eventing | Commons Pub/Sub topics; tenant-owned subscriptions | Commons pushing into tenants (would need credentials) | Tenants pay delivery; onboarding grants subscriber role |
 | ADR-26 | Notifications need user contact data | Notifier is stateless; reads device/email from tenant at send time | Central contact store | No personal data central; one extra tenant read per send |
 | ADR-27 | Rate limiting without a load balancer at pilot | In-process limiter + tenant-side daily counters; Cloud Armor with CDN later | API Gateway or LB from day 1 (+≈US$18/month) | Limits approximate at pilot; revisit at CDN switch |
-| ADR-28 | Serving forecast tiles to signed-in users only | Private objects + 60-min signed URLs; static layers public | Proxy tiles through Cloud Run (US$0.19/GiB egress) | Signed URL refresh logic in client |
+| ADR-28 | Serving tiles to signed-in users only | Private objects + 60-min signed URLs for forecast and static layers; only the app shell is public (FR-001) | Proxy tiles through Cloud Run (US$0.19/GiB egress) | Signed URL refresh logic in client |
 | ADR-29 (Proposed) | WN3 accumulations need members | WN2 members (BigQuery) for Phase 1; WN3 full members from Requester-Pays Zarr after a cost spike | Quantile arithmetic on WN3 statistics (statistically wrong for sums) | Phase 1 accumulations at 0.25°; 0.1° in Phase 2 if the spike passes |
 
 ---
