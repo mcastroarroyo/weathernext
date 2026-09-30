@@ -18,3 +18,10 @@ node_modules/
 # OS / editors
 .DS_Store
 *.swp
+
+# Python packaging
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
