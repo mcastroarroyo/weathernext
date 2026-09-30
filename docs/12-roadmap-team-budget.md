@@ -129,13 +129,15 @@ gantt
 | AR-02 | WN2 on-demand runs on Agent Platform (allowlist) | Commons (Phase 3 engine) | Allowlist request; GPU quota starts at 0 ([11 §3.7](./11-operations-runbook.md)) | (unverified) | Phase 3 item; can slip | FL |
 | AR-03 | Google Flood Forecasting API | `ectwin-commons-prod` project ID | [Waitlist form](http://sites.research.google/gr/floodforecasting/api-waitlist/), then reply with the project ID | Possibly months | GloFAS (EWDS), GEOGloWS-INAMHI, GRRR baseline | DL |
 | AR-04 | Earth Engine registration; **Partner tier** application (100,000 EECU-h/month) | Commons and platform projects | Partner-tier application (100,000 EECU-h/month) filed on day 1 ([tiers](https://raw.githubusercontent.com/gvillarroel/gcp-radar/main/data/step-04/current/products/earth/corpus/site/site-docs-root/pages/developers.google.com_earth-engine_guides_noncommercial_tiers.md)); `ectwin-commons-prod` operational production registered **Commercial – Limited** (US$0.40/EECU-h, [pricing](https://cloud.google.com/earth-engine/pricing); budgeted in §5.2, line C4) unless Google confirms in writing that the Partner tier covers it ([13 §3.4](./13-governance-legal-risk.md), LP-07) | Several weeks (Partner decision) | Commercial – Limited is the working basis until then | FL |
-| AR-05 | TypeSafe Jev key; enquiry about enterprise ZDR and higher limits | Commons | [console.typesafe.ai](https://console.typesafe.ai/) | Days | Gemini adapter or open-weight backend (D17) | AI |
+| AR-05 | TypeSafe Jev key; enquiry about enterprise ZDR and higher limits. **Status 2026-10-01: access held (miguel@wursta.com); key storage pending** | Commons | [console.typesafe.ai](https://console.typesafe.ai/) | Days | Gemini adapter or open-weight backend (D17) | AI |
 | AR-06 | Copernicus CDS and EWDS accounts; accept dataset licences (C3S seasonal, GloFAS) | Commons | CDS profile token ([seasonal dataset](https://cds.climate.copernicus.eu/datasets/seasonal-monthly-single-levels)) | Same day (estimate) | — | DL |
 | AR-07 | Copernicus Marine account (sea-level `zos`, waves) | Commons | Account registration | Same day (estimate) | EE copies of CMEMS assets ([05](./05-data-catalog.md)) | DL |
 | AR-08 | NASA Earthdata login (IMERG, LHASA inputs) | Commons | Account registration | Same day (estimate) | EE `NASA/GPM_L3/IMERG_V07` | DL |
 | AR-09 | OAuth sensitive-scope verification for path B | Platform | Google Auth Platform console; submit **2026-10-05** (IT-M2) | Days to weeks (unverified) | Path A covers all pilots | PL, DPO |
 | AR-10 | Google Cloud credits: research credits for university partners (up to US$5,000) and startup or nonprofit programmes where eligible | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup); nonprofit route (unverified) | Weeks | None needed: no credits are assumed (B10, §5.1); credits obtained reduce lines C1–C8 (§5.2) | PM |
 | AR-11 | Quota increases ([11 §3.7](./11-operations-runbook.md)) | Commons, platform | Console requests | Days | Posture-based throttling | DL, FL, SRE |
+
+Filing pack and live status (2026-10-01): [outreach/access-requests/README.md](../outreach/access-requests/README.md).
 
 **Deliverables**
 
