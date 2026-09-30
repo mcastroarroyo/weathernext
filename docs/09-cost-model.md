@@ -148,7 +148,7 @@ Region is `us-central1` or the `US` multi-region unless stated. These prices are
 | TypeSafe Jev `jev-1.13.0` | Input tokens (output free) | US$0.042 per 1M | None | S [snapshot](https://github.com/aaddrick/building-with-typesafe-jev) |
 | TypeSafe Jev | Per decision (benchmark mix) | US$0.0399 per 1,000 decisions, vs US$0.2638 for Gemini 3.1 Flash-Lite | — | S [JevBench](https://github.com/fstandhartinger/jevbench/blob/main/RESULTS-v1.2.md) |
 | Maps Platform | 2D Map Tiles / Photorealistic 3D Tiles root requests | US$0.60 per 1,000 / US$6.00 per 1,000 | 100,000 / 1,000 per month | S ([2D](https://github.com/Caldis/voyage/blob/main/research/IMAGERY.md), [3D](https://github.com/sei-studio/sei/blob/main/.planning/research/v0.4-varied-behavior-and-minigames.md)) |
-| Maps Weather API | Calls | US$0.15 per 1,000 (not used as a data source: its policies forbid it) | 10,000/month | S |
+| Maps Weather API | Calls | US$0.15 per 1,000 (not used: its policies prohibit using it to build a weather model or weather app, and restrict caching) | 10,000/month | S |
 | Cesium ion | Paid plan needed for government projects | From US$149/month (not used; self-hosted terrain) | — | S |
 | WeatherNext data | BigQuery, EE, GCS access | No fee today; fees possible with one month's notice | — | V [terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf) |
 | Flood Forecasting API | Calls | Believed free (**unverified**) | 200 requests/min per project | U |
@@ -344,7 +344,7 @@ The spine envelope of **US$100–300/month** holds for the Commons **excluding B
 | Firestore `(default)` | 20 users × 2 sessions × 60 reads = 2,400/day < 50k free | 0.00 |
 | Bucket `gs://<TENANT_PROJECT>-ectwin`, 2 GiB | Inside 5 GB Always Free (list 2 × 0.02 = 0.04) | 0.00 |
 | `ectwin-aoi-pipeline`, 1 vCPU/2 GiB × 5 min/day | 9,000 vCPU-s and 18,000 GiB-s, under 240k/450k free (list US$0.20) | 0.00 |
-| Broker calls billed to tenant (BigQuery via runner) | Commons linked-dataset queries, ≈12.6 GB/month < 1 TiB free (list US$0.08) | 0.00 |
+| Broker calls billed to tenant (BigQuery via runner) | Commons linked-dataset queries, sized like 2 inits × 3 columns × 30 × 0.07 GB = 12.6 GB/month < 1 TiB free (list US$0.08) | 0.00 |
 | Scheduler | 1–3 jobs ≤ 3 free | 0.00 |
 | Earth Engine, 5 EECU-h | Community tier US$0; commercial 5 × 0.40 | 0–2.00 |
 | Gemini 3.1 Flash-Lite (local bulletin variants) | 0.6M × 0.25/1M + 0.03M × 1.50/1M | 0.20 |
@@ -372,7 +372,7 @@ The spine envelope of **US$100–300/month** holds for the Commons **excluding B
 | Item | Arithmetic | Normal US$ | Peak US$ |
 |---|---|---|---|
 | WN3/WN2 member processing (Requester-Pays Zarr, same-region Spot) | 60 inits × 1 h × `c2d-standard-16` Spot 0.409 | 24.54 | 24.54 |
-| 2D flood modelling (SFINCS/LISFLOOD-FP) | 260 GPU-h × 0.424 normal; 900 GPU-h peak | 110.24 | 381.60 |
+| 2D flood modelling (LISFLOOD-FP GPU solvers on `g2-standard-4` Spot; SFINCS runs on CPU because its GPU build is not usable, see L14) | 260 GPU-h × 0.424 normal; 900 GPU-h × 0.424 peak | 110.24 | 381.60 |
 | Earth Engine, 500 EECU-h | Limited 500 × 0.40 (Partner: 0) | 200.00 | 200.00 |
 | BigQuery | (5 − 1) TiB × 6.25 = 25.00; storage (500 − 10) × 0.02 = 9.80 | 34.80 | 34.80 |
 | GCS | 2,048 GiB Standard × 0.02 + 10,240 GiB Coldline × 0.004 | 81.92 | 81.92 |
@@ -429,7 +429,7 @@ The same 30 projects on separate billing accounts would cost US$354.35 (US$103.2
 
 **Scenario totals.**
 - All tenants commercial: BYO **US$2,113.54**, of which 20 × 2.20 + 8 × 59.87 + 2 × 795.29. Centralised **US$2,416.07** (**+14%**).
-- Half of the Light and Standard tenants noncommercial (universities, NGOs): BYO **US$1,949.54**; centralised still US$2,416.07 (**+24%**).
+- Half of the Light and Standard tenants noncommercial (universities, NGOs): BYO 2,113.54 − 10 × 2.00 − 4 × 36.00 (EE only) = **US$1,949.54**; centralised still US$2,416.07 (**+24%**).
 
 **Costs outside the cloud bill that only the centralised model carries:**
 - **IVA 15%** on the operator's re-invoicing to tenants, ≈US$362/month on US$2,416 **(to confirm with LC)**.
@@ -445,12 +445,12 @@ The same 30 projects on separate billing accounts would cost US$354.35 (US$103.2
 | Payer / block | Pilot (Nov 2026) US$ | Season N1 US$ | Peak N2 US$ | Basis |
 |---|---|---|---|---|
 | Operator: P1 strict | 5–25 | 23–43 | 75–95 (with warm instance) | §4.2.1 |
-| Sponsor: Commons excl. D | 56–81 | 152–247 | 260–415 | §4.3.2 |
+| Sponsor: Commons excl. D | 56–81 | 150–233 | 256–414 | §4.3.2 |
 | Sponsor: Block D delivery | 16 | 122 | 188 | §4.2.3 |
-| Sponsor: T4 pool (25 T1 + 5 T2) | ≈70 (5 T1 in P1) | 216–446 | 216–446 | §4.7; [12 C7](./12-roadmap-team-budget.md) |
+| Sponsor: T4 pool (25 T1 + 5 T2) | ≈12–70 (5 T1 in Phase 1: itemised ≈12 on one billing account, mostly EE 25 × 0.40; budget 5 × 14 = 70) | 216–446 | 216–446 | §4.7; [12 C7](./12-roadmap-team-budget.md) |
 | Sponsor: SNGR T3 until its own procurement ([12 C8](./12-roadmap-team-budget.md)) | — | 541–795 | 1,067–1,264 | §4.6 |
-| Tenants (own accounts): 20 T1 + 8 T2 + 2 T3, commercial | ≈126 (3 T1 + 2 T2) | 2,114 | 2,769–3,051 | §4.4–4.6 |
-| **Programme-paid cloud (operator + sponsor)** | **≈147–192** | **≈1,054–1,653** | **≈1,806–2,408** | Sum of first five rows |
+| Tenants (own accounts): 20 T1 + 8 T2 + 2 T3, commercial | ≈126 (3 T1 + 2 T2) | 2,114 | 2,656–3,051 (44 + 478.96 + 2 × 1,066.65 to 2 × 1,263.96) | §4.4–4.6 |
+| **Programme-paid cloud (operator + sponsor)** | **≈89–192** | **≈1,052–1,639** | **≈1,802–2,407** | Sum of first five rows |
 
 ---
 
@@ -462,23 +462,23 @@ The same 30 projects on separate billing accounts would cost US$354.35 (US$103.2
 | B2 | Operator QA tenants (2 × T2 and heavy-flow tests) | [12 C6](./12-roadmap-team-budget.md): 90 + 210 | 300 | P0–P1, PL |
 | B3 | WN3 archive backfill 2026-01-01 → 2026-11-15 | 319 days × 4 inits × 0.7 GB = 893 GB ≈ 0.87 TiB | see B5 | P1, FL |
 | B4 | WN2 hindcast extract, 00Z only, 2022→ ([06](./06-forecast-model-stack.md)) | ≈340 GB scan; ≈32 GB stored (US$0.64/month ongoing) | see B5 | P1, FL |
-| B5 | Scan cost of B3 + B4 | 1.20 TiB spread over Nov–Dec with ≈0.45–0.56 TiB/month normal use ≈ US$1; all in one month (0.43 + 1.20 − 1) × 6.25 = US$3.94; full 4-init WN2 backfill (1.4 TB) adds ≈1.04 TiB × 6.25 = US$6.50 | 0–10.5 | P1–P2, FL |
+| B5 | Scan cost of B3 + B4 | 893 + 340 GB = 1,233 GB ≈ 1.20 TiB. Spread over Nov–Dec on top of ≈0.47–0.60 TiB/month normal use: ≈US$1–2. All in one month: (0.47 + 1.20 − 1) × 6.25 = US$4.16. The one-column 4-init WN2 backfill of [06](./06-forecast-model-stack.md) (≈4 × 340 = 1,360 GB) adds (1,360 − 340) GB ≈ 1.0 TiB × 6.25 = US$6.23. The two-column variant in [03 §7.5](./03-architecture.md) (≈2.5 TiB, ≈US$16 if billed in one month) should be computed from the extract or spread over three months | 0–10.4 | P1–P2, FL |
 | B6 | Backfill compute on Delayed Jobs | 2,976 tasks × 60 s × (2 × 0.0000126 + 4 × 0.0000014) | 5.50 | P1, DL |
 | B7 | GRRR subset (≈279 MB), inundation history (11.3 MB), Flood API backfill (<1,000 requests) | ≤0.3 GB × 0.12 worst case | ≈0 | P0, DL |
 | B8 | Exposure and basemap builds (M1 footprints, M9 roads, M10 grid on EE; PMTiles builds) | EE US$8–16 + 0–10 + 2–8; `c2d-standard-16` Spot 10 h × 0.409 = 4.09 | 14–38 | P1, DL |
-| B9 | Jev build and Spanish evaluation set ([08 §7.2](./08-ai-decision-layer-jev.md)) | Shadow runs and tuning | 50–90 | P1, AI |
+| B9 | Jev build workloads B1–B4 and Spanish evaluation set ([08 §3.7](./08-ai-decision-layer-jev.md)) | Three tuning passes on Jev ≈US$46 plus Gemini escalations ≈US$20–40; lower end one pass | 35–90 | P1, AI |
 | B10 | Verification bootstrap (WN2 2022→ vs CHIRPS v3 and INAMHI) | ≈0.3 TiB scan + 20 EECU-h | 0–8 | P1, FL |
 | B11 | Load test at 10× (NFR-010) | 5M requests: (5M − 2M) × 0.40/1M + (250k − 180k) × 0.000024 | ≈3 | P1, SRE |
 | B12 | CI/CD builds | Cloud Build within 2,500 free minutes | 0 | PL |
-| | **Phase 0–1 subtotal** | | **≈433–515** | |
+| | **Phase 0–1 subtotal** | 60 + 300 + (0–10.4) + 5.50 + 0 + (14–38) + (35–90) + (0–8) + 3 + 0 | **≈418–515** | |
 | B13 | SFINCS scenario library, 4 sites × 280 runs ([07 M3](./07-impact-modules-and-triggers.md)) | 1,120 runs × 10–60 min × 0.160896 $/h × 2 (calibration reruns) | 60–360 | P2, HYD |
 | B14 | LHASA, drought and dengue set-up | Minutes of CPU | 0–5 | P2, IM |
 | B15 | OpenHydroNet base checkpoint and Ecuador fine-tune | 10–50 L4-h (US$4–21) + 1–4 L4-h (<US$2) | 4–23 | P3, HML |
 | B16 | WN2 perturbed-SST campaign, 50 runs | TPU: 50 × 2.3–4.6 = 115–230. Vertex H100: 50 × 10.5–20.9 = 525–1,045 plus machine part **(unverified)** | 115–230 | P3, FL |
 | B17 | CorrDiff Ecuador training | ≈US$2k–9k on Spot A100 (estimate) | **Deferred** | — |
-| | **Total one-time cloud (TPU route)** | | **≈US$0.6k–1.1k** | |
+| | **Total one-time cloud (TPU route)** | 418–515 + B13–B16 (179–618) | **≈US$0.6k–1.1k** | |
 
-This fits [12 C5](./12-roadmap-team-budget.md) (US$700 full, US$200 minimum) together with C2 and C6.
+B13–B16 (≈US$179–618) fit [12 C5](./12-roadmap-team-budget.md) (US$700 full, US$200 minimum). B1 and B2 are lines C2 and C6; B3–B11 (≈US$58–155) sit in the P1 Commons line C3.
 
 ---
 
@@ -505,19 +505,19 @@ pie title Twelve-month cash budget, full variant
 ```
 
 - **Minimum variant:** ≈US$1,022,922.
-- **Steady state (Phase 4):** ≈US$0.66M/year for a sustained service, ≈US$0.28M/year to keep the lights on.
-- **Tenant-paid costs** are outside the programme budget: ≤US$3,180/month for 30 tenants at peak ([12 §5.6](./12-roadmap-team-budget.md)); ≈US$2,769–3,051 by §4.9.
+- **Steady state (Phase 4):** ≈US$0.66M/year for a sustained service, ≈US$0.28M/year to keep the lights on, at pilot-scale cloud anchors. At national scale (§4.2.2 control plane ≈US$151 plus Block D via CDN ≈US$580) [12 §10.4](./12-roadmap-team-budget.md) raises these to ≈US$0.67M and ≈US$0.29M.
+- **Tenant-paid costs** are outside the programme budget: ≤US$3,180/month for 30 tenants at peak ([12 §5.6](./12-roadmap-team-budget.md)); ≈US$2,656–3,051 by §4.9.
 
 **Reconciliation of this document with the cloud lines of [12 §5.2](./12-roadmap-team-budget.md):**
 
 | 12 line | Budget US$/month | This document | Status |
 |---|---|---|---|
-| C1 control plane (45; 145 in P2) | 45 / 145 | P1 strict 5–43 + Block D 16–188 + warm ≤52 → P2 average (2 N1 + 3 N2 months) ≈US$215–235 | **Under by ≈US$70–90/month in P2** (≈US$350–450 over P2). Raise C1 P2 to ≈US$235, or move Block D to C3/C4 |
+| C1 control plane (45; 145 in P2) | 45 / 145 | P1 strict ≈5–43 (N0/N1), ≈75–95 in N2 with the warm broker → P2 average (2 N1 + 3 N2 months) ≈US$54–74 | Consistent. Block D is budgeted under C3/C4, not C1 ([12 §5.2](./12-roadmap-team-budget.md)) |
 | C2 dev/stg | 30 | B1 | Consistent |
-| C3 Commons base | 300 | 56–81 pilot; 152–247 season | Consistent |
-| C4 Commons peak extras | 300 (P2) | Peak 260–415 ≤ C3 + C4 = 600 | Consistent |
+| C3 Commons base | 300 | Commons invoice incl. Block D ≈72–97 at pilot; P1 one-offs B3–B11 ≈58–155 | Consistent in P0, P1 and P3. An N1 month (≈273–356 incl. Block D) needs C4 in P2 |
+| C4 Commons peak extras | 300 (P2) | Commons invoice incl. Block D ≈444–602 in N2; P2 average (2 N1 + 3 N2) ≈376–504 ≤ C3 + C4 = 600 | Consistent; a full N2 month at the upper bound sits at the US$600 envelope |
 | C5 heavy campaigns | 700 over P2–P3 | B13–B16: ≈US$179–618 | Consistent |
-| C6 test tenants | 150–250 | 2 × T2 ≈ 120 + heavy tests | Consistent |
+| C6 test tenants | 150–250 | 2 × T2 at ≤59.87 ≈ 120 + heavy-flow tests | Consistent |
 | C7 T4 pool | 650 | ≈216–446 (§4.7) | Headroom ≈US$200 |
 | C8 SNGR T3 | 800 / 1,210 peak | 541–795 / 1,067–1,264 | Up to ≈US$54 over in a 2027 peak month; covered by contingency or by copilot routing (L17) |
 
@@ -555,16 +555,16 @@ The operator never resells GCP (LP-10). If the sponsor contracts the operator as
 
 The multipliers per US$100 of list-price usage come from the gap-brief arithmetic. The reseller margin *m* is an **assumption** of 0–10%.
 
-| Payer type | Multiplier | T1 Light 14.20 | T2 noncommercial 19.65 | T2 commercial 59.87 | T3 normal 795.29 | T3 peak 1,207.71 | Commons season 247.30 |
+| Payer type | Multiplier | T1 Light 14.20 | T2 noncommercial 19.65 | T2 commercial 59.87 | T3 normal 795.29 | T3 peak 1,207.71 | Commons season (excl. D) 233.30 |
 |---|---|---|---|---|---|---|---|
-| (a) Company, card, IVA not creditable | 1.175–1.20 | 16.68–17.04 | 23.09–23.58 | 70.35–71.84 | 934.47–954.35 | 1,419.06–1,449.25 | 290.58–296.76 |
-| (b) Company, IVA creditable or exporter refund | 1.025–1.05 | 14.55–14.91 | 20.14–20.63 | 61.37–62.86 | 815.17–835.05 | 1,237.90–1,268.10 | 253.48–259.67 |
-| (c) Public entity via reseller | 1.15 × (1 + m) = 1.15–1.265 | 16.33–17.96 | 22.60–24.86 | 68.85–75.74 | 914.58–1,006.04 | 1,388.87–1,527.75 | 284.39–312.83 |
-| (c') Same, IVA refunded | 1 + m = 1.00–1.10 | 14.20–15.62 | 19.65–21.61 | 59.87–65.86 | 795.29–874.82 | 1,207.71–1,328.48 | 247.30–272.03 |
+| (a) Company, card, IVA not creditable | 1.175–1.20 | 16.69–17.04 | 23.09–23.58 | 70.35–71.84 | 934.47–954.35 | 1,419.06–1,449.25 | 274.13–279.96 |
+| (b) Company, IVA creditable or exporter refund | 1.025–1.05 | 14.56–14.91 | 20.14–20.63 | 61.37–62.86 | 815.17–835.05 | 1,237.90–1,268.10 | 239.13–244.97 |
+| (c) Public entity via reseller | 1.15 × (1 + m) = 1.15–1.265 | 16.33–17.96 | 22.60–24.86 | 68.85–75.74 | 914.58–1,006.04 | 1,388.87–1,527.75 | 268.30–295.12 |
+| (c') Same, IVA refunded | 1 + m = 1.00–1.10 | 14.20–15.62 | 19.65–21.61 | 59.87–65.86 | 795.29–874.82 | 1,207.71–1,328.48 | 233.30–256.63 |
 
 **Rules for the product:**
 - The per-run confirmation shows list price "sin IVA ni ISD" (text D10 in [13 §1.4](./13-governance-legal-risk.md)).
-- The *Proyecto y costos* dashboard (FR-065) shows a tax view using the tenant's payer type from `settings/tenant`.
+- The *Proyecto y costos* dashboard (FR-065) shows a tax view using the tenant's payer type, stored as a new field `payer_type` (`company_card`, `company_iva_credit`, `public_reseller`, `public_reseller_refund`) in the tenant's `settings/tenant` document ([03 §5.6](./03-architecture.md)).
 - The programme budget applies a flat 20% uplift (B4 in [12](./12-roadmap-team-budget.md)).
 - LC delivers a written tax opinion covering IVA, ISD, withholding and public-entity exemptions by **2026-10-30** (owner DPO with LC).
 
@@ -580,15 +580,15 @@ No credits are assumed in any estimate (B10 in [12](./12-roadmap-team-budget.md)
 | BigQuery free tier | 1 TiB of queries/month per billing account | Most T1/T2 analytics (L01) | V | Built in |
 | Google Cloud research credits | Up to US$5,000 ([edu researchers](https://cloud.google.com/edu/researchers)) | University tenants (ESPOL, EPN, USFQ, UCuenca); eligibility of Ecuadorian institutions **(unverified)** | V / U | PT, 2026-10-16 |
 | Google for Startups Cloud Program | US$2,000 pre-funded; up to US$200k (US$350k AI-first) ([startup](https://cloud.google.com/startup)) | The operator's own projects, if the operator entity is eligible **(to confirm)** | V / U | PM, 2026-10-09 |
-| Earth Engine noncommercial tiers | Community 150, Contributor 1,000, Partner 100,000 EECU-h/month; Partner covers climate adaptation by government research groups; yearly re-verification | Commons EE (US$0–80/month saved); university and NGO tenants. SNGR/COE **operational** use is commercial (LP-07) | S | FL applies for Commons Partner tier on **2026-09-30** |
+| Earth Engine noncommercial tiers | Community 150, Contributor 1,000, Partner 100,000 EECU-h/month; Partner covers climate adaptation by government research groups; yearly re-verification | Commons EE: US$10–40/month on the §4.3.2 EE line, plus up to US$18–45/month of Sentinel-1 flood mapping ([07 §9](./07-impact-modules-and-triggers.md)); university and NGO tenants. SNGR/COE **operational** use is commercial (LP-07); Commons eligibility **unverified** | S | FL applies for Commons Partner tier on **2026-09-30** |
 | Google.org, nonprofit cloud credits | Unknown (page returned 404) | Commons or T4 pool | U | PM, 2026-10-16 |
-| World Bank Cat-DDO, US$200M (approved 2025-11-26) ([GFDRR](https://www.gfdrr.org/en/feature-story/building-resilience-amid-crisis-ecuadors-path-toward-stronger-safer-future)) | Contingent budget support | Programme-level; usually needs an emergency declaration **(unverified)** | V (search summary) | PM with MEF/SNGR |
-| World Bank subnational programme through BDE, US$800M; phase 1 US$200M + US$50M AECID; GAD disaster-risk management eligible ([press release](https://www.bancomundial.org/es/news/press-release/2026/09/24/world-bank-group-expands-subnational-infrastructure-finance-in-ecuador)) | Loans to GADs | GAD tenant costs (R2/R5); eligibility of software and cloud **to confirm** | V (search summary) | PT, 2026-10-30 |
-| IDB contingent loan, US$400M ([EC-X1008](https://www.iadb.org/en/project/EC-X1008)); CAF contingent line, US$200M ([CAF](https://www.caf.com/es/actualidad/noticias/caf-aprueba-usd-450-millones-para-fortalecer-la-seguridad-y-la-capacidad-de-respuesta-ante-desastres-naturales-en-ecuador/)) | Disaster response | Possibly prevention-side work **(to confirm)** | V (search summary) | PM |
-| Anticipatory-action funds (OCHA/CERF up to US$100M globally for El Niño; FAO–WFP appeal) | Humanitarian | Trigger dashboards and evidence packs used by partners, not cloud directly | V (search summary) | PT |
+| World Bank Cat-DDO, US$200M (approved 2025-11-26) ([GFDRR](https://www.gfdrr.org/en/feature-story/building-resilience-amid-crisis-ecuadors-path-toward-stronger-safer-future)) | Contingent budget support | Programme-level; usually needs an emergency declaration **(unverified)**; use for cloud costs **unverified** | S (search summary) | PM with MEF/SNGR |
+| World Bank subnational programme through BDE, US$800M; phase 1 US$200M + US$50M AECID; GAD disaster-risk management eligible ([press release](https://www.bancomundial.org/es/news/press-release/2026/09/24/world-bank-group-expands-subnational-infrastructure-finance-in-ecuador)) | Loans to GADs | GAD tenant costs (R2/R5); eligibility of software and cloud **to confirm** | S (search summary) | PT, 2026-10-30 |
+| IDB contingent loan, US$400M ([EC-X1008](https://www.iadb.org/en/project/EC-X1008)); CAF contingent line, US$200M ([CAF](https://www.caf.com/es/actualidad/noticias/caf-aprueba-usd-450-millones-para-fortalecer-la-seguridad-y-la-capacidad-de-respuesta-ante-desastres-naturales-en-ecuador/)) | Disaster prevention and response | Possibly prevention-side work **(to confirm)**; IDB loan status **(to confirm)** | S (search summary) | PM |
+| Anticipatory-action funds: OCHA/CERF up to US$100M globally for El Niño ([OCHA](https://www.unocha.org/news/ocha-prepares-act-ahead-possibly-strong-el-nino)); FAO–WFP joint appeal Jun 2026–Mar 2027 ([WFP](https://www.wfp.org/publications/el-nino-fao-wfp-joint-anticipatory-action-appeal-june-2026-march-2027)) | Humanitarian | Trigger dashboards and evidence packs used by partners, not cloud directly; any cloud funding **unverified** | S (search summary) | PT |
 | In-kind: INAMHI/SNGR secondees, CEDIA relay host | Staff, hosting | Relay (rung 2) and secondees | To confirm | PT |
 
-**Cost of losing credits.** The design never depends on credits. If the Commons Partner tier is refused, the Commons pays US$10–80/month more (§4.3.2). If research credits end, a university tenant pays its T1/T2 cost (≈US$0.20–60/month).
+**Cost of losing credits.** The design never depends on credits. If the Commons Partner tier is refused, the Commons pays ≈US$10–40/month more on its EE line (§4.3.2), and up to ≈US$85 in a peak month with Sentinel-1 flood mapping ([07 §9](./07-impact-modules-and-triggers.md)). If research credits end, a university tenant pays its T1/T2 cost (≈US$0.20–60/month).
 
 ---
 
@@ -616,7 +616,7 @@ Every resource and every BigQuery job carries these labels. Label propagation in
    - In the Cloud Billing console, enable the BigQuery export of standard and detailed usage cost into it. This is a console step; API or Terraform support is **to confirm**.
    - The table name pattern `gcp_billing_export_v1_<BILLING_ACCOUNT_ID>` is **to confirm** ([11 RB-18](./11-operations-runbook.md)).
 2. **Each tenant (optional, recommended for T2+).**
-   - The bootstrap creates dataset `billing` (US) in the tenant project. The Owner enables the export in the console with the wizard's link.
+   - The bootstrap should create dataset `billing` (US) in the tenant project (not yet in `infra/tenant-bootstrap` v0.1.0; to add). The Owner enables the export in the console with the wizard's link.
    - The runner gets `roles/bigquery.dataViewer` on `billing` only.
    - For T4, the sponsor's single export covers all sponsored projects; filter by `project.id` or `ectwin-tenant`.
 3. **Views** (field names follow the standard export schema, **to confirm**; always filter on the export's partition to keep scans small):
@@ -633,6 +633,7 @@ SELECT
   SUM(IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0))     AS credits_usd
 FROM `<TENANT_PROJECT>.billing.gcp_billing_export_v1_<BILLING_ACCOUNT_ID>`
 WHERE project.id = '<TENANT_PROJECT>'
+  -- add the export table's partition filter here as well (partition column to confirm)
   AND usage_start_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 400 DAY)
 GROUP BY day, service, sku, component;
 
@@ -677,7 +678,12 @@ resource "google_billing_budget" "commons_prod" {
     projects        = ["projects/${var.commons_project_number}"]
     calendar_period = "MONTH"
   }
-  amount { specified_amount { currency_code = "USD" units = var.posture_high ? "650" : "450" } }
+  amount {
+    specified_amount {
+      currency_code = "USD"
+      units         = var.posture_high ? "650" : "450"
+    }
+  }
   threshold_rules { threshold_percent = 0.5 }
   threshold_rules { threshold_percent = 0.9 }
   threshold_rules { threshold_percent = 1.0 }
@@ -689,12 +695,12 @@ resource "google_billing_budget" "commons_prod" {
 }
 ```
 
-`scripts/ops/posture.sh` ([11 §3.3](./11-operations-runbook.md)) sets `posture_high` through a Terraform variable when N2/N3 is declared (owner SRE).
+When N2/N3 is declared, SRE runs `scripts/ops/posture.sh` ([11 §3.3](./11-operations-runbook.md)) and also applies `infra/commons` with `-var posture_high=true` (and `false` on return to N0/N1). The script as written in 11 does not change budgets, so this is a separate step (owner SRE). [02 NFR-017](./02-users-requirements-ux.md) sets P2 ≤US$300/month for the Commons proper; the US$450/650 budgets here cover the whole Commons invoice including Block D (≈US$273–356 in N1, ≈US$444–602 in N2, §4.3.2), which [12 §5.2](./12-roadmap-team-budget.md) funds under C3/C4.
 
 ### 9.4 In-app cost dashboard (*Proyecto y costos*, FR-065)
 
 - **Route:** `GET /v1/t/{tid}/costs` for Owner and Admin ([03 §6.2](./03-architecture.md)).
-- **Refresh:** every 6 h from the billing export (which lags ≈24 h), plus live counters.
+- **Refresh:** every 6 h from the billing export (which lags actual usage; lag up to about a day, **to confirm**), plus live counters.
 - **Acceptance:** within ±5% of the Cloud Billing console after its lag.
 
 | Card (es-EC label) | Source | Computation |
@@ -806,7 +812,7 @@ def estimate(p: RunPlan, pr: dict = PRICES) -> dict:
 | KPI | Target | Source |
 |---|---|---|
 | Commons cost per forecast cycle | ≤US$0.30 (normal) | `commons_ops.pipeline_runs` + billing export |
-| BigQuery bytes per Commons cycle | ≤1 GB (M1.1) | Job labels `ectwin_cycle` |
+| BigQuery bytes per Commons cycle | ≤1 GB (M1.1, Phase 1 column set); the full cycle of L02 is ≈1.3 GB | Job labels `ectwin_cycle` |
 | P1 cost per MAU | ≤US$0.01 at pilot | Billing export ÷ Identity MAU |
 | Share of heavy compute on Spot | ≥90% | Batch labels |
 | Tenants with budget + guard active | 100% | Registry `last_preflight` |
@@ -835,29 +841,29 @@ Base values are those of §4. Each row changes one driver.
 |---|---|---|---|---|---|
 | S1 | Monthly active users | 2,000 | 20,000 → 60,000 → 100,000 | P1 Identity | 0 → 0 → 55 → **275** |
 | S2 | Tile egress | 195 GiB | 1 TiB → 5 TiB | Block D | 15.88 → 122 → 580 (CDN) |
-| S3 | WN3 bytes per column-init | 0.07 GB | 0.03 → 0.7 GB (10×, clustering not effective for polygons) | Standard tenant BigQuery; Commons BigQuery | T2: 0 → +1.66 (1.27 TiB). Commons peak: 0.35 → ≈33 (main cycles 0.89 TiB + interim runs 4.92 TiB + other 0.44 TiB ≈ 6.25 TiB) |
+| S3 | WN3 bytes per column-init | 0.07 GB | 0.03 → 0.7 GB (10×, clustering not effective for polygons) | Standard tenant BigQuery; Commons BigQuery | T2: 0 → +1.66 (1.27 TiB). Commons peak: 0.55 → ≈33 (main cycles 0.89 TiB + interim runs 4.92 TiB + other 0.44 TiB ≈ 6.25 TiB → (6.25 − 1) × 6.25) |
 | S4 | Unfiltered WeatherNext query by mistake | Blocked | 8 columns global ≈150 GB | Any tenant | Stopped by the 50 GiB `maximumBytesBilled` (≤US$0.31 per attempt) |
-| S5 | Earth Engine classification | Mixed | All noncommercial → all commercial | T2 / T3 / Commons | 0 → 36 / 0 → 200 / 0 → 40–80 |
+| S5 | Earth Engine classification | Mixed | All noncommercial → all commercial | T2 / T3 / Commons | 0 → 36 / 0 → 200 / 0 → 10–40 on the EE line, up to ≈85 with Sentinel-1 mapping ([07 §9](./07-impact-modules-and-triggers.md)) |
 | S6 | GPU-hours (Heavy 2D) | 260 | 900 (peak) → 2,000 (1997-98-class) | T3 | 110 → 382 → **848** |
-| S7 | Spot unavailable (fallback Cloud Run L4 ≈US$1.05/h) | Spot | 900 h on fallback | T3 peak | 382 → **945** |
-| S8 | Gemini 3.8 Flash price step (2027-01-01) | Intro price | ×2 | T3; Commons if escalations move to 3.8 Flash | +56.25 per T3; Commons 184 → 368 in that scenario |
+| S7 | Spot unavailable (fallback Cloud Run L4 ≈US$1.05/h incl. 4 vCPU/16 GiB) | Spot | 900 h on fallback | T3 peak | 382 → **942** |
+| S8 | Gemini 3.8 Flash price step (2027-01-01) | Intro price | ×2 | T3; escalations if moved to 3.8 Flash | +56.25 per T3. All 54,500 escalations on 3.8 Flash: 184 → 368 ([08 §7.4](./08-ai-decision-layer-jev.md)), of which Commons (34,500) 116 → 233 and tenants the rest |
 | S9 | Jev price shock | US$0.042/1M | ×10 | Commons decision layer | 90.79 → 907.9 (still below the all-LLM ≈US$1,586) |
 | S10 | GCS 100 GB free egress does not apply to internet egress | Applies | Does not apply | T2, T3, Block D | +12 each |
 | S11 | ISD | 2.5% | 0% → 5% | All foreign payments | −2.5% → +2.5% of spend |
 | S12 | Tenant count | 30 | 60 → 300 | P1 only (tenants pay their own) | +registry/broker ≈ linear with requests; Commons unchanged |
-| S13 | Cloud Run price in `southamerica-west1` | = us-central1 | ×1.4 (assumption) | Commons pollers | +≈7 |
-| S14 | Backfills compressed into one month | Spread | One month | Commons BigQuery | +3.94 (up to +10.44) |
+| S13 | Cloud Run price in `southamerica-west1` (Tier 2) | = us-central1 (Tier 1) | ×1.4 (assumption; Tier 2 rates to confirm) | Five `.gob.ec` jobs in Commons | 19.35 × 0.4 ≈ +8 |
+| S14 | Backfills compressed into one month | Spread | One month | Commons BigQuery | +4.16 (up to +10.39 with the 4-init WN2 backfill) |
 | S15 | WeatherNext starts charging | US$0 | Unknown | Commons, T2, T3 | Not quantifiable; fallback in §11 PR-01 |
 
 **Season-severity scenario for programme-paid P1 + Commons + Block D over the 5 months of Phase 2** (excluding the T4 pool and C8):
 
 | Scenario | Months | Monthly | 5-month total |
 |---|---|---|---|
-| Mild | 5 × N1 | 23–43 + 152–247 + 122 = 297–412 | **US$1,485–2,060** |
-| Moderate | 3 × N1 + 2 × N2 | N2 = 23–43 + 52 + 260–415 + 188 = 523–698 | **US$1,937–2,632** |
-| Severe (1997-98-class, 2.5 TiB delivery) | 5 × N2 with delivery ≈US$298 (CDN) | 633–808 | **US$3,165–4,040** |
+| Mild | 5 × N1 | 23–43 + 150–233 + 122 = 295–398 | **US$1,475–1,990** |
+| Moderate | 3 × N1 + 2 × N2 | N2 = 23–43 + 52 + 256–414 + 188 = 519–697 | **US$1,923–2,588** |
+| Severe (1997-98-class, 2.5 TiB delivery) | 5 × N2 with delivery ≈US$299 (CDN: 2.90 + 0.10857 × 2,560 + 18.25) | 23–43 + 52 + 256–414 + 299 = 630–808 | **US$3,150–4,040** |
 
-Even the severe case adds only ≈US$2k over the mild case: <0.2% of the programme budget. The dominant sensitivities for tenants are **GPU-hours**, **Spot availability** and **EE classification**. For the operator the dominant one is **MAU above 50,000**.
+Even the severe case adds only ≈US$1.7–2.1k over the mild case: <0.2% of the ≈US$1.6M programme budget. The dominant sensitivities for tenants are **GPU-hours**, **Spot availability** and **EE classification**. For the operator the dominant one is **MAU above 50,000**.
 
 ---
 
@@ -886,8 +892,9 @@ Even the severe case adds only ≈US$2k over the mild case: <0.2% of the program
 
 ## 12. Open questions
 
-- **Placement of Block D.** The spine's control-plane anchor (≈US$23–43) included public tile delivery. [03](./03-architecture.md) places the bucket in the Commons project. This document bills Block D to Commons and keeps the anchor as the operator envelope. [12 C1](./12-roadmap-team-budget.md) should either rise to ≈US$235/month in Phase 2 or move Block D to C3/C4. PM to decide by 2026-10-16.
-- **Unverified prices** (§2.3): Cloud NAT and static IP, Workflows, Storage Transfer, DLP, Monitoring, Firebase Hosting, KMS, Cloud Armor, billing export, the Cloud Run idle min-instance rate, regional Cloud Run rates in `southamerica-west1`, `us-east1` Spot prices and inter-region transfer. Due 2026-10-16 (FIN-02).
+- **Spine anchors versus this itemisation.** The spine's control-plane anchor (≈US$23–43 at pilot) included Block D and some ETL, which [03](./03-architecture.md) places in the Commons project; the strict control plane is ≈US$5–25 at pilot. The Commons anchor (≈US$100–300) holds excluding Block D in pilot and season months, but a full N2 month reaches ≈US$414 (≈US$602 with Block D). [12 §5.2](./12-roadmap-team-budget.md) now budgets Block D under C3/C4; PM to confirm that the spine anchors are read this way.
+- **Figures quoted elsewhere.** [12 §5.2](./12-roadmap-team-budget.md) (C3/C4 text) and [08 §7.5](./08-ai-decision-layer-jev.md) quote earlier Commons figures (N1 invoice ≈US$275–370, N2 ≈US$448–603, P2 average ≈US$379–510, peak excl. D ≈US$260–415). After aligning the impact-module line with [07 §9](./07-impact-modules-and-triggers.md) and the BigQuery line with L02, they are ≈US$273–356, ≈US$444–602, ≈US$376–504 and ≈US$256–414. No budget line changes; refresh the quotes.
+- **Unverified prices** (§2.3): Cloud NAT and static IP, Workflows, Storage Transfer, DLP, Monitoring, Firebase Hosting, KMS, Cloud Armor, billing export and its lag, Cloud Run Tier 2 rates (`southamerica-west1`), Firestore rates in `southamerica-west1`, `us-east1` Spot prices and inter-region transfer. Due 2026-10-16 (FIN-02).
 - **Poller design (L11).** Moving frequent polls to request-billed endpoints saves ≈US$18/month but departs from the "ingestion = Cloud Run jobs" rule of [03 §7.1](./03-architecture.md). DL to decide.
 - **Measured scan sizes** replace assumption A2 after M1.1; all BigQuery lines should be re-run then.
 - **Tax treatment** of card payments, public-entity exemptions, withholding and the operator's own service invoice (FIN-06).
