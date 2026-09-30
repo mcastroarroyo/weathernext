@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Pipelines (lint + offline tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pipelines/pyproject.toml
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "pipelines[dev,zarr,cds,gcp,grib]"
+      - name: Ruff
+        run: ruff check pipelines
+      - name: Tests (offline)
+        run: pytest pipelines -m "not network" -q
+
+  terraform:
+    name: Terraform (fmt + validate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+      - name: fmt
+        run: terraform fmt -check -recursive infra
+      - name: validate infra/testing
+        working-directory: infra/testing
+        run: terraform init -backend=false -input=false && terraform validate
+      - name: validate infra/tenant-bootstrap
+        working-directory: infra/tenant-bootstrap
+        run: terraform init -backend=false -input=false && terraform validate
+
+  shell:
+    name: Shell scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n and shellcheck
+        run: |
+          for f in $(git ls-files '*.sh'); do bash -n "$f"; done
+          shellcheck -S warning $(git ls-files '*.sh')
+
+  docs:
+    name: Docs (links, diagrams, data files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install checkers
+        run: |
+          pip install pyyaml python-hcl2
+          npm install -g @mermaid-js/mermaid-cli@11
+          echo '{"args":["--no-sandbox","--disable-setuid-sandbox"]}' > /tmp/puppeteer.json
+      - name: Check repository
+        env:
+          PUPPETEER_CONFIG: /tmp/puppeteer.json
+        run: python3 scripts/ci/check_repo.py

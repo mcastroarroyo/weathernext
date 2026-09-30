@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ectwin-pipelines"
+version = "0.1.0"
+description = "GDE-Niño (Gemelo Digital Ecuador – El Niño) data pipelines: Commons ingestion and pilot products"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "numpy>=1.26",
+  "pandas>=2.1",
+  "pyarrow>=14",
+  "shapely>=2.0",
+  "requests>=2.31",
+]
+
+[project.optional-dependencies]
+zarr = ["xarray>=2024.1", "zarr>=2.16,<3", "numcodecs>=0.12", "gcsfs>=2024.2", "fsspec>=2024.2"]
+grib = ["xarray>=2024.1", "cfgrib>=0.9.10", "eccodes>=1.7", "ecmwf-opendata>=0.3"]
+cds = ["cdsapi>=0.7"]
+gcp = ["google-cloud-bigquery>=3.17", "google-cloud-storage>=2.14"]
+dev = ["pytest>=8", "ruff>=0.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["network: needs internet access to public data (skipped in offline CI)"]
+
+[tool.ruff]
+line-length = 110
