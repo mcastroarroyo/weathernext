@@ -67,7 +67,7 @@ These are proposals that extend [03](./03-architecture.md). They follow the spin
 | `oauth-client-secret`, `email-provider-key` | Secrets in platform projects | OAuth web client secret; email delivery provider key | §4.7 |
 | `cds-api-token`, `copernicusmarine-credentials`, `earthdata-credentials` | Secrets in Commons projects | External data-store credentials (Flood API and TypeSafe keys reuse the names `floodforecasting-api-key`, `typesafe-api-key`) | §5.8 |
 | `infra/commons/jobs.yaml` | File | Single table of Commons jobs, schedules, regions and identities | §5.10 |
-| `infra/tenant-bootstrap/TUTORIAL.es.md` | File | Spanish Cloud Shell tutorial: the `<TUTORIAL_MD>` placeholder of [04 §4.2](./04-identity-tenancy-byo-gcp.md#42-path-a--cloud-shell-or-infrastructure-manager-default) and README §6.1, which leave the file name open; this guide proposes the name | §4.9 |
+| `infra/tenant-bootstrap/TUTORIAL.es.md` | File | Spanish Cloud Shell tutorial: the `<TUTORIAL_MD>` placeholder of [04 §4.2](./04-identity-tenancy-byo-gcp.md#42-path-a--cloud-shell-or-infrastructure-manager-default) and README §6.1, which leave the file name open; this guide proposes the name (the file now exists) | §4.9 |
 
 ### 0.4 Setup timeline
 
@@ -1778,7 +1778,7 @@ weathernext/
 │   ├── commons/                         §5.1 (file layout ✱, incl. jobs.yaml, cors-public.json)
 │   ├── modules/{bucket,run-job,scheduler,listing}/
 │   └── tenant-bootstrap/                (exists: main.tf, variables.tf, outputs.tf, versions.tf,
-│                                         examples/, tests/, README.md; add TUTORIAL.es.md ✱)
+│                                         examples/, tests/, README.md, TUTORIAL.es.md)
 ├── catalog/data-sources.yaml            (exists)
 ├── schemas/{bigquery,firestore,api,events}/     schemas/decisions/*.json (exists)
 ├── scripts/
