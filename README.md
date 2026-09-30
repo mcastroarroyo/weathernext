@@ -30,7 +30,7 @@
 | [00-executive-summary.md](docs/00-executive-summary.md) | What is proposed, at what cost, and what to decide now? | Sponsor, SNGR, INAMHI |
 | [00-resumen-ejecutivo.md](docs/00-resumen-ejecutivo.md) | The same, in Spanish | Ecuadorian authorities |
 | [01-context-el-nino-ecuador.md](docs/01-context-el-nino-ecuador.md) | Why now, and who decides what? | Everyone |
-| [02-users-requirements-ux.md](docs/02-users-requirements-ux.md) | Who uses it, and what must it do (76 FRs, 34 NFRs)? | Product, UX, pilots |
+| [02-users-requirements-ux.md](docs/02-users-requirements-ux.md) | Who uses it, and what must it do (78 FRs, 34 NFRs)? | Product, UX, pilots |
 | [03-architecture.md](docs/03-architecture.md) | How is it built: planes, components, storage, API? | Engineers |
 | [04-identity-tenancy-byo-gcp.md](docs/04-identity-tenancy-byo-gcp.md) | How do sign-in, project connection and access control work? | Platform engineers, tenant IT, DPO |
 | [05-data-catalog.md](docs/05-data-catalog.md) | Which data, under which licence, and how is it ingested? | Data engineers, legal |
