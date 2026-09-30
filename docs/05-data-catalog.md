@@ -69,14 +69,14 @@ The rules for this category are in D1 and [03 §5.3 `official_alerts`](./03-arch
 | `id` | Dataset (provider) | Exact ID / endpoint | Resolution | Cadence / latency | Licence (comm.) | Plane / ingest | P / Ph | V |
 |---|---|---|---|---|---|---|---|---|
 | `sngr_wp_alerts` | Alert posts, resolutions and news (SNGR) | `https://www.gestionderiesgos.gob.ec/wp-json/wp/v2/posts` (WordPress REST, no auth) ([sgr_publicaciones_client](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/sgr_publicaciones_client.py)) | National; place names in text | Poll every 10 min; minutes | None published; verbatim republication with source (to confirm under convenio) (?) | C / pull | P1 / 0 | V |
-| `sngr_sitreps` | *Informes de situación* (SITREPs): 54 event dossiers 2016–2026, including 700+ PDFs for "Época Lluviosa 2026" (SNGR) | WordPress archive; PDFs under `/wp-content/uploads/…` | National, province, canton | Per event; daily in emergencies | None published (?) | C / pull + PDF extraction (§4.5) | P1 / 0 archive, 1 extraction | V |
+| `sngr_sitreps` | *Informes de situación* (SITREPs): 54 event dossiers 2016–2026, including 700+ PDFs for "Época Lluviosa 2026" (SNGR) | WordPress archive; PDFs under `/wp-content/uploads/…`; example event page `https://www.gestionderiesgos.gob.ec/sitrep-afectaciones-por-lluvias-2025-2026/` | National, province, canton | Per event; daily in emergencies | None published (?) | C / pull + PDF extraction (§4.5) | P1 / 0 archive, 1 extraction | V |
 | `sngr_arcgis_events` | `COE2` current events; `EVENTOS_X_LLUVIAS` rain-related events (SNGR) | `https://sgrportal.gestionderiesgos.gob.ec/server/rest/services/COE2/MapServer` (resolve the layer id with `?f=pjson`; it changes); `…/Hosted/EVENTOS_X_LLUVIAS/FeatureServer/0/query?where=…&f=geojson` ([sgr_client](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/sgr_client.py), [producer_sgr_eventos](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_sgr_eventos.py)) | Point; fields `Provincia`, `Canton`, `Parroquia`, `Evento`, `Causa`, `CategoriaDelEvento`, `EstadoDelEvento`, `FechaDelEvento` (**names, not DPA codes**) | Poll every 10 min; `COE2` has no history, so we build it | None published (?) | C / pull | P1 / 0 | V |
 | `sngr_biblioteca` | Biblioteca, ≈1,660 documents: *Mapas de Amenazas* by province, tsunami maps; `SAT/MapServer/0` tsunami stations (SNGR) | `/biblioteca/`; `…/SAT/MapServer/0` | PDF/images; points | Ad hoc | None published (?) | C / manual | P3 / 2 | V |
 | `inamhi_advertencias` | INAMHI *advertencias* (HydroShare WFS `typeName=Advertencia`, served by the hydroviewer's `get-warnings-json`) | `https://inamhi.geoglows.org/apps/hydroviewer-ecuador/` ([controllers.py](https://github.com/SERVIR-Amazonia/tethysapp-hydroviewer_ecuador)) | Polygons / provinces | Poll every 15 min | None published (?) | C / pull | P1 / 0 | V |
 | `inamhi_forecast_bulletins` | Daily forecast API; Guayaquil–Durán daily rain bulletin, about 25 gauges (No. 181 dated 2026-09-25) | `GET https://inamhi.gob.ec/api_pronos/forecast/daily_forecast/list_by_date_now/?date=`; `https://www.inamhi.gob.ec/guayaquil/registrodgy.pdf` ([13b](https://github.com/espinosacodes/makers-builder-case/blob/main/docs/research/13b-escala-latam.md)) | City / station | Daily (INAMHI's own front end caches for 6 h) | None published (?) | C / pull + PDF | P2 / 1 | V |
-| `cnerfen_bulletins` | CN-ERFEN technical reports and communiqués (e.g. 007-2026 of 28 Aug; 009-2026 of 19 Sep) (INOCAR/CN-ERFEN) | `https://www.inocar.mil.ec/boletin/ERFEN/erfen_20260407.pdf` (so `erfen_YYYYMMDD.pdf`, **pattern inferred**); IPIAP copies at `institutopesca.gob.ec/wp-content/uploads/…` | National | On publication (≈ every 2–4 weeks, **to confirm**) | None published (?) | C / pull + manual fallback | P1 / 0 | V |
+| `cnerfen_bulletins` | CN-ERFEN technical reports and communiqués (e.g. 007-2026 of 28 Aug, which declared El Niño active with a weekly Niño 1+2 anomaly of +4.0 °C; 009-2026, meeting 17 Sep, published 19 Sep) (INOCAR/CN-ERFEN; dates and values from press summaries) | `https://www.inocar.mil.ec/boletin/ERFEN/erfen_20260407.pdf` (so `erfen_YYYYMMDD.pdf`, **pattern inferred**); IPIAP copies such as `https://institutopesca.gob.ec/wp-content/uploads/2026/06/Erfen-5-febrero-2026.pdf` (filename pattern not stable) | National | On publication (≈ every 2–4 weeks, **to confirm**) | None published (?) | C / pull + manual fallback | P1 / 0 | V |
 
-The official **alertasecuador.gob.ec** portal (`/lluvia`, `/el_nino/`, *Alístate Ecuador*) has no API, and its `X-Frame-Options` header blocks embedding. It is **link-only** by design (D2; stale-feed disclaimer D8 in [02 §8.5](./02-users-requirements-ux.md) points users to it). ENFEN Peru communiqués are catalogued in §2.3 under `enfen_peru`.
+The official **alertasecuador.gob.ec** portal (`/lluvia`, `/fenomeno_el_nino/mapa_de_amenaza`, `/el_nino/situacion-actual-de-el-nino/`, *Alístate Ecuador*) has no API found, and its `X-Frame-Options` header allows framing only by the site itself, so it cannot be embedded. It is **link-only** by design (D2; stale-feed disclaimer D8 in [02 §8.5](./02-users-requirements-ux.md) points users to it). ENFEN Peru communiqués are catalogued in §2.3 under `enfen_peru`.
 
 ### 2.3 ENSO and ocean
 
@@ -86,14 +86,14 @@ The official **alertasecuador.gob.ec** portal (`/lluvia`, `/el_nino/`, *Alístat
 | `enfen_peru` | ENFEN *Comunicados Oficiales* (e.g. N° 16-2026) and **ICEN** (Niño 1+2 index: 3-month mean, ERSSTv5, 1991–2020 base) | `https://enfen.imarpe.gob.pe/comunicados/`; `http://met.igp.gob.pe/datos/ICEN.txt` (case-sensitive) | Index | Monthly and on publication | Communiqués verbatim; ICEN values unclear (?) | C / pull | P1 / 0 | V |
 | `iri_enso_plume` | IRI ENSO plume | `https://iri.columbia.edu/~forecast/ensofcst/Data/ensofcst_ALLtoMMYY` (JSON variants `years[].months[].models[]`) | Index | Monthly | Unclear; internal display only (?) | C / pull | P2 / 1 | V |
 | `oisst_v21` | OISST v2.1: `sst`, `anom` (NOAA) | EE `NOAA/CDR/OISST/V2_1` ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/NOAA/NOAA_CDR_OISST_V2_1.jsonnet)); `s3://noaa-cdr-sea-surface-temp-optimum-interpolation-pds/data/v2.1/avhrr/` | 0.25° | Daily; preliminary +1 day, final +14 days | NOAA CDR (public domain per NOAA terms, U) (Y) | C+T / QIP | P1 / 0 | V |
-| `cmems_ee` | CMEMS global physics analysis and forecast (`zos` SSH, `mlotst`, `sob`/`tob`, currents; 10-day forecast), waves, BGC (`o2`, `nppv`, PFT), ocean colour `chlor_a` | EE `COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_PHY_DAILY` ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/COPERNICUS/COPERNICUS_MARINE_GLOBAL_ANALYSISFORECAST_PHY_DAILY.jsonnet)); `COPERNICUS/MARINE/WAV/ANFC_0_083DEG_PT3H`; `COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_BGC_001_028/BIO` and `/PFT`; `COPERNICUS/MARINE/SATELLITE_OCEAN_COLOR/V6` | 1/12°–0.25° | Daily / 3-hourly. **EE keeps only a rolling two-year window**, so derived series must be archived | CC BY 4.0 (Y) | C+T / QIP (+ archive derived) | P1 / 1 | V |
-| `cmems_sealevel_l4_nrt` | CMEMS L4 sea surface height, NRT (Kelvin-wave tracking) | `SEALEVEL_GLO_PHY_L4_NRT_008_046`, dataset `cmems_obs-sl_glo_phy-ssh_nrt_allsat-l4-duacs-0.125deg_P1D` via the `copernicusmarine` toolbox; free account (U) | 0.125° | Daily | CC BY 4.0 (U) (Y) | C / pull | P2 / 1 | V |
-| `ioc_uhslc_sealevel` | Observed sea level: IOC codes `gyer` (Guayaquil, Río Guayas), `puna`, `lali` (La Libertad, GLOSS 172, UHSLC 091/091a) | IOC `service.php?query=data&code=gyer` ([producer_marea_observada](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_marea_observada.py)); station list in [ioc.csv](https://github.com/ec-jrc/pyPoseidon/blob/main/pyposeidon/misc/ioc.csv) | Tide gauge | Near real time (latency U) | IOC/UHSLC terms (to confirm) (?) | C / pull | P1 / 1 | V |
+| `cmems_ee` | CMEMS global physics analysis and forecast (`zos` SSH, `mlotst`, `sob`/`tob`, currents; 10-day forecast), waves, BGC (`o2`, `nppv`, PFT), ocean colour `chlor_a` | EE `COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_PHY_DAILY` ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/COPERNICUS/COPERNICUS_MARINE_GLOBAL_ANALYSISFORECAST_PHY_DAILY.jsonnet)); `COPERNICUS/MARINE/WAV/ANFC_0_083DEG_PT3H`; `COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_BGC_001_028/BIO` and `/PFT`; `COPERNICUS/MARINE/SATELLITE_OCEAN_COLOR/V6` | 1/12° (physics, waves); 0.25° (BGC) | Daily / 3-hourly (waves). Physics from 2022-06-01, BGC from 2022-01-01, waves from 2022-06, ocean colour V6 from 1997-01-01 (covers 1997-98). **Physics and BGC keep only a rolling two-year window in EE**, so derived series must be archived | CC BY 4.0 (Y) | C+T / QIP (+ archive derived) | P1 / 1 | V |
+| `cmems_sealevel_l4_nrt` | CMEMS L4 sea surface height, NRT (Kelvin-wave tracking) | `SEALEVEL_GLO_PHY_L4_NRT_008_046`, dataset `cmems_obs-sl_glo_phy-ssh_nrt_allsat-l4-duacs-0.125deg_P1D` via the `copernicusmarine` toolbox (2.5.0, 2026-09-28); free account (U) | 0.125° | Daily | CC BY 4.0 (U); gated `pending_review` until confirmed (?) | C / pull | P2 / 1 | V |
+| `ioc_uhslc_sealevel` | Observed sea level: IOC codes `gyer` (Guayaquil, Río Guayas), `puna`, `lali` (La Libertad, GLOSS 172, UHSLC 091/091a) | IOC `service.php?query=data&code=gyer` ([producer_marea_observada](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_marea_observada.py)); station list in [ioc.csv](https://github.com/ec-jrc/pyPoseidon/blob/master/pyposeidon/misc/ioc.csv) | Tide gauge | Near real time (latency U) | IOC/UHSLC terms (to confirm) (?) | C / pull | P1 / 1 | V |
 | `inocar_tides` | Tide predictions: quarterly PDFs (parseable back to 2022) and an HTML table (INOCAR) | `https://www.inocar.mil.ec/mareas/TM/{anio}/trimestral/GUAYAQUIL_RIO_{trimestre}.pdf` ([producer_inocar_mareas](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_inocar_mareas.py)); `…/mareas/consultan.php` (scrape only) | Ports | Quarterly | None published; nautical products are sold (U); agreement (N/?) | C / pull + PDF | P1 / 0 | V |
 
 Notes:
 
-- **Niño 1+2 is computed two ways, and both are kept.** One is the official ICEN (ERSSTv5, 1991–2020). The other is our own daily value from the OISST `anom` band over 0–10°S, 90–80°W. In September 2026, ERFEN reported +4.5 °C while CPC was at ≈+3.4 °C, so every value stores `source` and `base_period` ([03 `enso_indices`](./03-architecture.md)).
+- **Niño 1+2 is computed two ways, and both are kept.** One is the official ICEN (ERSSTv5, 1991–2020). The other is our own daily value from the OISST `anom` band over 0–10°S, 90–80°W. In September 2026, CN-ERFEN report 009-2026 gave +4.5 °C while a CPC weekly value was ≈+3.4 °C (both from search summaries; different datasets and climatologies), so every value stores `source` and `base_period` ([03 `enso_indices`](./03-architecture.md)).
 - **Excluded or deprioritised:**
   - HYCOM in EE (stops 2024-09-05).
   - MUR SST (the Zarr copy is static and ends ≈2020-01).
@@ -104,7 +104,7 @@ Notes:
 
 | `id` | Dataset (provider) | Exact ID / endpoint | Resolution | Cadence / latency | Licence (comm.) | Plane / ingest | P / Ph | V |
 |---|---|---|---|---|---|---|---|---|
-| `inamhi_visor_stations` | INAMHI Visor station network: 1,894 stations in the viewer; 202 automatic stations transmitting and 156 not (2026-09-27); 1,518 manual stations; 43 stations with level or flow | Catalogue `GET /api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh`; variables `…/estaciones/parametros/?id_estacion=`; data `POST /api_visor/station_data_automaticas/get_data_hour/` with `{id_estacion, table_names[], fecha_desde, fecha_hasta}`; `…/get_precipitation/`; `station_data_convencionales/…` ([config.py](https://github.com/jorgessanchez7/Global_Forecast_Validation/blob/master/Ecuador/INAMHI/config.py)) | Station | Hourly, ≈2.5 h lag; river levels **9–24 days late**; **≈92-day retention; 1 request / 5 min**; request the whole MAX/MIN/PROM group or the API returns HTTP 500 | None published; agreement (N until MoU) | C / pull | P1 / 0 | V |
+| `inamhi_visor_stations` | INAMHI Visor station network: 1,894 stations in the viewer; 202 automatic stations transmitting and 156 not (2026-09-27); 1,518 manual stations (these three parts sum to 1,876, so 18 stations are unaccounted for in the source; the catalogue endpoint listed ≈1,858); 43 stations with level or flow | Catalogue `GET /api_visor/station_information/estaciones/visores/?id_aplicacion=vs_1h_inh`; variables `…/estaciones/parametros/?id_estacion=`; data `POST /api_visor/station_data_automaticas/get_data_hour/` with `{id_estacion, table_names[], fecha_desde, fecha_hasta}`; `…/get_precipitation/`; `station_data_convencionales/…` ([config.py](https://github.com/jorgessanchez7/Global_Forecast_Validation/blob/master/Ecuador/INAMHI/config.py)) | Station | Hourly, ≈2.5 h lag; river levels **9–24 days late**; **≈92-day retention; 1 request / 5 min**; request the whole MAX/MIN/PROM group or the API returns HTTP 500 | None published; agreement (N until MoU) | C / pull | P1 / 0 | V |
 | `inamhi_geoserver` | INAMHI GeoServer/GeoNode and WIS2 box: 1985–2015 monthly and annual normals; ≈180 daily anomaly composites `anomalias_DDmonYYYY`; WRF grids `wrf_tiempo_{precipitacion,temperatura,temperatura_calibrada,humedad,presion,viento}`; basins `cuencas_inamhi`, `cuencas_maate`, `demarcaciones_hidrograficas`; admin layers `provincias`, `ecuador_cantones`, `ecuador_parroquias`; `hidroelectricasshape`, `geoglows_ecuador` | `https://geoservicios.inamhi.gob.ec/geoserver` (WMS 1.3.0, 222 layers; WFS 2.0.0, 199 layers, `outputFormat=application/json`); CSW `/catalogue/csw`; `http://wis.inamhi.gob.ec/oapi/collections/?f=json` (topics U) ([inamhi_client](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/inamhi_client.py)) | Grids / vectors | Daily (anomalies, WRF); normals static | None published (?) | C / pull | P1 / 0–1 | V |
 | `imerg_v07` | GPM IMERG V07, Early/Late half-hourly (NASA) | EE `NASA/GPM_L3/IMERG_V07` | 0.1°, 30 min | Hours. **No "permanent" (Final) products beyond 2025-09-30** during the V08 transition ([STAC](https://storage.googleapis.com/earthengine-stac/catalog/NASA/NASA_GPM_L3_IMERG_V07.json)) | NASA open (Y) | C+T / QIP | P1 / 1 | V |
 | `gsmap_v8` | GSMaP v8 operational (JAXA) | EE `JAXA/GPM_L3/GSMaP/v8/operational` (`status`=provisional until the gauge-adjusted run replaces it) | 0.1°, hourly | Near real time | JAXA; acknowledgement required (?) | C+T / QIP | P2 / 2 | V |
@@ -119,12 +119,12 @@ Station data is thin. Only 202 of ≈1,894 stations transmit, and there are gaps
 
 | `id` | Dataset | Exact ID / endpoint | Resolution | Cadence / latency | Licence (comm.) | Plane / ingest | P / Ph | V |
 |---|---|---|---|---|---|---|---|---|
-| `weathernext_3` | WeatherNext 3 (Google DeepMind): mean/p10–p90 in BigQuery and EE; 64 members in GCS | Linked dataset `weathernext_3`, tables `weathernext_3_0_0_0p1deg`, `weathernext_3_0_0_0p05deg`; EE `projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg`; `gs://weathernext3_spatial/weathernext_3_0_0/zarr/` (Requester Pays, `us-east1`) | 0.05° / 0.1° / 0.25° | Hourly initialisation; main cycles reach BigQuery ≈+8 h 10 min; archive from 2026-01-01 | Real-time: GDM experimental terms; >1 h old: CC BY 4.0 ([ToU](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) (?) | C+T / QIP | P1 / 1 | V |
-| `weathernext_2` | WeatherNext 2, 64 members | `weathernext_2_0_0`, `weathernext_2_0_0_mean`; EE `…/weathernext_2_0_0`; `gs://weathernext/weathernext_2_0_0/zarr` | 0.25°, 6-hourly | 4 runs/day; archive 2022→ (covers 2023-24) | As above; weights commercial OK since 2026-08-06 (?) | C+T / QIP | P1 / 1 | V |
-| `ecmwf_open_data` | IFS/AIFS open data (fallback and benchmark) | `gs://ecmwf-open-data/YYYYMMDD/HHz/{ifs/0p25/{oper,enfo,wave,waef}, aifs-single, aifs-ens}`; EE `ECMWF/NRT_FORECAST/IFS/OPER` | 0.25° | 12-hourly, 15 days | CC BY 4.0 (Y) | C+T / QIP | P1 / 1 | V |
-| `gefs_v12` | GEFSv12 to 35 days (NOAA) | `gs://gfs-ensemble-forecast-system/gefs.YYYYMMDD/00/atmos/pgrb2ap5/` (`gec00`, `gep01`–`gep30`, to f840) | 0.5° | Daily | Public domain (Y) | C / pull | P2 / 2 | V |
+| `weathernext_3` | WeatherNext 3 (Google DeepMind): mean/p10–p90 in BigQuery and EE; 64 members in GCS | Linked dataset `weathernext_3` (exchange `projects/gcp-public-data-weathernext/locations/us/dataExchanges/weathernext_19397e1bcb7`), tables `weathernext_3_0_0_0p1deg`, `weathernext_3_0_0_0p05deg`; EE `projects/gcp-public-data-weathernext/assets/weathernext_3_0_0_0p1deg`, `…_0p05deg`; members `gs://weathernext3_spatial/weathernext_3_0_0/zarr/` (Requester Pays, `us-east1`); statistics bucket `weathernext3_statistics_spatial` (`us-east1`, not Requester Pays per a third-party check) | 0.05° (2t/2d station head) / 0.1° (surface) / 0.25° (pressure levels) | Hourly initialisation (interim runs to 48 h, search summary); main 00/06/12/18Z cycles reach BigQuery/EE ≈+8 h 10 min; archive from 2026-01-01 | Real-time: GDM experimental terms; >1 h old: CC BY 4.0 ([ToU](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) (?) | C+T / QIP | P1 / 1 | V |
+| `weathernext_2` | WeatherNext 2, 64 members | `weathernext_2_0_0`, `weathernext_2_0_0_mean`; EE `…/weathernext_2_0_0`; `gs://weathernext/weathernext_2_0_0/zarr` | 0.25°, 6-hourly | 4 runs/day; archive 2022→ (covers 2023 and 2023-24) | As above (older WN2 catalogue text used a 48 h real-time threshold; confirm which applies); weights commercial OK since 2026-08-06 (?) | C+T / QIP | P1 / 1 | V |
+| `ecmwf_open_data` | IFS/AIFS open data (fallback and benchmark) | `gs://ecmwf-open-data/YYYYMMDD/HHz/{ifs/0p25/{oper,enfo,wave,waef}, aifs-single, aifs-ens}`; EE `ECMWF/NRT_FORECAST/IFS/OPER` (from 2024-11-12) | 0.25° | EE twice daily to 15 days (ENS to 360 h); the bucket also holds 06/18Z runs (moved to `oper`/`wave` with IFS 50r1 on 2026-05-12) | CC BY 4.0 (Y) | C+T / QIP | P1 / 1 | V |
+| `gefs_v12` | GEFSv12 to 35 days (NOAA) | `gs://gfs-ensemble-forecast-system/gefs.YYYYMMDD/00/atmos/pgrb2ap5/` (`gec00`, `gep01`–`gep30`, `geavg`, `gespr`, to f840); reforecasts `s3://noaa-gefs-retrospective/GEFSv12/` | 0.5° | Daily 00Z run to 35 days | Public domain (Y) | C / pull | P2 / 2 | V |
 | `cfsv2` | CFSv2 9-month runs (NOAA) | `s3://noaa-cfs-pds/cfs.YYYYMMDD/…/monthly_grib_01/…avrg.grib.grb2`; byte-range reads via `.idx` | ≈1° (U) | 4 cycles/day; 00 UTC monthly files at 07:31–08:52 UTC | Public domain (Y) | C / pull | P2 / 1 | V |
-| `c3s_seasonal` | C3S multi-system seasonal forecasts | CDS `seasonal-monthly-single-levels` (+ `-original-`, `-postprocessed-`), `cdsapi` 0.7.7, `https://cds.climate.copernicus.eu/api` ([README](https://raw.githubusercontent.com/ecmwf/cdsapi/master/README.rst)) | 1° (U) | Monthly, leads 1–6; C3S release on the 13th at 12 UTC (U) | Catalogue says "other"/Copernicus licence (U) (?) | C / pull | P1 / 1 | V |
+| `c3s_seasonal` | C3S multi-system seasonal forecasts | CDS `seasonal-monthly-single-levels` (DOI 10.24381/cds.68dd14c3; + `-original-`, `-postprocessed-`), `cdsapi` 0.7.7, `https://cds.climate.copernicus.eu/api` ([README](https://raw.githubusercontent.com/ecmwf/cdsapi/master/README.rst)) | 1° (U) | Monthly, leads 1–6; C3S release on the 13th at 12 UTC (U) | Catalogue says "other"/Copernicus licence (U) (?) | C / pull | P1 / 1 | V |
 | `nmme` | NMME (NOAA CPC / IRI Data Library) | `https://ftp.cpc.ncep.noaa.gov/International/nmme/netcdf/{mon}{yyyy}ic/{MODEL}/…ENSMEAN.fcst.nc`; IRI DL `SOURCES/.Models/.NMME/…` | 1° | Monthly, ≈8th–9th (U) | Likely open (U) (?) | C / pull | P2 / 1 | V |
 
 **Not ingested for redistribution:**
@@ -134,19 +134,21 @@ Station data is thin. Only 202 of ≈1,894 stations transmit, and there are gaps
 - Google Maps Weather API (its policies forbid building a weather app on it).
 - WeatherNext Gen and Graph (deprecated July 2026).
 
+**Not yet available: ECMWF EC46 and SEAS5 open data.** The spine (D11) names EC46 open data for weeks 2–6. A search summary says SEAS5 and EC46 have been open since 2025-10-01, and the `ecmwf-opendata` client has an `mmsa`/`mmsf` stream path, but the `gs://ecmwf-open-data` and `s3://ecmwf-forecasts` mirrors hold no seasonal or 46-day folders (listing of 2026-09-28) **(unverified)**. Until they are reachable, weeks 2–6 use `gefs_v12` and CFSv2 45-day members, and SEAS5 comes through `c3s_seasonal` (`originating_centre=ecmwf`, `system=51`); see [06](./06-forecast-model-stack.md). EC46 gets a catalogue id only when an endpoint is confirmed.
+
 ### 2.6 Hydrology
 
 | `id` | Dataset (provider) | Exact ID / endpoint | Resolution | Cadence / latency | Licence (comm.) | Plane / ingest | P / Ph | V |
 |---|---|---|---|---|---|---|---|---|
-| `floodhub_api` | Flood Forecasting API v1 (Google) | `https://floodforecasting.googleapis.com/v1`: `gauges:searchGaugesByArea`, `gauges:queryGaugeForecasts` (≤500 ids; issue floor 2023-10-01), `gaugeModels:batchGet`, `floodStatus:searchLatestFloodStatusByArea` (`cutoffTime` floor 2025-08-01), `significantEvents:search`, `flashFloods:search`, `serializedPolygons/{id}` ([OCHA observations](https://raw.githubusercontent.com/OCHA-DAP/ds-google-flood-hub/main/api/observations.json)) | Gauges `<source>_<id>` and virtual `hybas_<id>` | Forecasts daily to 7 days; status several times a day; flash floods daily (≈06:33 UTC issue); **no history endpoint** | CC BY 4.0; "primarily non-commercial" wording **unverified** (?) | C / pull (central allow-listed key; 200 req/min) | P1 / 0 on approval | V |
-| `grrr` | Google Runoff Reanalysis & Reforecast `model_id_8583a5c2_v0` | `gs://flood-forecasting/hydrologic_predictions/model_id_8583a5c2_v0/{reanalysis/streamflow.zarr, reforecast/streamflow.zarr, return_periods.zarr, hybas_outlet_locations_UNOFFICIAL.zarr}` (anonymous; Zarr v2) | HydroBASINS outlets (≈1,840 on the mainland; 39 in Galápagos) | Static: reanalysis 1980-01-01→2023-12-23; reforecast 2016-01-01→2023-06-30, leads 0–7 days | CC BY 4.0 (Y) | C / pull once | P1 / 0 | V |
+| `floodhub_api` | Flood Forecasting API v1 (Google) | `https://floodforecasting.googleapis.com/v1`: `gauges:searchGaugesByArea`, `gauges:queryGaugeForecasts` (≤500 ids; issue floor 2023-10-01), `gaugeModels:batchGet`, `floodStatus:searchLatestFloodStatusByArea` (`cutoffTime` floor 2025-08-01; matches on gauge location), `floodStatus:queryLatestFloodStatusByGaugeIds` (≈100 ids per call in practice), `significantEvents:search`, `flashFloods:search`, `serializedPolygons/{id}` (discovery revision `20260921`, [OCHA copy](https://raw.githubusercontent.com/OCHA-DAP/ds-google-flood-hub/main/api/discovery.json); [OCHA observations](https://raw.githubusercontent.com/OCHA-DAP/ds-google-flood-hub/main/api/observations.json)) | Gauges `<source>_<id>` and virtual `hybas_<id>` | Forecasts daily to 7 days; status several times a day; flash floods daily (≈06:33 UTC issue); **no history endpoint** | CC BY 4.0; "primarily non-commercial" wording **unverified** (?) | C / pull (central allow-listed key; 200 req/min) | P1 / 0 on approval | V |
+| `grrr` | Google Runoff Reanalysis & Reforecast `model_id_8583a5c2_v0` | `gs://flood-forecasting/hydrologic_predictions/model_id_8583a5c2_v0/{reanalysis/streamflow.zarr, reforecast/streamflow.zarr, return_periods.zarr, hybas_outlet_locations_UNOFFICIAL.zarr}` (anonymous; Zarr v2) | HydroBASINS outlets (≈1,840 inside a low-resolution mainland outline plus 39 in a Galápagos box; 1,997 inside geoBoundaries ADM0 with a 0.02° buffer, per another brief) | Static: reanalysis 1980-01-01→2023-12-23; reforecast 2016-01-01→2023-06-30, leads 0–7 days | CC BY 4.0 (Y) | C / pull once | P1 / 0 | V |
 | `inundation_history` | Inundation history, from GLAD, 1999–2020 (Google) | `gs://flood-forecasting/inundation_history/data/inundation_history_{minlat}_{minlng}_{maxlat}_{maxlng}.geojson` ([README](https://storage.googleapis.com/flood-forecasting/inundation_history/README.txt)): 12 tiles (11.3 MB) for the mainland bounding box, plus Galápagos tiles | 128 m | Static | CC BY 4.0 (Y) | C / pull once | P1 / 0 | V |
 | `geoglows_v2` | GEOGloWS ECMWF Streamflow v2: 15-day forecasts (52 members × 280 steps) and retrospective 1940→ | `s3://geoglows-v2-forecasts/{YYYYMMDD}00.zarr` (from 2024-07-01); `s3://geoglows-v2/retrospective/{daily,…}.zarr`; REST `https://geoglows.ecmwf.int/api/v2/{forecast,forecaststats,forecastensembles,forecastrecords,dates}/{river_id}` | TDX-Hydro reach (`river_id`, 9 digits) | Daily | CC BY 4.0; river network CC BY-SA ([licenses.md](https://geoglows-v2.s3.amazonaws.com/licenses.md)) (Y) | C / pull (Ecuador `river_id` list) | P1 / 0 | V |
 | `geoglows_v2_return_periods` | GEOGloWS return periods (Gumbel fit, 2–100 yr) | `s3://geoglows-v2/retrospective/return-periods.zarr` (revision 2026-06-10) | Reach | Static | **CC BY-NC-SA 4.0 (N)** | C (NC listing only) / pull | P1 / 1 | V |
-| `inamhi_hydroviewer` | INAMHI–GEOGloWS hydroviewer: `get-alerts` (return-period classes), `get-alerts-drought`, `get-rivers`, `get-data`, `get-ffgs-json` (flash-flood guidance); Hydropower app (8 plants, bias-corrected) | `https://inamhi.geoglows.org/apps/hydroviewer-ecuador/` (backend `services.geoglows.org`) | Reach | Poll every 6 h | Underlying GEOGloWS CC BY; INAMHI terms to confirm (?) | C / pull | P1 / 0 | V |
-| `glofas_forecast` | GloFAS 30-day ensemble (CEMS) | EWDS `cems-glofas-forecast` (DOI 10.24381/cds.ff1aef77), `cdsapi.Client(url="https://ewds.climate.copernicus.eu/api")` | ≈0.05° (U) | Daily; archive from 2019-11-05 | GloFAS ToS; "not a flood warning"; commercial redistribution U (?) | C / pull | P1 / 0 | V |
+| `inamhi_hydroviewer` | INAMHI–GEOGloWS hydroviewer (co-developed with Fundación EcoCiencia): `get-alerts` (return-period classes, R0 excluded), `get-alerts-drought`, `get-rivers`, `get-data`, `get-forecast-xlsx`, `report`, `get-ffgs-json` (flash-flood guidance from HydroShare WFS `nwsaffds`); `get-warnings-json` feeds `inamhi_advertencias`; Hydropower app (8 plants, bias-corrected) | `https://inamhi.geoglows.org/apps/hydroviewer-ecuador/` (backend `services.geoglows.org`) | Reach | Poll every 6 h | Underlying GEOGloWS CC BY; INAMHI terms to confirm (?) | C / pull | P1 / 0 | V |
+| `glofas_forecast` | GloFAS 30-day ensemble (CEMS) | EWDS `cems-glofas-forecast` (DOI 10.24381/cds.ff1aef77), `cdsapi.Client(url="https://ewds.climate.copernicus.eu/api")` | 0.05°, 51 members (secondary sources checked against the live EWDS catalogue) | Daily, 30 days; archive from 2019-11-05; v4.4 (2025-09-10) added AIFS forcing | GloFAS ToS; "not a flood warning"; commercial redistribution U (?) | C / pull | P1 / 0 | V |
 | `glofas_seasonal` | GloFAS seasonal (SEAS5-driven) | EWDS `cems-glofas-seasonal` (+ `cems-glofas-seasonal-reforecast`) | 0.05° | Monthly; 123 days as a dataset (the web product shows 7 months) | As above (?) | C / pull | P1 / 1 | V |
-| `glofas_reanalysis` | GloFAS historical (v5.0 reanalysis 1980–2025) and reforecasts | EWDS `cems-glofas-historical`, `cems-glofas-reforecast` (`product_type=ensemble_perturbed_reforecast`); one year per request | 0.05° | Static / annual | As above (?) | C / pull (backfill) | P2 / 1 | V |
+| `glofas_reanalysis` | GloFAS historical (the v5.0 reanalysis, 1980–2025, was announced per a search summary; whether EWDS `cems-glofas-historical` already serves v5.0 is **to confirm**) and reforecasts (1999–2023-11) | EWDS `cems-glofas-historical`, `cems-glofas-reforecast` (`product_type=ensemble_perturbed_reforecast`); one year per request | 0.05° | Static / annual | As above (?) | C / pull (backfill) | P2 / 1 | V |
 | `celec_ords_reservoirs` | CELEC reservoir level and inflow; Daule-Peripa notes (CELEC Sur, Hidronación) | ORDS `https://generacioncsr.celec.gob.ec:8443/ords/csr/` modules `repDiaHid12m` (Mazar, Amaluza, Minas San Francisco, Delsitanisagua from 2014-09-20) and `pointValuesMesH24` (Mazar inflow from 2010-02-10); `https://www.celec.gob.ec/hidronacion/wp-json/wp/v2/posts` ([hydro-look PLAN](https://github.com/rengarcia/hydro-look/blob/main/PLAN.md)) | Reservoir | Daily | None published; agreement (?) | C / pull | P1 / 1 (archive from Phase 0) | V |
 | `caravan_multimet` | Caravan MultiMet forcings (for OpenHydroNet) | `gs://caravan-multimet/v1.1/{CPC,IMERG,CHIRPS,ERA5_LAND,CHIRPS_GEFS,HRES,GRAPHCAST}/timeseries.zarr/` | Basin | Static archive | CC BY 4.0 (Y) | C / QIP | P3 / 3 | V |
 | `goes19_abi_flood` | GOES-19 ABI daily flood product (NOAA) | `gs://gcp-public-data-goes-19/ABI-Flood-Day-TIF/YYYY/MM/DD/ABI-Flood-DCOM-AOI00{3,4}_…tif` (AOI003 and AOI004 cover the mainland; **Galápagos south of the equator is not covered**) | 0.01° | Daily; files ≈07:00 UTC the next day | NOAA (Y) | C / pull | P2 / 2 | V |
@@ -158,7 +160,7 @@ Three rules apply in this category:
 - **Show GEOGloWS only after bias correction.** Raw median KGE is −0.57 across 182 Ecuadorian stations and 0.33 after correction ([14](./14-verification-and-validation.md)).
 - **Treat Flood API gauges with `qualityVerified=false` as lower confidence.**
 
-The known verified Ecuadorian gauges are Zapotal, Babahoyo, Daule and Pula (from a search summary). The current count needs an approved key.
+The known verified Ecuadorian gauges are Zapotal, Babahoyo, Daule and Pula (from a search summary of a 2023-era Primicias article). The current count needs an approved key: `POST v1/gauges:searchGaugesByArea {"regionCode":"EC","includeNonQualityVerified":true,"includeGaugesWithoutHydroModel":true}`.
 
 ### 2.7 Terrain, hydrography and static hazard layers
 
@@ -172,7 +174,7 @@ The known verified Ecuadorian gauges are Zapotal, Babahoyo, Daule and Pula (from
 | `deltadtm` | DeltaDTM coastal terrain (Deltares) | `projects/sat-io/open-datasets/DELTARES/deltadtm_v1-1` | ≈30 m (U) | Static | CC BY 4.0 (Y) | C+T / QIP | P2 / 2 | V |
 | `jrc_gsw` | JRC Global Surface Water v1.4 (permanent-water mask) | EE `JRC/GSW1_4/GlobalSurfaceWater`, `/MonthlyHistory`, `/YearlyHistory` | 30 m | Static, 1984–2021 | JRC (terms U) (?) | C+T / QIP | P1 / 1 | V |
 | `igm_dtm_orto` | IGM elevation and orthophoto OGC services | `https://www.geoportaligm.gob.ec/dtm/wms` (layer `igm:elevacion50k`), `/dtm/ows`, `/orto/wms`; GeoNetwork CSW `/geonetwork/srv/eng/csw`; 1:50k vectors behind a registration form | 1:50,000 | Static | IGM per-product terms; some restrict commercial use and redistribution (N/?) | C / manual (derived indicators only) | P3 / 2 | V |
-| `glofas_flood_hazard` | GloFAS flood hazard maps, RP 10–500 yr | EE `JRC/CEMS_GLOFAS/FloodHazard/v2_1` (use the `spurious_depth_category` band) | 90 m | Static (2024) | JRC, "no restriction" (Y) | C+T / QIP | P1 / 1 | V |
+| `glofas_flood_hazard` | GloFAS flood hazard maps, RP 10–500 yr | EE `JRC/CEMS_GLOFAS/FloodHazard/v2_1` (use the `spurious_depth_category` band) | 90 m | Static (2024) | JRC, "no restriction" per the EE catalogue; CC BY 4.0 per another brief (Y) | C+T / QIP | P1 / 1 | V |
 | `mag_flood_susceptibility` | *Mapa de Susceptibilidad a Inundaciones Ecuador Continental*, 1:25,000, 2024 (MAG) | MAG geoportal WMS/WFS, `http://geoportal.agricultura.gob.ec` (**HTTP only**; exact layer name to confirm) ([ROADMAP](https://github.com/DweskZ/EcuDataMCP/blob/main/docs/ROADMAP.md)) | 1:25,000 | Static | No licence stated (?) | C / pull | P1 / 1 | V |
 | `aqueduct_floods` | WRI Aqueduct flood hazard: riverine and coastal, baseline, 2030/2050/2080 | EE `WRI/Aqueduct_Flood_Hazard_Maps/V2` | 1 km | Static | Attribution requested (?) | C+T / QIP | P3 / 2 | V |
 | `lhasa_nowcast` | NASA LHASA landslide nowcast v2 (the model is re-run centrally with LHASA 2.1.1; see [07](./07-impact-modules-and-triggers.md)) | GES DISC `Global_Landslide_Nowcast` v2.0.0 (Earthdata login) ([STAC](https://github.com/opengeos/NASA-CMR-STAC/blob/main/datasets/Global_Landslide_Nowcast_2.0.0.json)) | ≈1 km | Daily; latency ≥5 h | NASA; code licence not read (?) | C / pull | P2 / 2 | V |
@@ -192,7 +194,7 @@ EE advises against Aqueduct for flat lowland rivers with backwater effects, whic
 |---|---|---|---|---|---|---|---|---|
 | `inec_census_2022` | Census 2022 (CPV 2022): sector, canton and block (*manzana*) microdata; 2010/2001 recoded to 2022 geography; population projections (revision 2024, 1990–2035 by province) (INEC) | `https://www.ecuadorencifras.gob.ec/documentos/web-inec/bd-censo/manzana/BDD_CPV2022_MANLOC_CSV.zip`; index `https://www.censoecuador.gob.ec/data-y-resultados/` (returns 404 but serves content; certificate expired 2026-09-18) ([censo_client](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/censo_client.py)) | Block / sector | Static (census); projections by revision | Aggregates OK with citation; microdata research-only (Y for aggregates) | C / pull via relay if blocked | P1 / 0 | V |
 | `worldpop` | WorldPop 100 m population: EE 2000–2020 and Global2 R2025A (2015–2030, constrained) | EE `WorldPop/GP/100m/pop`, `WorldPop/GP/100m/pop_age_sex`; `https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/{yr}/ECU/v1/100m/constrained/` ([fetcher](https://github.com/N-A-F-I-Z/RxHARM/blob/main/rxharm/fetch/worldpop_fetcher.py)) | 100 m | Annual | CC BY 4.0 (Y) | C / QIP + pull R2025A | P1 / 1 | V |
-| `ghsl_p2023a` | GHSL population, built surface, volume, height, settlement model (JRC) | EE `JRC/GHSL/P2023A/GHS_POP`, `GHS_BUILT_S` (+`_10m`), `GHS_BUILT_V`, `GHS_BUILT_H`, `GHS_SMOD_V2-0` | 100 m (SMOD 1 km) | Epochs 1975–2030 | JRC (terms U) (?) | C+T / QIP | P2 / 1 | V |
+| `ghsl_p2023a` | GHSL population, built surface, volume, height, settlement model (JRC) | EE `JRC/GHSL/P2023A/GHS_POP`, `GHS_BUILT_S` (+`_10m`), `GHS_BUILT_V`, `GHS_BUILT_H`, `GHS_SMOD_V2-0` | 100 m (SMOD 1 km; `GHS_BUILT_S_10m` 10 m) | Epochs 1975–2030 (`GHS_BUILT_H` 2018 only) | JRC (terms U) (?) | C+T / QIP | P2 / 1 | V |
 | `open_buildings` | Open Buildings v3 polygons (inference May 2023) and 2.5D Temporal (2016–2023, heights) (Google) | EE `GOOGLE/Research/open-buildings/v3/polygons`, `GOOGLE/Research/open-buildings-temporal/v1`; GCS `gs://open-buildings-data/v3/{polygons_s2_level_4_gzip,points_s2_level_4_gzip}` | Footprint; ≈4 m effective (temporal) | Static / annual | CC BY 4.0 (Y) | C+T / QIP + pull Ecuador subset | P1 / 1 | V |
 | `overture_maps_bq` | Overture Maps places and buildings (CARTO-maintained BigQuery mirror) | `bigquery-public-data.overture_maps.place`, `bigquery-public-data.overture_maps.building` (other tables U) | Feature | Monthly releases | **Conflicting**: ODbL in EE vs CDLA-Permissive (U); treated as SA (Y, SA) | C+T / QIP → Ecuador materialisation | P2 / 1 | V |
 | `osm_bq` | OpenStreetMap in BigQuery: schools, hospitals, roads, `bridge=yes`, drains | `bigquery-public-data.geo_openstreetmap.planet_features`, `…planet_features_multipolygons` | Feature | Refresh cadence U | ODbL (Y, SA) | C+T / QIP → Ecuador materialisation | P1 / 1 | V |
@@ -205,10 +207,12 @@ EE advises against Aqueduct for flat lowland rivers with backwater effects, whic
 | `gmw_mangroves` | Global Mangrove Watch v3 and v4 | `projects/sat-io/open-datasets/GMW/extent/GMW_V3`; `…/GMW/annual-extent/GMW_MNG_2020`, `GMW_MNG_VEC_2020` | 10–25 m | Static | CC BY-SA 4.0 (Y, SA) | C+T / QIP | P2 / 2 | V |
 | `mag_geoportal` | MAG geoportal: 277 WMS / 257 WFS layers, including E25k agro-ecological zoning (e.g. `E25k:vw_hg000_zae_cafe_arabigo`, 724,971 features), 52 `riesgos_agroclimaticos` layers, SIGTIERRAS `cobertura_tierra`/`geomorfologia`/`geopedologia` | `http://geoportal.agricultura.gob.ec/<categoria>/<store>/{wms,wfs}`, found through `/geovisor/config/dataconfig.js` (**HTTP only**; WFS disabled on `catastro_rural`) ([sipa_geoportal_client](https://github.com/DweskZ/EcuDataMCP/blob/main/helpers/sipa_geoportal_client.py)) | 1:25,000 | Static | No licence stated (?) | C / pull | P2 / 2 | V |
 | `sigacua_shrimp_farms` | SIGACUA shrimp-farm register (3,431 farms, 2,977 flood-susceptible, per the ENOS 2026 report) | Not public; request under MoU (holder to confirm: MPCEIP/CNA) | Farm polygon | — | Agreement (?) | C / push | P2 / 2 | U |
-| `energy_assets` | Reservoir polygons (GDW) and power plants (GPPD) | `projects/sat-io/open-datasets/GDW/GDW_RESERVOIRS_V1_0`; `projects/sat-io/open-datasets/global_power_plant_DB_1-3`; plus INAMHI `hidroelectricasshape` | Polygon / point | Static | CC BY 4.0 (Y) | C / QIP | P2 / 1 | V |
+| `energy_assets` | Reservoir polygons (GDW) and power plants (GPPD) | `projects/sat-io/open-datasets/GDW/GDW_RESERVOIRS_V1_0`; `projects/sat-io/open-datasets/global_power_plant_DB_1-3`; plus INAMHI `hidroelectricasshape` (the EE catalogue also carries WRI GPPD, catalogue file `WRI/WRI_GPPD_power_plants.jsonnet`) | Polygon / point | Static | CC BY 4.0 (Y) | C / QIP | P2 / 1 | V |
 | `gad_local_layers` | GAD local layers: Guayaquil / Segura EP `Zonas_Inundables/FeatureServer/28`, `Vías_Inundables/5`, `Zonas_Seguras/16`, `Puntos_vulnerables_por_marea_alta/0`; Manabí GeoNode; Manta Hub; Quito | `services1.arcgis.com/ESOnuLz5X3I3J4At/…`, `services7.arcgis.com/NWWHhu45fOJtCgG3/…` ([producer_seguraep](https://github.com/Dass-19/Godzilla-EnsoStreamingPipeline/blob/master/backend/producers/producer_seguraep.py)); `https://geovisor.manabi.gob.ec`; `share-open-data-gadmanta.hub.arcgis.com/api/search/v1`; `geoquito.quito.gob.ec/server/rest/services` | Street / zone | Ad hoc | Licence for derived products needed (?) | C / pull | P2 / 1 | V |
 
-**Cost guardrail.** Overture and OSM tables in BigQuery are materialised once as Ecuador subsets, clustered on geometry, in `commons_internal`. A third party measured an unclustered nearest-building join at about US$2.25 per query ([source](https://github.com/thatapicompany/overture-maps-api/blob/main/etl/bigquery-cost-controls.md)). Column names below are to confirm against the table schema. Always dry-run first.
+**Other building layers.** `projects/sat-io/open-datasets/VIDA_COMBINED/ECU` (Google plus Microsoft footprints, CC BY-SA 4.0) is an optional P3 alternative to `open_buildings`, noted in the YAML but without its own id; it would be gated as `sa`. The community per-country Microsoft set has no Ecuador entry. Meta HRSL coverage of Ecuador is unverified.
+
+**Cost guardrail.** Overture and OSM tables in BigQuery are materialised once as Ecuador subsets, clustered on geometry, in `commons_internal`. A third party measured an unclustered nearest-building join at about US$2.25 per query ([source](https://github.com/thatapicompany/overture-maps-api/blob/main/etl/bigquery-cost-controls.md)). Column names below are to confirm against the table schema. Always dry-run first. The filter pairs a **constant** bounding-box predicate, which lets BigQuery prune blocks if the source table is clustered on geometry (the same rule as [06 §3.6](./06-forecast-model-stack.md); the clustering of `planet_features` is unverified), with the exact buffered land polygons.
 
 ```sql
 -- One-off (then monthly) Ecuador materialisation of OSM features.
@@ -216,10 +220,11 @@ CREATE OR REPLACE TABLE `ectwin-commons-prod.commons_internal.osm_ecuador_featur
 CLUSTER BY geometry AS
 SELECT osm_id, feature_type, all_tags, geometry
 FROM `bigquery-public-data.geo_openstreetmap.planet_features`
-WHERE ST_INTERSECTS(
-  geometry,
-  (SELECT ST_UNION_AGG(geom) FROM `ectwin-commons-prod.commons_pub.dim_ecuador_clip`
-   WHERE clip_id IN ('mainland_buf5km', 'galapagos_buf5km')));
+WHERE ST_INTERSECTS(geometry,                                   -- constant: D13 bbox
+        ST_GEOGFROMTEXT('POLYGON((-92.1 -5.1, -75.1 -5.1, -75.1 1.7, -92.1 1.7, -92.1 -5.1))'))
+  AND ST_INTERSECTS(geometry,                                   -- exact: buffered land clips
+        (SELECT ST_UNION_AGG(geom) FROM `ectwin-commons-prod.commons_pub.dim_ecuador_clip`
+         WHERE clip_id IN ('mainland_buf5km', 'galapagos_buf5km')));
 -- Run with: bq query --dry_run ... ; then --maximum_bytes_billed=<dry-run bytes x 1.2>
 ```
 
@@ -242,7 +247,7 @@ Social-registry data (MIES, now `desarrollohumano.gob.ec`) and Superbancos or in
 
 | `id` | Dataset (provider) | Exact ID / endpoint | Resolution | Coverage / cadence | Licence (comm.) | Plane / ingest | P / Ph | V |
 |---|---|---|---|---|---|---|---|---|
-| `desinventar_ecu` | DesInventar Ecuador disaster inventory | Inventory `ECU-1250695011`, `db.desinventar.org` (reused for 2010–2025 by [PORTAL-SINIESTROS](https://github.com/Henrry-Lojan/PORTAL-SINIESTROS-ECUADOR)) | Canton / parish (U) | Historical (coverage U) | Licence U (?) | C / manual | P2 / 1 | V |
+| `desinventar_ecu` | DesInventar Ecuador disaster inventory | Inventory `ECU-1250695011`, `db.desinventar.org` (reused for 2010–2025 by [PORTAL-SINIESTROS](https://github.com/Henrry-Lojan/PORTAL-SINIESTROS-ECUADOR)) | Canton / parish (U) | Historical; coverage U (one brief assumes ≈1970–2013 from desinventar.net; the third-party portal uses 2010–2025) | Licence U (?) | C / manual | P2 / 1 | V |
 | `groundsource` | Groundsource flood-event catalogue: 2,646,302 records, 2000→ (Google) | `projects/sat-io/open-datasets/groundsource_2026`; Zenodo DOI 10.5281/zenodo.18647054 ([doc](https://github.com/samapriya/awesome-gee-community-datasets/blob/master/docs/projects/groundsource.md)) | Polygon | ≈82% precision; recency-biased | CC BY 4.0 (Y) | C / QIP → subset | P1 / 1 | V |
 | `global_flood_db` | Global Flood Database: 913 MODIS events, 2000-02-17 to 2018-12-10 | EE `GLOBAL_FLOOD_DB/MODIS_EVENTS/V1` (filter on `cc`) ([STAC](https://storage.googleapis.com/earthengine-stac/catalog/GLOBAL_FLOOD_DB/GLOBAL_FLOOD_DB_MODIS_EVENTS_V1.json)) | 250 m (EE gsd 30 m) | Static | **CC BY-NC 4.0 (N)** | C (NC) / QIP | P2 / 1 | V |
 | `copernicus_ems` | Copernicus EMS rapid-mapping activations for Ecuadorian floods: EMSR789 and EMSR796 (2025-02-26), EMSR813 (2025-07-03), EMSR870 (2026-03-02) | Activation pages (URL pattern U); index seen in [monitor.json](https://github.com/18orkidea/monitor-terremoto-colombia/blob/main/data/public/monitor.json) | Event polygons | On activation | Licence U (?) | C / manual | P2 / 1 | V |
@@ -272,7 +277,7 @@ The SNGR SITREPs and ArcGIS events (§2.2) are the **primary national impact rec
 | `inec_geoportal` | INEC GeoNode and GeoServer cartography (7 layers), including census sectors | `https://geonode.inec.gob.ec` (WMS/WFS/WCS); `https://cartografia.inec.gob.ec/geoserver` (`geoinec` is dead) | Parish / sector | Census 2022 | Cite INEC (to confirm) (?) | C / pull | P1 / 0 | V |
 | `conali_igm_provinces` | *Organización Territorial Provincial 2025* (IGM/CONALI), 24 provinces, EPSG:32717 | Shapefile ([source](https://github.com/jordanvt18/ec-empleo-crimen)); CONALI official parish limits U | Province | 2025 | IGM terms (?) | C / manual | P2 / 1 | V |
 | `hdx_cod_ab_ecu` | HDX COD-AB Ecuador (`cod-ab-ecu`), levels 0–4, from INEC, updated 2024 | HDX dataset `cod-ab-ecu` ([licence check](https://github.com/nwatab/historical-event-visualizer/blob/main/scripts/ohm/licenses.mjs)) | ADM0–ADM4 | 2024 | `cc-by-igo` (second-hand) (Y) | C / pull | P1 / 0 | V |
-| `geoboundaries_ecu` | geoBoundaries Ecuador: ADM1 (24 units, CC0), ADM2 (224 units, INEC + OCHA ROLAC, CC BY 3.0 IGO, built 2023-12-12); **no ADM3/ADM4** | EE `WM/geoLab/geoBoundaries/600/ADM1`, `/ADM2`; [ADM2 metadata](https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/releaseData/gbOpen/ECU/ADM2/geoBoundaries-ECU-ADM2-metaData.json) | ADM0–ADM2 | 6.0.0 | CC0 / CC BY 3.0 IGO (Y) | C / QIP | P2 / 0 | V |
+| `geoboundaries_ecu` | geoBoundaries Ecuador: ADM1 (24 units, CC0), ADM2 (224 units, INEC + OCHA ROLAC, CC BY 3.0 IGO, built 2023-12-12); **no ADM3/ADM4** (HTTP 404). The EE copies are tagged CC BY 4.0; the per-level release metadata governs | EE `WM/geoLab/geoBoundaries/600/ADM1`, `/ADM2`; [ADM2 metadata](https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/main/releaseData/gbOpen/ECU/ADM2/geoBoundaries-ECU-ADM2-metaData.json) | ADM0–ADM2 | 6.0.0 | CC0 / CC BY 3.0 IGO (Y) | C / QIP | P2 / 0 | V |
 | `fao_gaul_2025` | FAO GAUL 2025, levels 1–2 (no 2025 level 0) | EE `FAO/GAUL/2025/level1`, `FAO/GAUL/2025/level2`, `FAO/GAUL_SIMPLIFIED_500m/2025/level1`, `…/level2` ([catalog](https://github.com/google/earthengine-catalog/blob/main/catalog/FAO/FAO_GAUL_2025_level2.jsonnet)) | ADM1–ADM2 | 2025 | CC BY 4.0; **FAO logo prohibited** (Y) | C+T / QIP | P3 / 1 | V |
 
 A parish layer on ArcGIS Online (`services7.arcgis.com/iFGeGXTAJXnjq0YN/…/Parroquias_del_Ecuador/FeatureServer/0`) is often used as "INEC DPA", but **its owner is unknown**. It is excluded.
@@ -281,9 +286,9 @@ A parish layer on ArcGIS Online (`services7.arcgis.com/iFGeGXTAJXnjq0YN/…/Parr
 
 | `id` | Dataset | Source / build | Zooms / res. | Cadence | Licence (comm.) | Plane / ingest | P / Ph | V |
 |---|---|---|---|---|---|---|---|---|
-| `basemap_osm_pmtiles` | GDE-Niño vector basemap (roads, water, places, admin lines) as PMTiles on `ectwin-commons-prod-public` `tiles/static/basemap/v<ver>/` | Built by `build-basemap` (§4.8) from `osm_bq` plus DPA boundaries; tile tool per [03 §9](./03-architecture.md) (tippecanoe listed; Planetiler an alternative, **unverified**) | z0–z14 (target, estimate) | Monthly | ODbL; "© OpenStreetMap contributors" (Y, SA) | C / pull | P1 / 1 | V |
+| `basemap_osm_pmtiles` | GDE-Niño vector basemap (roads, water, places, admin lines) as PMTiles on `ectwin-commons-prod-public` `tiles/static/basemap/v<ver>/` | Built by `build-basemap` (§4.8) from `osm_bq` plus DPA boundaries; tile tool per [03 §3](./03-architecture.md) component inventory (tippecanoe listed; Planetiler an alternative, **unverified**) | z0–z14 (target, estimate) | Monthly | ODbL; "© OpenStreetMap contributors" (Y, SA) | C / pull | P1 / 1 | V |
 | `sentinel2_composite` | Cloud-masked Sentinel-2 imagery basemap, yearly, for context views | EE `COPERNICUS/S2_SR_HARMONIZED` with `GOOGLE/CLOUD_SCORE_PLUS/V1/S2_HARMONIZED`; exported to COG | 10 m | Yearly | Copernicus Sentinel terms (U) (Y) | C / QIP → COG | P3 / 2 | V |
-| `google_maps_tiles` | Google 2D map tiles and Photorealistic 3D Tiles (optional) | **Tenant's own Maps key only** (D19); Photorealistic 3D: 1,000 free root requests/month, then US$6.00 per 1k | — | — | Google Maps Platform terms; no caching (?) | T / QIP | P3 / 3 | V |
+| `google_maps_tiles` | Google 2D map tiles and Photorealistic 3D Tiles (optional) | **Tenant's own Maps key only** (D19); 2D Map Tiles: 100,000 free/month, then US$0.60 per 1k; Photorealistic 3D (Enterprise SKU): 1,000 free root requests/month, then US$6.00 per 1k, cap 10,000 root requests/day (prices from the cost brief, second-hand) | — | — | Google Maps Platform terms; no caching (?) | T / QIP | P3 / 3 | V |
 
 The IGM orthophoto WMS (`igm_dtm_orto`) can be added as an overlay for GAD users. The 3D terrain for CesiumJS comes from `copernicus_dem_glo30` ([02 FR-022](./02-users-requirements-ux.md)).
 
@@ -366,7 +371,7 @@ geoBoundaries and GAUL are used only as ADM1/ADM2 checks, because they have no p
 2. **Exact match** on `name_norm` within the parent.
 3. **Alias match** via `dim_dpa_alias`, for historical names and common variants.
 4. **Fuzzy match**: Jaro-Winkler similarity ≥0.92 **and** a margin of ≥0.03 over the second-best candidate within the parent. Both thresholds are initial values, to tune on a labelled set.
-5. **Jev choice** among the top 5 candidates when step 4 is ambiguous. This uses the D16 dedup and entity-alignment pattern: abstain if the top probability is below 0.60.
+5. **Jev choice** among the top 5 candidates when step 4 is ambiguous. This uses the D16 dedup and entity-alignment pattern with the template [`schemas/decisions/place_resolution.json`](../schemas/decisions/place_resolution.json) ([08](./08-ai-decision-layer-jev.md)): abstain if the top probability is below 0.60.
 6. **Human review queue** (`commons_ops.review_queue`) for anything left. A confirmed answer is written back to `dim_dpa_alias`, so the same name is never asked twice.
 
 ```python
@@ -463,9 +468,9 @@ flowchart LR
 - Every `job` named in the YAML has a Terraform definition in `infra/commons/` (for `ingestion: pull`).
 - A layer whose `licence_class` is `nc` or `pending_review` can never be written into `commons_pub` (the check is a static SQL lint of the publish step).
 
-**Runtime state.** `ops-synthetic-probe` runs every 5 minutes from both regions and writes `commons_ops.source_health`. The table's DDL is in [11 §4.3](./11-operations-runbook.md): `source` (catalogue id), `probe_region`, `http_status`, `final_host`, `tls_ok`, `tls_not_after`, `body_bytes`, `expected_keys_ok` and `verdict`, which takes the values `ok`, `blocked`, `empty`, `tls`, `moved`, `down` and `rate_limited`. Ingest jobs log each run to `commons_ops.pipeline_runs`, using the same DDL section. This document proposes four extra `source_health` columns for the data-management checks, **to reconcile with the 11 owners**:
+**Runtime state.** `ops-synthetic-probe` runs every 5 minutes from both regions and writes `commons_ops.source_health`. The table's DDL is in [11 §4.3](./11-operations-runbook.md): `source` (catalogue id), `probe_region`, `http_status`, `final_host`, `tls_ok`, `tls_not_after`, `body_bytes`, `expected_keys_ok` and `verdict`, which takes the values `ok`, `blocked`, `empty`, `tls`, `moved`, `down` and `rate_limited`. Ingest jobs log each run to `commons_ops.pipeline_runs`, using the same DDL section. Four `source_health` columns serve the data-management checks defined here; the 11 §4.3 DDL carries them (adopted from this section):
 
-- `via`: `direct`, `relay` or `push`;
+- `via`: `direct`, `relay`, `push` or `manual`;
 - `schema_fingerprint`: sha256 of the sorted field names or the WFS `DescribeFeatureType`;
 - `freshness_age_s`: now minus the newest data timestamp;
 - `consecutive_failures`.
@@ -493,7 +498,7 @@ Alert policies and runbooks are in [11 §4.5 and §6](./11-operations-runbook.md
 | `geoportal.agricultura.gob.ec` | HTTPS handshake fails; **HTTP only** | Allowed only for public, non-personal layers; response hashed; `transport_insecure=true` in the sidecar |
 | Superbancos | Needs `verify=False` elsewhere | Do not ingest until fixed or pinned |
 | SNI/IEDG `iedg.sni.gob.ec` | 403 to runners | Relay |
-| Renamed or moved | `ambiente.gob.ec` → `ambienteyenergia.gob.ec`; `obraspublicas.gob.ec` → `mit.gob.ec`; MIES → `desarrollohumano.gob.ec` | `rename_history` field; `allowed_hosts` updated by PR ([11 RB-07](./11-operations-runbook.md)) |
+| Renamed or moved | `ambiente.gob.ec` now redirects to the prison-service site `atencionintegral.gob.ec`; the ministry is at `ambienteyenergia.gob.ec`. `obraspublicas.gob.ec` (TLS mismatch) → `mit.gob.ec`; MIES → `desarrollohumano.gob.ec` | `rename_history` field; `allowed_hosts` updated by PR ([11 RB-07](./11-operations-runbook.md)) |
 | Dead | `srvportal.gestionderiesgos.gob.ec`, `maritime.inocar.mil.ec`, `geoportal.mtop.gob.ec`, `geosalud.msp.gob.ec`, `geoinec`, `sinias.ambiente.gob.ec` | Removed from `allowed_hosts`; probe `verdict` stays `down`; never retried automatically |
 
 ### 4.3 Getting around geoblocking
@@ -547,7 +552,7 @@ The report is a table per host (OK / blocked / TLS issue / empty body) and recor
 
 **Acceptance:** every P1 `.gob.ec` source has a decided route (`direct`, `static-ip`, `relay` or `push`) and a first successful raw capture by that route.
 
-**Rung 2: partner relay in Ecuador (CEDIA, INAMHI or SNGR; to confirm).** The relay runs the same ingest container image with `ECTWIN_MODE=relay` on a small partner-hosted VM or container host inside Ecuador.
+**Rung 2: partner relay in Ecuador (CEDIA, INAMHI or SNGR; to confirm).** The relay runs the same ingest container image with `ECTWIN_ROLE=relay` on a small partner-hosted VM or container host inside Ecuador. On the Commons side, the job for that source is switched to read relay captures with `ECTWIN_SOURCE_MODE=relay` ([11 RB-06](./11-operations-runbook.md)).
 
 - **Sizing (estimate):** 1 vCPU, 2 GB RAM, 20 GB disk.
 - **Network:** outbound HTTPS only, to the source hosts and `storage.googleapis.com`; no inbound ports.
@@ -591,10 +596,10 @@ The MoU technical annex fixes the file format, naming and cadence.
 
 **INAMHI rotation arithmetic (estimate).** At 1 request per 5 minutes there are 288 requests per day. With ≈202 transmitting automatic stations and 3–4 variable groups each (precipitation, temperature, level, flow, where present), there are about 600–800 station-group pairs. [11 RB-08](./11-operations-runbook.md) uses the same basis.
 
-- **Initial 92-day capture:** one request per pair covering the whole window is ≈600–800 requests ≈ **2–2.8 days**. Phase 0 must start by 2026-10-01 so that data from early July 2026 is not lost.
+- **Initial 92-day capture:** one request per pair covering the whole window (assumes the API returns the full 92-day range in one call, **to confirm with INAMHI**) is ≈600–800 requests ÷ 288 per day ≈ **2.1–2.8 days**. Fetch the oldest days first, because each day of delay loses the oldest day of the window. Phase 0 must start by 2026-10-01 (92 days back is 2026-07-01) so that data from early July 2026 is not lost.
 - **Steady state:**
   - *Tier A*: 6 priority coastal stations (Guayaquil, Durán, Milagro, Portoviejo, Chone, Esmeraldas San Mateo), rain group only, fetched hourly: 144 requests/day.
-  - *Tier B*: all other pairs rotate using the remaining 144 requests/day, so each pair refreshes about every 4–5.5 days. That is well inside the 92-day window.
+  - *Tier B*: all other pairs (≈594–794) rotate using the remaining 144 requests/day, so each pair refreshes about every 4.1–5.5 days. That is well inside the 92-day window.
 - River levels arrive 9–24 days late. `inamhi-archive-audit` therefore re-fetches the 43 level and flow stations at +10 and +25 days ([11 §2.1](./11-operations-runbook.md)).
 - **To test in Phase 0:**
   - whether `get_precipitation` returns many stations per call (if so, it replaces much of Tier B for rain);
@@ -640,11 +645,11 @@ The nine steps:
    - province rows sum to the national total;
    - `total = sin_signos + con_signos + grave`;
    - cumulative counts do not decrease week on week, unless the gazette flags a revision;
-   - there are 24 provinces per week.
-6. **Jev QA.** A `noul` check runs on a stratified sample of rows (every row for the first 4 weeks of a new template, then 10%). The state holds the page text snippet and the extracted row; the question asks whether they match. Thresholds follow D16: <0.30 means no, 0.30–0.70 means human review, >0.70 means yes. Model `jev-1.13.0` is pinned and raw probabilities are logged ([08](./08-ai-decision-layer-jev.md)).
+   - there are 24 provinces per week (plus any *zona no delimitada* row: OpenDengue's provincial series has 25 Admin1 units for Ecuador, so check the gazette layout).
+6. **Jev QA.** Table-level structure checks use [`schemas/decisions/pdf_table_qa.json`](../schemas/decisions/pdf_table_qa.json) (table type, header match, row alignment, merged cells, place column, subtotals, units, extraction quality; Jev never checks arithmetic, per [08](./08-ai-decision-layer-jev.md)). Row-level: a `noul` check runs on a stratified sample of rows (every row for the first 4 weeks of a new template, then 10%). The state holds the page text snippet and the extracted row; the question asks whether they match. Thresholds follow D16: <0.30 means no, 0.30–0.70 means human review, >0.70 means yes. Model `jev-1.13.0` is pinned and raw probabilities are logged ([08](./08-ai-decision-layer-jev.md)).
 7. **Human review** in the operator console for anything flagged. Fixes are stored as patches (row id, field, old value, new value, reviewer), never as silent edits.
 8. **Load** into `commons_internal` with provenance columns: `source_pdf_sha256`, `raw_uri`, `page`, `table_index`, `row_index`, `extractor_version`, `template_id` and `qa_noul`.
-9. **Publish** only after licence review (§5). MSP counts stay `pending_review` until the MSP convenio (§6).
+9. **Publish** only after the §4.5 acceptance criteria and licence review (§5). MSP counts stay `pending_review` until the MSP convenio (§6), so they reach only `commons_pub_nc` (noncommercial tenants, rule G-02) and never `commons_pub`.
 
 ```json
 {
@@ -753,17 +758,17 @@ This table extends [03 §7.5](./03-architecture.md). Backfills use the same imag
 
 | Backfill | Range | Method | Volume / cost (estimate unless cited) | Owner, due |
 |---|---|---|---|---|
-| INAMHI 92-day window | ≈2026-07-01 → today | Rotation above; tier A first | ≈600–800 requests ≈ 2–2.8 days | DL, start 2026-09-30 |
+| INAMHI 92-day window | ≈2026-07-01 → today | Rotation above; tier A stations first, oldest days first | ≈600–800 requests ÷ 288/day ≈ 2.1–2.8 days | DL, start 2026-09-30 |
 | SNGR SITREP archive | 2016–2026 (54 events) | Crawl, then PDF pipeline for the 2023, 2024 and 2026 rainy seasons first | 700+ PDFs for 2026 alone; storage <5 GB (estimate) | DL, crawl by 2026-10-09; extraction Phase 1 |
 | SNGR `EVENTOS_X_LLUVIAS` | Whatever history the layer holds (U) | One `query` with `where=1=1`, paged | Small | DL, 2026-10-02 |
-| MSP *gacetas vectoriales* | 2017–2026 | WordPress discovery by slug; PDF pipeline; cross-check against the Wes2024 CSV for 2019–2025 | ≈35 PDFs/year (2026 figure) ≈ 350 PDFs (estimate) | DL, Phase 1 |
+| MSP *gacetas vectoriales* | 2017–2026 | WordPress discovery by slug; PDF pipeline; cross-check against the Wes2024 CSV for 2019–2025 | 35 PDFs by epidemiological week 35 of 2026, so ≈35–52 PDFs/year × 10 years ≈ 350–520 PDFs (estimate) | DL, Phase 1 |
 | CELEC ORDS | 2014-09-20 (`repDiaHid12m`); 2010-02-10 (Mazar inflow) | Date-ranged requests | Small | DL, 2026-10-16 |
-| CENACE SMEC | 2016-05-01 → today | One page per date (≈3,800 pages), paced at 1 request per 10 s (estimate) | ≈11 h | DL, 2026-10-16 |
+| CENACE SMEC | 2016-05-01 → today | One page per date (2016-05-01 → 2026-09-30 = 3,804 pages), paced at 1 request per 10 s (estimate) | 3,804 × 10 s ≈ 10.6 h | DL, 2026-10-16 |
 | INOCAR tide PDFs | 2022 → 2027 Q1 | Quarterly PDFs; parse events | Small | DL, 2026-10-16 |
 | Flood API status | 2025-08-01 → today | `cutoffTime` loop, one request per day | <1,000 requests | DL, on approval |
 | GRRR Ecuador subset | 1980–2023 reanalysis; 2016–2023 reforecast | Anonymous Zarr read of ≈1,840 outlets | ≈118 MB + ≈161 MB | DL, 2026-10-09 |
 | Inundation history | 1999–2020 | 12 mainland tiles plus Galápagos tiles | 11.3 MB (mainland) | DL, 2026-10-02 |
-| GloFAS reanalysis v5.0 and reforecasts | 1980–2025 | EWDS, one year per request (cost-limit rule) | Queue time dominates | FL, Phase 1 |
+| GloFAS reanalysis (v5.0 if EWDS serves it, **to confirm**) and reforecasts | 1980–2025 (v5.0); reforecasts 1999–2023-11 | EWDS, one year per request (cost-limit rule) | Queue time dominates | FL, Phase 1 |
 | C3S hindcasts | 1993–2016 per initialisation month | `cdsapi`, Ecuador box | ≈US$1–5 one-off (estimate from the seasonal research brief; method in [06](./06-forecast-model-stack.md)) | FL, Phase 1 |
 | OpenDengue V1.3 | 1980–2024 | Single release file (502 MB CSV); filter Ecuador | One-off | DL, Phase 0 |
 | CMEMS derived series | Rolling 2 years in EE | Reduce `zos`/`mlotst` over coastal boxes and archive daily, **before the window rolls** | Small | FL, Phase 1 |
@@ -812,7 +817,7 @@ The tables below extend [03 §5.3](./03-architecture.md) and must be reconciled 
 
 ### 5.1 Licence classes
 
-These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open`, `nc`, `sa`, `wn_nrva`, `wn_historic_ccby`). Three internal classes are added (`official_verbatim`, `agreement`, `pending_review`); the last two never appear in any published listing.
+These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open`, `nc`, `sa`, `wn_nrva`, `wn_historic_ccby`). Three classes are added (`official_verbatim`, `agreement`, `pending_review`). `agreement` data never appears raw in any listing. `pending_review` is gated exactly like `nc`: it may appear only in the noncommercial listing (`commons_pub_nc`), and only after the interim check in rule G-12 finds nothing in the source terms that forbids noncommercial redistribution.
 
 | `licence_class` | Meaning | Examples (catalogue ids) | Commercial tenants | Noncommercial tenants | Published via |
 |---|---|---|---|---|---|
@@ -823,13 +828,13 @@ These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open
 | `wn_historic_ccby` | WeatherNext data ≥1 h old, used under CC BY 4.0 | Historic WN2/WN3 fields in verification and hindcast products | Yes, with attribution | Yes | `commons_pub` (derived only) |
 | `official_verbatim` | Official statements shown exactly as issued, with source, number and link | `sngr_wp_alerts`, `inamhi_advertencias`, `cnerfen_bulletins`, `enfen_peru` communiqués | Yes (display with attribution) | Yes | `official_alerts` in `commons_pub` |
 | `agreement` | Usable only under a signed agreement or provider terms; internal inputs only | `inamhi_visor_stations`, `inocar_tides`, `mit_roads_bridges`, `sigacua_shrimp_farms`, `ciifen_geonode`, `google_maps_tiles` (tenant's own) | Derived outputs only, if the agreement allows | Same | Never raw; derived products per MoU |
-| `pending_review` | No licence published, or unclear | `sngr_sitreps` figures, `msp_gacetas_*`, `glofas_*`, `c3s_seasonal`, `floodhub_api`, `mag_*`, `energy_system_ops`, `jrc_gsw`, `copernicus_dem_glo30` | **Treated as `nc`** until cleared | Yes | `commons_pub_nc` until cleared |
+| `pending_review` | No licence published, or unclear | `sngr_sitreps` figures, `msp_gacetas_*`, `glofas_*`, `c3s_seasonal`, `floodhub_api`, `cmems_sealevel_l4_nrt`, `ioc_uhslc_sealevel`, `mag_*`, `energy_system_ops`, `jrc_gsw`, `copernicus_dem_glo30` | **Treated as `nc`** until cleared | Yes, after the G-12 interim check | `commons_pub_nc` until cleared |
 
 ### 5.2 Matrix of attribution and obligations for the main sources
 
 | Source(s) | Licence | Commercial | Attribution text (to show and to ship in `LICENSES.txt`) | SA / NC / other obligations | Gating action |
 |---|---|---|---|---|---|
-| WeatherNext 3/2 (`weathernext_*`) | GDM real-time experimental terms (<1 h old or future); CC BY 4.0 (≥1 h old) ([ToU](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) | Tenants under their own approval; Commons publishes NRVA only | "Copyright 2024-6 Google LLC" plus the mandatory citation that the data "is intended for experimental modelling only and is not intended, validated, or approved for real world use" | No raw or recoloured fields leave a licensee's project; a Retrievable VAS only to identified parties | G-03, G-04 |
+| WeatherNext 3/2 (`weathernext_*`) | GDM real-time experimental terms (<1 h old or future); CC BY 4.0 (≥1 h old) ([ToU](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) | Tenants under their own approval; Commons publishes NRVA only | "Copyright 2024-6 Google LLC" plus the mandatory citation that the data "is intended for experimental modelling only and is not intended, validated, or approved for real world use" (full texts: disclaimer keys D4 and D5 in [02 §8.5](./02-users-requirements-ux.md)) | No raw, subset or recoloured fields leave a licensee's project (they count as unmodified data); a Retrievable VAS only to clearly identified third parties for their internal use; no implied official status | G-03, G-04 |
 | GEOGloWS v2 (`geoglows_v2`) | CC BY 4.0; ECMWF copyright and disclaimer text ([licenses.md](https://geoglows-v2.s3.amazonaws.com/licenses.md)) | Yes | ECMWF/GEOGloWS statement from `licenses.md` | River geometry CC BY-SA | G-06 on geometry |
 | GEOGloWS return periods | CC BY-NC-SA 4.0 | No | GEOGloWS | NC + SA | G-02; substitute GRRR `return_periods.zarr` (CC BY 4.0) for commercial tenants |
 | Flood API (`floodhub_api`) | CC BY 4.0; "primarily non-commercial" (unverified) | Unclear | Google Flood Hub | Snapshots may not be re-served to commercial tenants until the terms are confirmed | `pending_review` → `commons_pub_nc` (**refines [03 §5.3](./03-architecture.md) placement until confirmed**) |
@@ -838,7 +843,8 @@ These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open
 | OSM, Healthsites, MS Roads, Overture | ODbL (Overture conflicting) | Yes | "© OpenStreetMap contributors" etc. | Derivative databases are ODbL; produced works need attribution | G-06 |
 | Open Buildings, WorldPop, MapBiomas, GMW | CC BY 4.0 (GMW CC BY-SA 4.0) | Yes | Per provider | GMW SA | G-01 / G-06 |
 | FABDEM, Global Flood Database | NC | No | Per provider | NC | G-02 |
-| INAMHI, INOCAR, SNGR, MSP, MAG, CELEC | None published | Unclear | Institution name, product, date, URL | MoU needed for redistribution | Official texts: `official_verbatim`; data: `agreement` / `pending_review` |
+| INAMHI, INOCAR, SNGR, MSP, MAG, CELEC | None published (INAMHI core data may fall under the WMO Unified Data Policy, free and unrestricted, **unverified**; INOCAR charts are sold, **unverified**) | Unclear | Institution name, product, date, URL | MoU needed for redistribution | Official texts: `official_verbatim`; data: `agreement` / `pending_review` |
+| National CKAN (`ecu911_ckan`, other `datosabiertos.gob.ec` datasets) | Dataset pages show "Creative Commons Attribution"; Política de Datos Abiertos AM 011-2020 | Yes, with attribution, per dataset | "Fuente: <institución>, datosabiertos.gob.ec" | Check each dataset page | G-01 |
 | INEC | Cite source; microdata research-only | Aggregates yes | "Fuente: INEC, Censo de Población y Vivienda 2022" | No re-identification; no block-level publication | G-08 |
 | IGM | Per-product; some restrict commercial use and redistribution | Check each product | IGM | Publish derived indicators only | G-09 |
 | FAO GAUL | CC BY 4.0; FAO logo prohibited | Yes | FAO GAUL 2025 | No logo | G-01 |
@@ -859,14 +865,14 @@ These classes extend the STAC classes in [03 §5.7](./03-architecture.md) (`open
 | G-09 | IGM and agency vectors under `agreement` or restrictive terms are never redistributed raw; only derived indicators are. | Publish allow-list | Static check |
 | G-10 | Tenant-side licences (e.g. their own WeatherNext, Maps key or Flood API key) stay in the tenant; Commons never re-serves them. | Architecture ([03 §2.4](./03-architecture.md)) | Isolation tests |
 | G-11 | A licence change at a source (detected via terms-page hash or legal notice) freezes publication of the affected layers within 24 h, pending review. | `source_health` terms probe; runbook | Drill once per phase |
-| G-12 | Legal clears P1 `pending_review` sources within **10 business days** of onboarding; the result is recorded in `layer_registry.review` (who, when, basis). | PA + DPO process | Registry audit |
+| G-12 | Before any `pending_review` layer enters `commons_pub_nc`, PA and DPO record an **interim check** (target: 3 business days) that the source terms do not forbid noncommercial redistribution; legal then clears P1 `pending_review` sources within **10 business days** of onboarding (targets). Both results are recorded in `layer_registry.review` (who, when, basis). | PA + DPO process | Registry audit; a `pending_review` layer without an interim-check entry fails the publish step |
 
 ```sql
 CREATE TABLE `ectwin-commons-prod.commons_pub.layer_registry` (
   layer_id        STRING NOT NULL,     -- e.g. 'exposure_parish', 'river_status'
-  source_ids      ARRAY<STRING> NOT NULL,  -- catalogue ids used
+  source_ids      ARRAY<STRING>,       -- catalogue ids used (BigQuery arrays cannot be NOT NULL; DQ-23 checks non-empty)
   licence         STRING NOT NULL,     -- SPDX where possible
-  licence_class   STRING NOT NULL,     -- open | sa | nc | wn_nrva | wn_historic_ccby | official_verbatim
+  licence_class   STRING NOT NULL,     -- open | sa | nc | wn_nrva | wn_historic_ccby | official_verbatim | pending_review
   commercial_ok   BOOL   NOT NULL,
   attribution     STRING NOT NULL,
   obligations     ARRAY<STRING>,       -- 'share_alike', 'no_logo', 'weathernext_notice', 'no_block_level'
@@ -909,15 +915,15 @@ The instrument is a *convenio de cooperación interinstitucional*, or a technica
 Use this checklist for every data convenio. [13](./13-governance-legal-risk.md) holds the legal template.
 
 1. **Parties and signatories.** Institution, legal representative, technical focal point with backup, and the platform host entity. Who signs for a multi-tenant platform is open (§10).
-2. **Object.** Exchange of data and services for El Niño decision support. It must state explicitly that **the platform issues no alerts**, and that official alerts remain the SNGR's (and INAMHI's and INOCAR's for their warnings) (D1).
+2. **Object.** Exchange of data and services for El Niño decision support. It must state explicitly that **the platform issues no alerts**: only SNGR declares alerts; INAMHI issues hydromet *advertencias*, CN-ERFEN issues El Niño statements and INOCAR issues ocean and tsunami information (D1). The platform shows these verbatim and labels its own outputs *apoyo a la decisión / pronóstico experimental*.
 3. **Data annex (per dataset):** name, variables, spatial and temporal resolution, period, update cadence, latency target, QC flags, format (CSV, Parquet, GeoJSON, NetCDF, WFS or OGC API), CRS, units, time zone (UTC preferred) and codes (DPA, station codes).
 4. **Delivery mechanism:** allow-listed static IP (`ectwin-ingest-scl-ip`) for pull, push to a signed-URL endpoint, WIS 2.0 subscription, or relay hosting. Include rate limits and maintenance windows.
 5. **Service levels:** availability target, a **≥30 days' notice of endpoint or schema changes**, an incident contact, and the fallback during outages.
 6. **Licence of use:** internal use; publication of **derived products** under CC BY 4.0 with attribution (preferred); whether raw data may be re-served to other public entities; commercial tenants yes/no; attribution text.
 7. **Reciprocity:** what the platform returns, e.g. verification scores, bias-corrected probabilities, OGC and ArcGIS-compatible layers (FR-023), archived data copies (the platform archive becomes a national asset) and training.
 8. **Vocabulary and communication protocol:** naming, co-branding, "*apoyo a la decisión*" labelling, the crisis-communication protocol, and who speaks to the media.
-9. **Personal data (LOPDP):** aggregates only, unless strictly necessary. Controller and processor roles, DPIA, pseudonymisation (Cloud DLP), retention, breach notification (processor to controller within ≤48 h, inside the legal 2-day *término*). Data residency: Firestore in `southamerica-west1`; BigQuery in `US` (processor hosting abroad is not a transfer, per Oficio SPDP-IRD-2026-0300-O, to confirm).
-10. **Security:** EGSI v3 alignment, least-privilege access, audit logs, encryption.
+9. **Personal data (LOPDP):** aggregates only, unless strictly necessary. Controller and processor roles, DPIA, pseudonymisation (Cloud DLP), retention, breach notification (processor to controller within ≤48 h, inside the 2-day *término* of LOPDP Art. 43; controller to the SPDP and ARCOTEL within the 5-day *término*, and to the CSIRT since the 2026 cybersecurity amendment, per [13](./13-governance-legal-risk.md)). LOPDP Art. 2(e) exempts SNGR and COE disaster-risk processing but not the platform's own processing. Data residency: Firestore in `southamerica-west1`; BigQuery in `US` (processor hosting abroad is not a transfer, per Oficio SPDP-IRD-2026-0300-O, to confirm).
+10. **Security:** EGSI v3.0 alignment (Acuerdo MINTEL-MINTEL-2024-0003; LOPDP Art. 38 extends the government security mechanism to third parties providing public services), least-privilege access, audit logs, encryption.
 11. **Confidentiality and classification:** a clause for INOCAR as a Navy institute, and for critical-infrastructure data from CELEC and CENACE.
 12. **Intellectual property:** source data stays with the institution; platform code is Apache-2.0 (D20); jointly produced products are co-owned.
 13. **Costs:** no fees; each party bears its own costs. Any cloud costs of agency push are borne by the platform (estimate them in [09](./09-cost-model.md)).
@@ -964,7 +970,7 @@ Rules live in `pipelines/commons/dq/rules/*.yaml`. Each has an id, a scope (sour
 Results go to `commons_ops.dq_results`, whose DDL is in [11 §7.2](./11-operations-runbook.md). The rule ids above (`DQ-01` … `DQ-23`) are the `check_id` values for source-level checks. Product-level checks, such as the monotonicity of `parish_exceedance`, are defined in 11. 11's publish gate (block checks run before any `MERGE` into `commons_pub`) applies to every ingest described here.
 
 ```sql
--- DQ-06 persistence check: same non-zero hourly value for >= 6 consecutive hours (one ingest date)
+-- DQ-06 persistence check: same non-zero hourly value for >= 6 consecutive hours (two-day window ending @d)
 SELECT station_code, MIN(obs_hour) AS from_hour, MAX(obs_hour) AS to_hour,
        ANY_VALUE(value) AS value, COUNT(*) AS n_hours
 FROM (
@@ -990,14 +996,14 @@ HAVING COUNT(*) >= 6;
 | Issue | Affected ids | Handling |
 |---|---|---|
 | No IMERG Final after 2025-09-30 (V08 transition) | `imerg_v07` | Use Early/Late only as provisional truth; CHIRPS v3 and gauges are primary truth ([14](./14-verification-and-validation.md)) |
-| CHIRPS v3 in EE: the catalogue source lists `UCSB-CHC/CHIRPS/V3/*`, but one brief found it missing from the EE STAC mirror | `chirps` | Check in Phase 0; fall back to CHC COGs |
+| CHIRPS v3 in EE: the EE catalogue source (commit of 2026-09-28) lists `UCSB-CHC/CHIRPS/V3/*`, but another brief reports v3 absent from the EE catalogue | `chirps` | Check in Phase 0; fall back to CHC COGs |
 | GRRR ends 2023-12-23 and was produced by an older model version | `grrr` | Fill 2024 onward with the GloFAS v5.0 reanalysis and Flood API `cutoffTime` statuses |
 | EE keeps only 2 years of CMEMS | `cmems_ee` | Archive derived series daily |
 | Stale or ended EE assets: HYCOM (2024-09-05), `ECMWF/ERA5/DAILY` (2020-07-09), CHIRTS daily (2016), `NOAA/CFSV2/FOR6H` (deprecated; analysis only) | — | Excluded; CI blocks these ids |
 | GEOGloWS raw bias (mean-flow ratio ≈2.3×; median KGE −0.57) | `geoglows_v2` | Flow-duration-curve bias correction before display |
 | INAMHI river levels arrive 9–24 days late; station gaps (e.g. Songa 14–17 Sep) | `inamhi_visor_stations` | Freshness badges; do not use for nowcast triggers |
 | `COE2` uses place names, and its layer id changes | `sngr_arcgis_events` | Resolve layer id each run; name matcher |
-| ERFEN vs CPC Niño 1+2 values differ (+4.5 vs ≈+3.4 °C, Sep 2026) | `cpc_enso`, `enfen_peru` | Store `source` and `base_period`; show both with an explanation |
+| CN-ERFEN vs CPC Niño 1+2 values differ (+4.5 vs ≈+3.4 °C, Sep 2026, search summaries); ICEN uses a third basis (ERSSTv5, 1991–2020) | `cnerfen_bulletins`, `cpc_enso`, `enfen_peru` | Store `source` and `base_period`; show both with an explanation |
 | Overture places licence conflicts (ODbL vs CDLA) | `overture_maps_bq` | Treat as SA until resolved |
 | GOES-19 flood product does not cover Galápagos south of the equator | `goes19_abi_flood` | Use S1 for Galápagos; badge |
 | OpenDengue provincial weekly series is patchy and ends 2020 | `opendengue` | Use MSP extraction for 2021 onward |
@@ -1022,21 +1028,21 @@ The Commons SLO "official-alert freshness ≤15 min in 99% of polls while the so
 | Raw captures | Original bytes plus `.meta.json` | `ectwin-commons-prod-raw/raw/…` | Immutable (§4.6) |
 | Tabular (observations, events, indices, probabilities) | BigQuery tables; Parquet (ZSTD) for bulk mirrors | `commons_*` datasets; `ectwin-commons-prod-bulk/curated/` | Partitioned on the event or init date; `require_partition_filter` on published tables |
 | Vectors (boundaries, exposure, facilities, roads) | **GeoParquet** (EPSG:4326, WKB geometry; spec version to confirm) plus BigQuery `GEOGRAPHY` | `curated/` and bulk bucket | H3 columns for joins |
-| Rasters (DEM derivatives, hazard, anomalies, nowcasts) | **COG** (tiled 512×512, internal overviews, DEFLATE or ZSTD) | `cog/<layer>/v<ver>/` | Served by TiTiler on Cloud Run for dynamic styling ([03 §9.2](./03-architecture.md)) |
+| Rasters (DEM derivatives, hazard, anomalies, nowcasts) | **COG** (tiled 512×512, internal overviews, DEFLATE or ZSTD) | `cog/<layer>/v<ver>/` | Served by TiTiler on Cloud Run (min instances 0) only for dynamic styling ([03 §8.1](./03-architecture.md)) |
 | Multidimensional (ensembles, reanalysis subsets, GRRR subset, hindcasts) | **Zarr**: v3 for new stores where tooling allows; read v2 sources (GRRR) as-is | `curated/zarr/<product>/<init>.zarr` | Chunk by time for point series and by space for maps; Ecuador only |
 | Display tiles | **PMTiles** (vector and raster) | `tiles/static/…`, `tiles/forecast/…`, `tiles/offline/canton=<dpa4>/…` | Range-read from GCS; CDN above ≈1.1 TiB/month ([03 §11.1](./03-architecture.md)) |
 | Catalogue | **STAC** (static JSON) | Control plane `/stac/catalog.json` | Custom `ectwin:` fields ([03 §5.7](./03-architecture.md)) |
-| Downloads | CSV, GeoJSON, GeoPackage (T1+); GeoParquet, NetCDF, Zarr, COG (T2+) | Tenant bucket `exports/` | Always with `LICENSES.txt` (FR-068) |
+| Downloads | Daily canton PDFs (T0); parish and AOI tables as CSV, GeoJSON, GeoPackage (T1+); bulk GeoParquet, NetCDF, Zarr, COG (T2+) | Commons public bucket for T0 PDFs; tenant bucket `exports/` for T1+ | Always with `LICENSES.txt` and, where applicable, the WeatherNext files (FR-068); licence gating per FR-073 |
 
 **CRS and area rules.**
 
 - Storage CRS is EPSG:4326.
 - Areas and lengths are computed geodesically in BigQuery (`ST_AREA`, `ST_LENGTH`).
-- Projected work (hydraulic models, HAND) uses UTM 17S (EPSG:32717) on the mainland, which matches the IGM/CONALI provincial layer. Galápagos straddles UTM zones 15 and 16; the zone to use there is **to confirm with IGM practice**.
+- Projected work (hydraulic models, HAND) uses UTM 17S (EPSG:32717) on the mainland, which matches the IGM/CONALI provincial layer. The mainland east of 78°W (much of the Amazon) lies geometrically in zone 18, so zone 17S is a national convention there, acceptable for the coastal model domains. Galápagos straddles UTM zones 15 and 16 (the 90°W boundary); the zone to use there is **to confirm with IGM practice**.
 
 ### 8.2 Ecuador clipping
 
-The standard clip is the bounding box **lon −92.1…−75.1, lat −5.1…1.7, including Galápagos** (D13). At 0.1° that is 11,560 cells, 0.178% of the globe. Two polygons (mainland plus Galápagos) cut this to **4,740 cells**. `commons_pub.dim_ecuador_clip` ([03 §4.2](./03-architecture.md)) stores named geometries:
+The standard clip is the bounding box **lon −92.1…−75.1, lat −5.1…1.7, including Galápagos** (D13). At 0.1° that is 170 × 68 = 11,560 cells, 0.178% of the 3,600 × 1,801 global grid. Two sub-boxes, mainland (60 × 68 cells) plus Galápagos (30 × 22 cells), cut this to **4,740 cells** (−59%), and the land polygons below cut it further (cost-brief arithmetic; [06](./06-forecast-model-stack.md) uses slightly different literal boxes for query pruning). `commons_pub.dim_ecuador_clip` ([03 §4.2](./03-architecture.md)) stores named geometries:
 
 | `clip_id` | Definition | Used by |
 |---|---|---|
@@ -1088,7 +1094,7 @@ sub = ds.sel(latitude=slice(1.7, -5.1),                               # ERA5 lat
 - GRRR Ecuador reanalysis ≈118 MB and reforecast ≈161 MB.
 - Inundation history 11.3 MB.
 - One WN3 0.1° column-init ≈0.07 GB scanned (costs brief arithmetic).
-- A full WN3 0.1° Ecuador statistics cube per init ≈1.9 GB raw, ≈0.5 GB compressed. It lives **only in a licensee's project** (tenant or Commons internal), never published (G-03).
+- A full WN3 0.1° Ecuador statistics cube per init is 11,560 cells × 361 leads × 114 bands × 4 B ≈1.9 GB raw, ≈0.5 GB compressed. It lives **only in a licensee's project** (tenant or Commons internal), never published (G-03).
 
 ---
 
@@ -1152,7 +1158,7 @@ gantt
 
 | Day | Action | Catalogue ids |
 |---|---|---|
-| 09-29 / 09-30 | Submit access requests: WeatherNext form (≈5–7 business days); Flood API waitlist (may take months) and reply with the project ID on approval; EE Partner or noncommercial tier; CDS and EWDS accounts with every seasonal and GloFAS licence accepted; Copernicus Marine account; NASA Earthdata (LHASA); TypeSafe | `weathernext_*`, `floodhub_api`, `c3s_seasonal`, `glofas_*`, `cmems_sealevel_l4_nrt`, `lhasa_nowcast` |
+| 09-29 / 09-30 | Submit access requests: WeatherNext form (≈5–7 business days); Flood API waitlist (may take months) and reply with the project ID on approval; EE Partner or other noncommercial tier (noncommercial tiers since 2026-04-27; a search summary says operational government use in a non-LDC such as Ecuador needs a commercial account, so confirm eligibility, [09](./09-cost-model.md)); CDS and EWDS accounts with every seasonal and GloFAS licence accepted; Copernicus Marine account; NASA Earthdata (LHASA); TypeSafe | `weathernext_*`, `floodhub_api`, `c3s_seasonal`, `glofas_*`, `cmems_sealevel_l4_nrt`, `lhasa_nowcast` |
 | 09-30 | Start INAMHI 92-day capture (tier A first); start `COE2` and WordPress 10-min archiving | `inamhi_visor_stations`, `sngr_*`, `inamhi_advertencias` |
 | 10-01 → 10-06 | ENSO (CPC, ENFEN, ICEN, OISST boxes); GloFAS daily; GEOGloWS Ecuador `river_id` forecasts; hydroviewer `get-alerts`; CELEC ORDS; CENACE SMEC; INOCAR tides; CN-ERFEN PDFs | `cpc_enso`, `enfen_peru`, `oisst_v21`, `glofas_forecast`, `geoglows_v2`, `inamhi_hydroviewer`, `celec_ords_reservoirs`, `energy_system_ops`, `inocar_tides`, `cnerfen_bulletins` |
 | 10-01 → 10-09 | Backfills: GRRR, inundation history, OpenDengue, SITREP crawl, MSP gazette crawl, DPA classifier and boundaries (via relay if needed) | `grrr`, `inundation_history`, `opendengue`, `sngr_sitreps`, `msp_gacetas_vectoriales`, `inec_dpa_classifier`, `hdx_cod_ab_ecu`, `inec_geoportal` |
@@ -1180,7 +1186,7 @@ gantt
 
 - M1.2 is met ([03 §13](./03-architecture.md)).
 - `exposure_parish@2026.11` covers 100% of parishes, with a `sources` JSON on every row.
-- The MSP extractor meets the §4.5 criteria, and the 2026 dengue series reconciles with the published national cumulative within 0 cases.
+- The MSP extractor meets the §4.5 criteria, and the 2026 dengue series reconciles exactly (0-case difference) with the national cumulative published in the latest gazette.
 - The commercial test tenant reaches no `nc` or `pending_review` layer.
 - Every catalogue layer shown in the MVP passes FR-019.
 
@@ -1191,7 +1197,8 @@ gantt
 - Hazard: `lhasa_nowcast` inputs (`smap_soil_moisture`), `nasa_landslide_catalog`, `hand_100`, `deltadtm`, `fabdem` (NC).
 - Impacts: `impact_events` unification (SNGR, DesInventar, Groundsource, GFD, EMS).
 - Health: `msp_gacetas_otras` (leptospirosis, ETAS).
-- **Event mode:** SITREP polling becomes hourly and `COE2` stays at 10 minutes, with a Tier-A INAMHI boost (only if A1 raises the rate limit).
+- **Event mode:** SITREP polling becomes hourly, and `ingest-sngr-alerts` (WordPress and `COE2`) goes from 10 to 5 minutes in posture N2+ ([11 §3](./11-operations-runbook.md)), with a Tier-A INAMHI boost (only if A1 raises the rate limit).
+- Platform layers published back as OGC and ArcGIS-compatible services aligned with the SNGR `COE2` schema (FR-023, Phase 2 in [02](./02-users-requirements-ux.md)).
 - Weekly DQ digests.
 
 *Acceptance (Phase 2):*
@@ -1203,10 +1210,10 @@ gantt
 **Phase 3: Learn and extend (2027-05-03 → 2027-09-30).** Owners: FL, DL.
 
 - `caravan_multimet` and an Ecuador Caravan extension built from INAMHI discharge (A1, A15).
-- `glofas_reanalysis` v5.0 and `cepal_caf_loss_reports` for loss calibration.
+- `glofas_reanalysis` (backfilled in Phase 1; v5.0 once EWDS serves it) and `cepal_caf_loss_reports` for loss calibration.
 - Drought and La Niña transition datasets: SPI/SPEI inputs from CHIRPS and ERA5-Land; reservoir series.
 - A catalogue refresh: re-probe every endpoint, retire dead ones, and bump versions.
-- Publish our layers back as OGC and ArcGIS-compatible services (FR-023).
+- Extend the OGC and ArcGIS-compatible services (FR-023) to every catalogue-derived layer.
 
 *Acceptance (Phase 3):* the Caravan extension passes the Caravan checks for ≥20 Ecuadorian basins (target, estimate), and the post-season verification report cites only archived, hashed inputs.
 
@@ -1227,7 +1234,7 @@ gantt
 - **Legal basis for undocumented endpoints.** The INAMHI Visor API, CELEC ORDS and the SNGR hosted layers are unofficial and can change without notice. MoUs A1–A4 are the durable route. **Who signs for a multi-tenant platform** is unresolved ([13](./13-governance-legal-risk.md)).
 - **Flood API terms.** The "primarily non-commercial" wording and redistribution rights are unverified. This document places snapshots in `commons_pub_nc` until they are confirmed, which refines the `commons_pub` placement in [03 §5.3](./03-architecture.md). The 03 owners must reconcile the two.
 - **Copernicus-family licences.** Commercial redistribution of derived products for C3S seasonal (listed as "other", per contributing centre), GloFAS, the Copernicus DEM, CMEMS sea level and Copernicus EMS needs legal confirmation. Until then these sources are `pending_review` (gated as NC), which would hide seasonal and river products from commercial tenants. **Clearing them is a Phase 0 priority.**
-- **New licence classes.** This document adds `official_verbatim`, `agreement` and `pending_review` to the STAC classes of [03 §5.7](./03-architecture.md). The last two are never published. Confirm with the 03 owners.
+- **New licence classes.** This document adds `official_verbatim`, `agreement` and `pending_review` to the STAC classes of [03 §5.7](./03-architecture.md). `agreement` data is never published raw; `pending_review` is published only in `commons_pub_nc`, after the G-12 interim check. Confirm with the 03 owners, whose §5.2 table lists only NC layers in `commons_pub_nc`.
 - **INAMHI access.** The historical record beyond 92 days, the rate-limit exception, official *umbrales*, the climatological-day convention and the public path of the Django Swagger docs all remain open. The INAMHI rotation arithmetic in §4.4 is an estimate that depends on whether `get_precipitation` returns many stations per call.
 - **Missing national vector data.** No openly downloadable official vector hazard layers (flood, mass movement), Pfafstetter units, road or bridge network, MSP facility registry with coordinates, or AMIE school coordinates were found. They depend on A2, A5, A8 and A11.
 - **Health data currency.** 2026 dengue counts exist only in geoblocked gazette PDFs. The leptospirosis series location, the epidemiological-week definition and parish-level counts need MSP confirmation.
