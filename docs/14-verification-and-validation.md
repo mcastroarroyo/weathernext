@@ -532,7 +532,7 @@ Jobs `verification-daily`, `verification-weekly` and `verification-monthly` are 
 | `verification-hindcast` | On demand | `hc_*`, `availability_log` | Pairs with `hindcast_run_id` | Hours (Delayed Jobs) | VA |
 | `verification-event` | On demand, ≤ 5 days after an event closes | Products, S1/EMS extents, SITREPs | `event_verification` rows; post-event report draft | 1–2 h + EECU | VA, IM |
 
-**Cost (estimate, from the verification brief's unit prices).** The whole verification layer costs about US$20–80 one-off plus US$5–15/month:
+**Cost (estimate, from the verification brief's unit prices).** The items below sum to ≈US$9–52 one-off (WN2 0–8 + Sentinel-1 4–24 + IFS 5–20) and ≈US$4–7/month (EE 1–4 + storage ≈3). The planning envelope keeps the brief's rounded-up figure of **US$20–80 one-off plus US$5–15/month** to absorb re-runs:
 
 | Item | Assumption | Cost |
 |---|---|---|
@@ -541,7 +541,7 @@ Jobs `verification-daily`, `verification-weekly` and `verification-monthly` are 
 | Earth Engine reductions (WN3, IMERG, CHIRPS) | 2–10 EECU-h/month × US$0.40 | US$1–4/month |
 | Sentinel-1 flood maps | 10–60 EECU-h per event season × US$0.40 | US$4–24 |
 | IFS ENS 2023 from the WB2 bucket | ≈1 TB read by Cloud Batch in `us-central1` | US$5–20 one-off |
-| BigQuery storage of pairs and scores | A few GiB active | ≈US$3/month |
+| BigQuery storage (member extract, pairs, scores) | ≈140 GB active × ≈US$0.023/GiB-month (≈US$0.016 at the long-term rate after 90 days) | ≈US$3/month |
 
 Earth Engine: if LP-07 classes the Commons' operational use as commercial, the EECU-h above are billed at US$0.40 each under the Limited plan (usage fees only) instead of being free under a noncommercial tier; a Basic plan (US$500/month) is not needed at these volumes. This fits inside the Commons envelope of US$100–300/month.
 
@@ -714,7 +714,7 @@ GROUP BY dpa_province, dpa_parish, lead_band
 HAVING n_cases >= 20;
 ```
 
-The job then (1) computes 90% block-bootstrap intervals in Python from the same `scored` rows, (2) `MERGE`s results into `commons_pub.verification_scores` on (`period_start`, `period_end`, `model`, `product`, `variable`, `lead_band`, `region_type='parish'`, `region_id`, `reference`, `threshold_id`, `metric`, `score_status`), with `metric` ∈ {`BS`, `BSS`}, and (3) writes 10-bin reliability rows for the province and region pools into `commons_pub.reliability_bins`:
+The job then (1) computes 90% block-bootstrap intervals in Python from the same `scored` rows, (2) `MERGE`s results into `commons_pub.verification_scores` on (`period_start`, `period_end`, `model`, `product`, `variable`, `lead_band`, `region_type='parish'`, `region_id`, `reference`, `threshold_id`, `metric`, `score_status`), with `metric` ∈ {`BS`, `BSS`}, `reference` set to the truth source and `n_cases`/`n_events` filled from the query (`'parish'` is a new `region_type` value and `BS`, `BSS` extend the metric list of [03 §5.3](./03-architecture.md); both to reconcile with its owner), and (3) writes 10-bin reliability rows for the province and region pools into `commons_pub.reliability_bins`:
 
 ```sql
 -- Reliability and Brier decomposition per region and lead band (same `scored` CTE, pooled)
@@ -778,7 +778,7 @@ The gold sets (E1–E6, EB1–EB4), labelling protocol (κ ≥ 0.70), gates and 
 
 | Item | Specification | Owner, date |
 |---|---|---|
-| S3 outcome verification | Join `commons_internal.jev_parish_escalation` with `event_verification`: Brier and ECE of the normalised `impact_outlook` (`score/4`) for "homes flooded or worse within 72 h", against the deterministic `r_det`. Gate: BSS > 0 relative to `r_det` (AI-23) before `ri-2.0.0` promotion | VA, AI — shadow from 2026-12-15, evidence 2027-01-11 |
+| S3 outcome verification | Join `commons_internal.jev_parish_escalation` with `event_verification`: Brier score and ECE of the normalised `impact_outlook` (`J = score/4`) for "homes flooded or worse within 72 h", and the Brier skill of `ri-2.0.0` (which blends `0.8 × R_det + 0.2 × J` when H ≥ 0.2) over `ri-1.0.0`. Gate AI-23: that Brier skill > 0 on E3 and the shadow weeks, plus S3 calibration per question ([08 §4.5, §9.3](./08-ai-decision-layer-jev.md)) | VA, AI — shadow from 2026-12-15; AI-23 evidence 2027-01-08; promotion sign-off 2027-01-12 ([07 §5.5](./07-impact-modules-and-triggers.md)) |
 | S4 gate verification | For each gated run: did the high-resolution run change a published level or a trigger status? Share of "useful runs" and of missed runs (forecaster override) | FL, AI — Phase 2 |
 | Calibration drift | Weekly ECE on 200 stratified audit items per gated question; action if > 0.10 for 2 weeks ([08 §9.6](./08-ai-decision-layer-jev.md)) | AI — weekly from 2026-12-07 |
 | Version change | If `response.model` ≠ `jev-1.13.0`, answers are kept but marked; the gold sets are re-run before any new version is accepted, and the model card is updated (§8.3) | AI — on event |
@@ -787,15 +787,15 @@ The gold sets (E1–E6, EB1–EB4), labelling protocol (κ ≥ 0.70), gates and 
 
 ### 7.3 Gemini evaluation
 
-Gemini writes prose only (D18): Spanish bulletins (Flash-Lite Batch), the analyst copilot and NL→SQL, and escalations ([08 §8](./08-ai-decision-layer-jev.md)).
+Gemini writes prose only (D18): Spanish bulletin narratives (Flash-Lite Batch; Phase 2), the analyst copilot and NL→SQL (Phase 3, opt-in per tenant, evaluated in December 2026), and escalations ([08 §8](./08-ai-decision-layer-jev.md)). The daily canton PDF of FR-044 stays template-only; an AI paragraph is added only after a human approves it ([08 §8.1](./08-ai-decision-layer-jev.md); MR-10 in [13 §9.3](./13-governance-legal-risk.md) requires 100% human sign-off before sending).
 
 | Use | Test set | Metric | Gate to publish or enable |
 |---|---|---|---|
-| Canton bulletins (`bulletins-text`) | Every generated bulletin, automatically | **Numeric consistency**: every number and place in the text must match the source JSON (regex extraction and exact comparison); **vocabulary guard**: no "alerta amarilla/naranja/roja" for platform products; official band present and verbatim | 100% pass, or the template-only fallback is used ([11 RB-10](./11-operations-runbook.md)) |
-| Canton bulletins, human review | 100% of bulletins for the first 4 weeks, then a 10% sample (at least 5 per day) | Signer edit rate; factual error rate; readability for a non-specialist (Spanish readability index and target **to confirm** with ETH) | Factual error rate ≤ 1% of sampled bulletins; any error in an official-alert statement is P2 ([11 §5.1](./11-operations-runbook.md)) |
-| NL→SQL in the copilot | 200 Spanish questions with reference SQL and results over tenant and Commons tables | Execution accuracy (same result set); zero write statements; every query under the byte cap | Execution accuracy ≥ 0.85; 0 writes; 0 cap violations |
-| Analyst copilot answers | 150 questions with rubric (grounded in cited tables, states uncertainty, no invented official statements) | Rubric score by two reviewers; hallucinated-official-alert rate | Hallucinated official statements = 0 |
-| Escalations | Jev review-band items resolved by Gemini, then adjudicated by a human | Agreement with adjudicator | ≥ 0.85, else escalations go straight to humans |
+| Bulletin narratives (`bulletins-text`: 24 provincial, national, one paragraph per canton) | Every generated draft, automatically | **Numeric consistency**: every number and place in the text must match `facts.json` (placeholders substituted by code; any digit not from `facts.json` rejects the draft); **vocabulary guard**: no "alerta amarilla/naranja/roja" for platform products; official band present and verbatim; any Jev QA-battery flag > 0.30 is highlighted to the signer | 100% pass, or the template-only fallback is used ([11 RB-10](./11-operations-runbook.md)) |
+| Bulletin narratives, V&V audit (in addition to the mandatory signer approval) | A second, independent reviewer re-checks 100% of approved narratives for the first 4 weeks, then a 10% sample (at least 5 per day) | Signer edit and rejection rate (`report_signoff` rows); factual error rate after approval; readability for a non-specialist (Spanish readability index and target **to confirm** with ETH) | Factual error rate ≤ 1% of audited narratives; any error in an official-alert statement is P2 ([11 §5.1](./11-operations-runbook.md)) |
+| NL→SQL in the copilot | 200 Spanish questions with reference SQL and results over tenant and Commons tables | Execution accuracy (same result set); zero write statements; every query under the 10 GiB `maximumBytesBilled` cap ([08 §8.3](./08-ai-decision-layer-jev.md)) | Execution accuracy ≥ 0.85; 0 writes; 0 cap violations |
+| Analyst copilot answers | 150 questions with rubric (grounded in cited tables, states uncertainty, no invented official statements) | Rubric score by two reviewers; hallucinated-official-alert rate; answers without citations (withheld by design) | Hallucinated official statements = 0 |
+| Escalations | Jev review-band items given a Gemini second opinion through the adapter, then adjudicated by a human | Agreement with adjudicator | ≥ 0.85, else escalations go straight to humans (auto-apply stays internal-only even when both backends agree, [08 §8.4](./08-ai-decision-layer-jev.md)) |
 | Prompt injection | 100 adversarial reports in S1 state (Spanish) | Share where output changes against rules | 0 policy violations; injection Noul is not a security boundary ([08 §10.4](./08-ai-decision-layer-jev.md)) |
 
 Results go to `commons_internal.genai_eval_results` (`eval_id`, `use`, `prompt_version`, `model`, `item_id`, `metric`, `value`, `reviewer_role`, `ts`). A Gemini model or price change (for example the 2027-01-01 price change noted in [08 §8.5](./08-ai-decision-layer-jev.md)) that leads to a model switch is a **Method** change (§8.4).
@@ -806,29 +806,30 @@ Results go to `commons_internal.genai_eval_results` (`eval_id`, `use`, `prompt_v
 
 ### 8.1 Model inventory
 
-Anything that turns data into a number, level, class or text that users see is a governed "model". Each has an entry in `commons_ops.model_registry` (§8.6) and a model card.
+Anything that turns data into a number, level, class or text that users see is a governed "model". Each has an entry in `commons_ops.model_registry` (§8.6) and a model card. The last column maps each entry to the model-risk inventory and tiers of [13 §9.3](./13-governance-legal-risk.md) (Tier A: outputs seen by public institutions for life-safety-relevant decisions; Tier A models need MRC independent validation before G2).
 
-| Model id (examples) | Kind | Owner | Version key | Initial gate |
-|---|---|---|---|---|
-| `EXT-WN3`, `EXT-WN2`, `EXT-IFS`, `EXT-GLOFAS`, `EXT-GEOGLOWS`, `EXT-FLOODAPI`, `EXT-GRRR` | External source | FL | Provider version (`weathernext_3_0_0`, GloFAS v4.x/v5.0, `gauge_model_id`, `model_id_8583a5c2_v0`) | Registered |
-| `FC-RAIN-WN2-EXC`, `FC-RAIN-WN3-EXC`, `FC-RAIN-IFS-EXC` | Forecast post-processing | FL | `method_version` | G1 |
-| `FC-BC-QM` (quantile mapping), `FC-BC-EMOS` (Phase 2) | Bias correction | FL | `bc_params` version | G1 |
-| `ENSO-COUPLING` | Index | FL | `coupling-x.y.z` | G1 after VR-04 |
-| `SEAS-CANTON-MME` | Seasonal calibration and combination | FL | `method_version` | G1 |
-| `M1` … `M10` | Impact modules | IM | `module.yaml` + `method_version` | Per [07 §2.4](./07-impact-modules-and-triggers.md) |
-| `RI` | Parish risk index | IM | `ri-x.y.z` | `ri-1.0.0` G1 |
-| `TR-xx` | Partner triggers | Trigger owner | `trigger_id` + `version` | TU level (§5.1) |
-| `JEV-S1` … `JEV-S6`, `JEV-B1` … `JEV-B5` | Decision templates | AI | `template_version` + `jev-1.13.0` + backend | Shadow |
-| `GEM-BULLETIN`, `GEM-COPILOT`, `GEM-NL2SQL` | Prompts | AI | `prompt_version` + Gemini model id | Shadow |
-| `EMU-SFINCS-<site>` | Emulator | HYD | library version | G1 |
-| `OHN-EC` (Phase 3) | OpenHydroNet fine-tune | FL, HYD | checkpoint hash | G0 |
+| Model id (examples) | Kind | Owner | Version key | Initial gate | Model-risk id and tier ([13 §9.3](./13-governance-legal-risk.md)) |
+|---|---|---|---|---|---|
+| `EXT-WN3`, `EXT-WN2`, `EXT-IFS`, `EXT-GLOFAS`, `EXT-GEOGLOWS`, `EXT-FLOODAPI`, `EXT-GRRR` | External source | FL | Provider version (`weathernext_3_0_0`, GloFAS v4.x/v5.0, `gauge_model_id`, `model_id_8583a5c2_v0`) | Registered | Inputs to MR-01 and MR-03 |
+| `FC-RAIN-WN2-EXC`, `FC-RAIN-WN3-EXC`, `FC-RAIN-IFS-EXC` | Forecast post-processing | FL | `method_version` | G1 | MR-01, A |
+| `FC-BC-QM` (quantile mapping), `FC-BC-EMOS` (Phase 2) | Bias correction | FL | `bc_params` version | G1 | MR-01, A |
+| `FC-RIVER-STATUS` (fusion of Flood API, GEOGloWS BC and GloFAS) | Forecast post-processing | FL | `method_version` | G1 | MR-03, A |
+| `ENSO-COUPLING` | Index | FL | `coupling-x.y.z` | G1 after VR-04 | MR-12, A |
+| `SEAS-CANTON-MME` | Seasonal calibration and combination | FL | `method_version` | G1 | MR-11, B |
+| `M1` … `M10` | Impact modules | IM | `module.yaml` + `method_version` | Per [07 §2.4](./07-impact-modules-and-triggers.md) | MR-04 (M3, A), MR-05 (M4, B), MR-06 (M7, B), MR-07 (M5/M6, B), MR-08 (M8, B); M1, M2, M9 and M10 not yet tiered in 13 **(to add)** |
+| `RI` | Parish risk index | IM | `ri-x.y.z` | `ri-1.0.0` G1 | MR-02, A |
+| `TR-xx` | Partner triggers | Trigger owner | `trigger_id` + `version` | TU level (§5.1) | Tenant triggers MR-13, C |
+| `JEV-S1` … `JEV-S6`, `JEV-B1` … `JEV-B5` | Decision templates | AI | `template_version` + `jev-1.13.0` + backend | Shadow | MR-09 (A for `life_threat`, B otherwise) |
+| `GEM-BULLETIN`, `GEM-COPILOT`, `GEM-NL2SQL` | Prompts | AI | `prompt_version` + Gemini model id | Shadow | MR-10, B (bulletin) |
+| `EMU-SFINCS-<site>` | Emulator | HYD | library version | G1 | MR-04, A |
+| `OHN-EC` (Phase 3) | OpenHydroNet fine-tune | FL, HYD | checkpoint hash | G0 | MR-08 when used for reservoir inflow; MR-03 if it joins river status |
 
 ### 8.2 Model card template
 
-Each governed model has `models/<module>/model_card.yaml` (or `pipelines/.../model_card.yaml` for forecast post-processing), validated in CI against `schemas/modules/model_card.schema.json` and rendered on the methodology page (FR-074). A merge that changes `method_version` without updating the card fails CI.
+Each governed model has `models/<id>/model_card.yaml` (or `pipelines/.../model_card.yaml` for forecast post-processing), validated in CI against `schemas/modules/model_card.schema.json`. CI renders it to the `models/<id>/MODEL_CARD.md` that [13 §9.3](./13-governance-legal-risk.md) requires for every Tier A model (purpose, data, licences, limits, validation, owner) and to the methodology page (FR-074). The YAML is the source of truth; the Markdown is generated. A merge that changes `method_version` without updating the card fails CI.
 
 ```yaml
-# models/<module>/model_card.yaml   (schema: schemas/modules/model_card.schema.json)
+# models/<id>/model_card.yaml   (schema: schemas/modules/model_card.schema.json; rendered to MODEL_CARD.md)
 card_version: 1
 model_id: FC-RAIN-WN2-EXC
 name_es: "Probabilidad de lluvia sobre umbral por parroquia (WeatherNext 2)"
@@ -843,7 +844,7 @@ version:
   released: "2026-11-20"
 upstream:
   - {id: "weathernext_2_0_0", provider: "Google", version: "WeatherNext 2 operational checkpoints (<2025) - to confirm",
-     licence: "WeatherNext ToU: real-time experimental terms; CC BY 4.0 when >1 h old"}
+     licence: "WeatherNext ToU: real-time experimental terms; CC BY 4.0 when historic (1 h in the ToU of 2026-09-03; older WN2 catalogue text says 48 h - to confirm)"}
   - {id: "commons_internal.bc_params", version: "bc-2026.11"}
   - {id: "commons_internal.inamhi_thresholds", version: "umbrales-2026.10 (to confirm with INAMHI)"}
 intended_use:
@@ -871,6 +872,7 @@ limitations:
 equity_and_ethics:
   - "Truth (SITREPs, stations) is denser in populated areas; rural misses may be under-counted"
 enso_phase_performance: "Reported separately for el_nino, neutral, la_nina (VR-01 §4)"
+model_risk: {id: MR-01, tier: A, mrc_validation_report: null}   # 13 §9.3; required before G2
 gate: {module_gate: G1, trigger_use: TU-1, approved_by: [FL, LI], ctc_minute: null}
 changelog:
   - {version: "1.1.0", date: "2026-11-20", change: "Bias correction bc-2026.11", class: MINOR, mcr: "MCR-0007"}
@@ -892,7 +894,7 @@ changelog:
 
 ### 8.4 Change control
 
-Change classes follow [11 §8.1](./11-operations-runbook.md). A **Method** change is any change to thresholds, bias correction, risk-level formula, confidence rule, model mix, trigger-indicator definition, Jev template or Gemini prompt.
+Change classes follow [11 §8.1](./11-operations-runbook.md). A **Method** change is any change to thresholds, bias correction, risk-level formula, confidence rule, model mix, trigger-indicator definition, Jev template or Gemini prompt. Every Method change needs the FL + LI co-signature, a shadow run of at least 8 cycles and an attached verification comparison ([11 §8.1](./11-operations-runbook.md)); Tier A models also need MRC validation ([13 §9.3](./13-governance-legal-risk.md)). The PATCH/MINOR/MAJOR class below decides what is added on top.
 
 ```mermaid
 flowchart TD
@@ -905,9 +907,9 @@ flowchart TD
   G -->|no| X["Reject or revise"]
   G -->|yes| H["Update model card and changelog"]
   H --> I{"Class"}
-  I -->|PATCH| J["FL approves"]
-  I -->|MINOR| K["FL and LI co-sign, plus IM or AI if relevant"]
-  I -->|MAJOR| L["CTC approves"]
+  I -->|PATCH| J["FL and LI co-sign"]
+  I -->|MINOR| K["FL and LI co-sign, plus IM or AI if relevant, MRC validation if Tier A"]
+  I -->|MAJOR| L["CTC approves on MRC recommendation"]
   J --> M["Methodology page notice"]
   K --> M
   L --> M
@@ -919,39 +921,42 @@ Rules:
 
 1. **MCR record.** Every Method change has an ID `MCR-####` in the repository (`docs/verification/mcr/`), linking the evidence, the model card diff and the approvals.
 2. **Notice.** 7 days' notice on the methodology page before a MINOR or MAJOR change goes live ([07 §5.5](./07-impact-modules-and-triggers.md)); trigger owners using an affected indicator are notified directly.
-3. **Event-season freeze.** From **2026-12-01 to 2027-04-30** only PATCH changes, the planned `ri-2.0.0` promotion and CTC-approved emergency changes are allowed ([07 §5.5](./07-impact-modules-and-triggers.md), [11 §3.6](./11-operations-runbook.md)).
-4. **Emergency path.** If a published product is wrong (wrong thresholds, broken bias correction), the kill switch rolls `latest.json` back to the last good `init_time` and records it in `commons_pub.product_withdrawals` ([11 §5.2](./11-operations-runbook.md)); the fix follows as a PATCH, reviewed within 24 h; the CTC is informed at its next session.
+3. **Event-season freeze.** From **2026-12-01 to 2027-04-30** only PATCH changes and the planned `ri-2.0.0` promotion are allowed ([07 §5.5](./07-impact-modules-and-triggers.md), [11 §3.6](./11-operations-runbook.md)), plus emergency fixes under rule 4.
+4. **Emergency path.** If a published product is wrong (wrong thresholds, broken bias correction), the kill switch (`scripts/ops/rollback-latest.sh`) rolls `latest.json` back to the last good `init_time` and records it in `commons_pub.product_withdrawals` ([11 §5.2](./11-operations-runbook.md)). The fix follows as an emergency change approved by the IC and one domain lead ([11 §8.1](./11-operations-runbook.md)), with review within 24 h. A wrong published product is at least a P2 model incident (P1 when thresholds or levels have reached users in N1 or above, [11](./11-operations-runbook.md)), and its post-mortem is reviewed by the MRC ([13 §9.3](./13-governance-legal-risk.md)); the CTC is informed at its next session.
 5. **Trigger definitions** are versioned in the partner's tenant ([07 §6.7](./07-impact-modules-and-triggers.md)); a change to an indicator they use shows the new TU level and backtest before the owner accepts it.
 6. **No silent tuning during the live season.** Thresholds and gates pre-registered by 2026-11-27 (H9) change only through an MCR with the reason recorded.
 
-### 8.5 The Technical-Scientific Committee (*Comité Técnico-Científico*, CTC)
+### 8.5 The CTC: the TAG's model-governance session
 
-The CTC is constituted under [13](./13-governance-legal-risk.md) §9.1, which holds its charter. Its model-governance role:
+The plan has one technical body, the *Grupo Técnico Asesor* (TAG, [12 §6.1](./12-roadmap-team-budget.md)), which decides method changes, *umbrales*, G2 module gates and verification publication. Its model-risk sub-committee, the MRC ([13 §9.1](./13-governance-legal-risk.md)), keeps the model inventory, reviews validation reports before G2/G3 and approves Jev threshold changes. This document calls the TAG's model-governance session the *Comité Técnico-Científico* (CTC); it is not a separate body, and its charter is the TAG's terms of reference. The V&V-specific proposals are:
 
 | Aspect | Proposal |
 |---|---|
-| Members (voting) | INAMHI forecasting and hydrology (chair proposed, **to confirm**); SNGR monitoring; INOCAR; a CN-ERFEN representative; two academics from different universities (for example ESPOL, EPN, UCuenca, USFQ; names **to confirm**); CIIFEN **(to confirm)** |
-| Members (non-voting) | FL (secretary), IM, AI, DPO, PT/PA; a rotating user representative from a pilot COE; trigger owners for agenda items about their triggers |
-| Cadence | Inaugural session **2026-11-19**; monthly during the peak (third Thursday: 2026-12-17, 2027-01-21, 2027-02-18, 2027-03-18, 2027-04-15); quarterly otherwise; extraordinary sessions by written procedure within 48 h |
+| Members (voting) | The TAG members of [12 §6.1](./12-roadmap-team-budget.md): INAMHI (chair, proposed), INOCAR/CN-ERFEN, CIIFEN, two universities (for example ESPOL, EPN, UCuenca, USFQ; names **to confirm**), MSP, MAG, CELEC/CENACE. SNGR monitoring is listed as a TAG member in the partner table of [12](./12-roadmap-team-budget.md) but not in §6.1; its seat is **to confirm** in the terms of reference |
+| Members (non-voting) | FL and IM (TAG secretaries); AI, DPO, PT/PA; the MRC chair (the independent validator); a rotating user representative from a pilot COE; trigger owners for agenda items about their triggers |
+| MRC | Independent validator (a TAG academic member not on the build team, chair), FL, IM, AI, DPO; monthly, and ad hoc before any G2/G3 gate ([13 §9.1](./13-governance-legal-risk.md)). Prepares validation reports and recommendations for the CTC |
+| Cadence | First CTC session **2026-11-19** ([12 §6.1](./12-roadmap-team-budget.md)); monthly during the peak on the third Thursday (2026-12-17, 2027-01-21, 2027-02-18, 2027-03-18, 2027-04-15), inside the TAG's biweekly rhythm; quarterly otherwise; extraordinary sessions by written procedure within 48 h |
 | Quorum | Half of voting members plus one, including INAMHI |
-| Decision rights | Approve MAJOR method changes; approve G2→G3 promotions and TU-2 for publicly funded triggers and all TU-3; accept exceptions to H2 (training overlap); approve the season verification report for publication; decide demotions that partners dispute |
+| Decision rights | Approve MAJOR method changes on the MRC's recommendation; promote to G2 on the MRC's recommendation ([13 §9.2](./13-governance-legal-risk.md)); confirm that a full season of verification supports G3, which IM and SRE then sign ([07 §10](./07-impact-modules-and-triggers.md)); approve TU-2 for publicly funded triggers and all TU-3; accept exceptions to H2 (training overlap) and to the event-season freeze; approve the season verification report for publication; decide demotions that partners dispute |
 | Advisory role | Verification priorities, event definitions, threshold co-production with INAMHI, divergence cases ([13 §1.5](./13-governance-legal-risk.md)) |
 | Conflicts of interest | Members declare interests in trigger funding or insurance products; they abstain on those items |
-| Records | Minutes `CTC-YYYY-NN` published in Spanish within 10 business days (redacting personal data); decisions referenced in model cards |
+| Records | Minutes `CTC-YYYY-NN` in Spanish, circulated to members within 5 business days ([13 §9.1](./13-governance-legal-risk.md)) and published within 10 business days (redacting personal data); decisions referenced in model cards and `model_registry` |
 
 **RACI for V&V decisions** (R = responsible, A = accountable, C = consulted, I = informed):
 
-| Decision | VA | FL | LI | IM | AI | CTC | Trigger owner | DPO |
-|---|---|---|---|---|---|---|---|---|
-| Weekly scores published | R | A | I | I | I | — | I | — |
-| Truth dataset change | R | A | C | C | — | I | — | — |
-| PATCH method change | R | A | I | C | C | — | I | — |
-| MINOR method change | R | A | R (co-sign) | C | C | I | I | — |
-| MAJOR method change | R | R | R | C | C | A | C | C |
-| TU-2 for a publicly funded trigger | R | R | C | R | — | A | R | — |
-| TU-3 (payout) | R | R | C | R | — | A | A (own legal) | C |
-| Jev or Gemini go-live | R | C | — | C | A | I | — | C |
-| Season report publication | R | R | C | C | C | A | I | C |
+| Decision | VA | FL | LI | IM | AI | MRC | CTC | Trigger owner | DPO |
+|---|---|---|---|---|---|---|---|---|---|
+| Weekly scores published | R | A | I | I | I | — | — | I | — |
+| Truth dataset change | R | A | C | C | — | I | I | — | — |
+| PATCH method change | R | A | R (co-sign) | C | C | I | — | I | — |
+| MINOR method change | R | A | R (co-sign) | C | C | R (Tier A validation) | I | I | — |
+| MAJOR method change | R | R | R | C | C | R (recommends) | A | C | C |
+| G2 promotion | R | R | C | R | C | R (recommends) | A | I | C |
+| TU-2 for a publicly funded trigger | R | R | C | R | — | C | A | R | — |
+| TU-3 (payout) | R | R | C | R | — | R (independent review) | A | R (own legal sign-off) | C |
+| Jev threshold change | — | C | — | C | R | A | I | — | C |
+| Jev or Gemini go-live ([08 §9.5](./08-ai-decision-layer-jev.md): AI, PM and DPO decide) | R | C | — | C | A | C | I | — | C |
+| Season report publication | R | R | C | C | C | C | A | I | C |
 
 ### 8.6 Model registry and audit trail
 
@@ -1025,7 +1030,7 @@ flowchart LR
 2. **COE confirmations.** In Phase 2, COE *mesas técnicas* confirmations captured in shadow mode ([08 §9.5](./08-ai-decision-layer-jev.md)) become labels for S3 and for the risk index.
 3. **INAMHI weekly review** (Thursday 10:00 ECT, [11 §12.2](./11-operations-runbook.md)): scores, confidence inputs, station QC, threshold questions; minutes feed MCRs.
 4. **Post-event review.** Within 30 days of each significant event (§10.2), a short report lists what was forecast, when, at what level, what happened, and what changes are proposed.
-5. **Recalibration cadence.** Bias correction refits monthly in Phase 2 with a rolling window (MINOR changes, batched to respect the freeze: prepared during the season, applied after 2027-04-30 unless the CTC approves an in-season refit). WN3 moves from delta mapping to EMOS once a full wet season has accumulated; the decision is at the mid-season review on 2027-02-15 ([11 §12.4](./11-operations-runbook.md)).
+5. **Recalibration cadence.** Bias correction refits monthly in Phase 2 with a rolling window (MINOR changes, batched to respect the freeze: prepared and shadow-scored during the season, applied after 2027-04-30 unless the CTC grants a documented freeze exception; [11 §3.6](./11-operations-runbook.md) and [07 §5.5](./07-impact-modules-and-triggers.md) do not yet provide for such exceptions, see §12). WN3 moves from delta mapping to EMOS once a full wet season has accumulated; the decision is at the mid-season review on 2027-02-15 ([11 §12.4](./11-operations-runbook.md)).
 
 ---
 
@@ -1035,16 +1040,17 @@ flowchart LR
 
 | Output | Content | Channel | Licence | Cadence |
 |---|---|---|---|---|
-| Open scores | `commons_pub.verification_scores`, `reliability_bins`, `event_verification`, `skill_lookup` | Analytics Hub listing `ectwin_commons_v1` → tenant `ectwin_commons`; CSV/Parquet under `ectwin-commons-prod-public/verification/<yyyy-mm>/` (new prefix, to reconcile with [03 §5.1](./03-architecture.md)); STAC collection `verification` | CC BY 4.0 for the scores; scores computed against CC BY-NC-SA GEOGloWS return periods go to `commons_pub_nc` until legal review **(to confirm)** | Weekly (provisional), monthly (final) |
+| Open scores | `commons_pub.verification_scores`, `reliability_bins`, `event_verification`, `skill_lookup` | Analytics Hub listing `ectwin_commons_v1` → tenant `ectwin_commons`; CSV/Parquet under `gs://ectwin-commons-prod-public/verification/<yyyy-mm>/` (new prefix, to reconcile with [03 §5.1](./03-architecture.md); public-read only after the LP-05 confirmation below, until then served by signed URL like other forecast-derived objects); STAC collection `verification` | CC BY 4.0 for the scores; scores computed against CC BY-NC-SA GEOGloWS return periods go to `commons_pub_nc` until legal review **(to confirm)** | Weekly (provisional), monthly (final) |
 | Public dashboard | DB-08 public copy: CRPSS, BSS, POD/FAR by region and lead; reliability diagrams; misses and false alarms | Looker Studio link from the methodology page | — | Weekly |
 | Weekly scorecard (*Boletín de verificación semanal*) | One page in Spanish: headline skill by region and lead, events of the week, hits, misses and false alarms, confidence changes | PDF in the public bucket; link in tenant console | CC BY 4.0 | Weekly from 2026-11-23 |
 | Monthly verification report | Final scores, reliability, per-product notes, open MCRs | PDF + notebook | CC BY 4.0 | Monthly from January 2027 |
 | Post-event reports | Per significant event (§10.2) | PDF | CC BY 4.0 | ≤ 30 days after the event |
-| Hindcast reports VR-01 … VR-06 | Methods, data, results, limitations | PDF + notebooks under `bulk/hindcast/` | CC BY 4.0 | Once, then updated |
+| Hindcast reports VR-01 … VR-06 | Methods, data, results, limitations | PDF + notebooks under `gs://ectwin-commons-prod-bulk/hindcast/` (Requester Pays) | CC BY 4.0 | Once, then updated |
 | Season report 2026-27 (*Informe de verificación de la temporada 2026-27*) | Full evaluation against the pre-registration; lessons; changes for 2027-28 | PDF (ES/EN), open dataset, code tag | CC BY 4.0 | By 2027-06-30 |
 | Code | `pipelines/commons/verification/`, `libs/ectwin_core/verification/` | Public repository (D20) | Apache-2.0 | Continuous |
 
 **Rules.**
+- **Open by design.** The twin itself requires sign-in (D6), but verification outputs are published as open data (D12, CTX-16). They contain scores only, never forecast fields, and the season report is approved by the CTC (TAG, which decides verification publication in [12 §6.1](./12-roadmap-team-budget.md)).
 - **Misses and false alarms are published** with the same prominence as hits (CTX-16), in a *registro de aciertos, fallos y falsas alarmas* built from `event_verification`.
 - **Station-level scores** that expose INAMHI observations are published only as allowed by the INAMHI MoU **(to confirm)**; otherwise scores are published at province or region level.
 - **WeatherNext-derived scores** are Non-Retrievable Value-Added products (verification statistics cannot reconstruct forecast fields), consistent with LP-05 **(to confirm in Google's written reply, [13 §3.2](./13-governance-legal-risk.md))**.
@@ -1096,8 +1102,9 @@ gantt
   Pre-registration frozen and MVP V and V gate :milestone, vv18, 2026-11-27, 0d
   section Phase 2 Peak season
   Event-mode daily verification               :vv21, 2026-12-01, 151d
-  ri-2.0.0 shadow scoring                     :vv22, 2026-12-15, 27d
-  ri-2.0.0 promotion evidence                 :milestone, vv23, 2027-01-11, 0d
+  ri-2.0.0 shadow scoring                     :vv22, 2026-12-15, 28d
+  ri-2.0.0 evidence AI-23                     :milestone, vv23, 2027-01-08, 0d
+  ri-2.0.0 promotion sign-off                 :milestone, vv23b, 2027-01-12, 0d
   WN3 full-member comparison                  :milestone, vv24, 2027-01-15, 0d
   Mid-season review                           :milestone, vv25, 2027-02-15, 0d
   Season freeze                               :vv26, 2026-12-01, 151d
@@ -1113,24 +1120,24 @@ gantt
 | ID | Date | Milestone | Acceptance criteria | Owner |
 |---|---|---|---|---|
 | **Phase 0 – Mobilise** | | | | |
-| VV-0.1 | 2026-10-02 | FL and VA named; `libs/ectwin_core/verification/` skeleton with `metrics.py` | Unit tests for every metric in §3.1 pass against hand-computed cases and an independent implementation | FL |
+| VV-0.1 | 2026-10-02 | FL named as V&V accountable (FL covers VA duties until the VA starts, planned 2026-10-23 in [12](./12-roadmap-team-budget.md)); `libs/ectwin_core/verification/` skeleton with `metrics.py` | Unit tests for every metric in §3.1 pass against hand-computed cases and an independent implementation | FL |
 | VV-0.2 | 2026-10-06 | Day-1 archiving live (M0.2 of [03 §13](./03-architecture.md)); `availability_log` written for every live product | ≥ 3 consecutive days of INAMHI, Flood API, COE2 and SITREP captures; `available_at` present for 100% of published partitions | DL, VA |
 | VV-0.3 | 2026-10-09 | Truth access checks | CHIRPS v3 route decided (EE or CHC COGs) with a test month loaded; IMERG Late aggregation tested for 12Z–12Z; EMSR870, EMSR789, EMSR796, EMSR813 vectors downloaded; written requests sent for INAMHI historical station and discharge data (MoU) and to the BYU/GEOGloWS team for the 182-station archive **(to confirm)**; questions sent to Google on WN2/WN3 archive model versions and backfill timing | VA, PT, FL |
-| VV-0.4 | 2026-10-16 | Pre-registration v0 and governance drafts | Metrics, strata, event definitions and TU criteria (§5) circulated to INAMHI; model card schema in CI; CTC terms of reference drafted with PA and DPO for [13](./13-governance-legal-risk.md) §9.1 | FL, PA |
+| VV-0.4 | 2026-10-16 | Pre-registration v0 and governance drafts | Metrics, strata, event definitions and TU criteria (§5) circulated to INAMHI; model card schema in CI; model-governance annex to the TAG terms of reference (CTC sessions, MRC procedure, §8.5) drafted with PA and DPO, consistent with [12 §6.1](./12-roadmap-team-budget.md) and [13 §9.1](./13-governance-legal-risk.md) | FL, PA |
 | **Phase 1 – MVP** | | | | |
 | VV-1.1 | 2026-10-23 | Truth tables | `truth_precip_parish` (CHIRPS v3 1991→present, IMERG Late 2025-10→), `clim_exceedance_parish` 1991–2020 for all INAMHI thresholds; station QC flags applied | VA |
 | VV-1.2 | 2026-10-30 | Hindcast pairs | WN2 2022-01→2026-09 and IFS ENS 2016–2024 pairs for Ecuador; WN3 2026-01→ pairs; all with `training_overlap` and `availability_basis`; total scan within the estimate of [03 §7.5](./03-architecture.md) | VA |
 | VV-1.3 | 2026-11-06 | Coupling indicator calibrated (VR-04, CTX-03); bias correction `FC-BC-QM` v1; river pairs | Coupling ROC AUC and leave-one-year-out weights published; QM improves CRPSS on held-out stations (paired bootstrap) or is not deployed; GRRR, GEOGloWS (split-sample), GloFAS and Flood API pairs built | FL, VA |
 | VV-1.4 | 2026-11-13 | Hindcast reports VR-01 (rain), VR-02 (rivers), VR-03 (seasonal) | Reviewed at the INAMHI Thursday session of 2026-11-12; each report lists misses and false alarms for 2015-16, 2017, 2023 and 2026; signed FL + LI | FL, LI |
-| VV-1.5 | 2026-11-19 | CTC inaugural session | Charter adopted; pre-registration v1 discussed; TU levels of pilot indicators reviewed | PA, FL |
-| VV-1.6 | 2026-11-20 | Confidence labels live with `ri-1.0.0` | `skill_lookup` populated; labels and texts of §5.3 rendered; "sin verificar aún" shown where `n_events < 5`; model cards for all Phase 1 products (`FC-RAIN-*`, `FC-BC-QM`, `ENSO-COUPLING`, `SEAS-CANTON-MME`, `RI`, M1, M10) | FL, FE |
+| VV-1.5 | 2026-11-19 | First CTC session (TAG model-governance session) | Model-governance annex adopted; pre-registration v1 discussed; TU levels of pilot indicators reviewed; MRC validation plan for Tier A products (MR-01, MR-02, MR-03, MR-12) agreed | PA, FL |
+| VV-1.6 | 2026-11-20 | Confidence labels live with `ri-1.0.0` | `skill_lookup` populated; labels and texts of §5.3 rendered; "sin verificar aún" shown where `n_events < 5`; model cards for all Phase 1 products (`FC-RAIN-*`, `FC-BC-QM`, `FC-RIVER-STATUS`, `ENSO-COUPLING`, `SEAS-CANTON-MME`, `RI`, M1, M10) | FL, FE |
 | VV-1.7 | 2026-11-23 | First `verification-weekly` run in prod and first public scorecard | SLO-11 met ([11 §4.1](./11-operations-runbook.md)); scorecard PDF published; DB-08 public copy live | VA |
 | VV-1.8 | 2026-11-27 | Pre-registration frozen; trigger backtests for pilot triggers; Jev go/no-go; MVP V&V gate | Tag `vv-prereg-2026-27`; TR-03, TR-04 and TR-05 (or the pilot partners' equivalents) have backtest sheets with TU levels; Jev gates per [08 §9.5](./08-ai-decision-layer-jev.md) decided; no Phase 1 product without a model card | FL, IM, AI, PM |
 | **Phase 2 – Peak season operations** | | | | |
 | VV-2.1 | 2026-12-01 | Event-mode verification | `verification-daily` running from N1; `event_verification` and the misses/false-alarm register public; monthly final scores from 2027-01-25 (December data) | VA |
 | VV-2.2 | 2026-12-15 | `ri-2.0.0` shadow scoring starts; M3 emulator validation | Shadow pairs for every cycle; M3 emulator CSI ≥ 0.80 and depth MAE ≤ 0.10 m on hold-out runs; EMSR870 event CSI reported | IM, HYD, VA |
-| VV-2.3 | 2026-12-17 | CTC session: conditional approval of `ri-2.0.0` promotion | Promotion criteria written: canton-day POD/FAR not worse than `ri-1.0.0` (paired bootstrap) and S3 BSS > 0 vs `r_det` | CTC |
-| VV-2.4 | 2027-01-11 | `ri-2.0.0` promotion evidence | 4 weeks of shadow; criteria of VV-2.3 met, or promotion deferred; decision recorded in `model_registry` | FL, IM, AI |
+| VV-2.3 | 2026-12-17 | CTC session: conditional approval of `ri-2.0.0` promotion | Promotion criteria written: canton-day POD/FAR not worse than `ri-1.0.0` (paired bootstrap) and Brier skill of `ri-2.0.0` over `ri-1.0.0` > 0 (AI-23) | CTC |
+| VV-2.4 | 2027-01-08 (evidence); 2027-01-12 (sign-off) | `ri-2.0.0` promotion evidence (AI-23 in [08](./08-ai-decision-layer-jev.md)) and sign-off ([07 §5.5](./07-impact-modules-and-triggers.md)) | Evidence pack on E3 and the shadow weeks by 2027-01-08; sign-off on 2027-01-12 after 4 weeks of shadow if the criteria of VV-2.3 are met, otherwise promotion deferred; decision recorded in `model_registry` | FL, IM, AI |
 | VV-2.5 | 2027-01-15 | WN3 full-member comparison (ADR-29); M4 and M7 validation reports; decision on the optional GenCast out-of-sample runs (§4.2) | Member-based WN3 accumulations vs WN2 on the same windows (BSS difference with CI); M4/M7 G-level decisions | FL, IM, EPI |
 | VV-2.6 | 2027-02-15 | Mid-season review | WN3 recalibration decision (delta mapping → EMOS); threshold review with INAMHI; all TU levels re-evaluated on season-to-date scores | FL, LI, CTC |
 | VV-2.7 | Rolling | Post-event reports | Each significant event (§10.2) reported ≤ 30 days after it ends | VA, IM |
@@ -1143,7 +1150,7 @@ gantt
 | VV-3.5 | 2027-09-15 | Hydro-energy and drought verification (M8); WN2 perturbed-SST scenario engine sensitivity test | M8 G-level decided on 2014→ record including 2024; scenario engine at G1 or formally parked by 2027-09-30 ([07 §8](./07-impact-modules-and-triggers.md)) | IM, FL |
 | VV-3.6 | 2027-09-30 | Hand-over package for Phase 4 | V&V standard operating procedures, runbooks for all verification jobs, model registry export, pre-registration template for 2027-28, external peer review by INAMHI and academia | FL, PM |
 
-**Staffing (estimate).** VA full time from 2026-10-02; FL about 40% on V&V in Phases 1–2; LI about 4 h/week (Thursday review plus co-signing); IM, AI, HYD and EPI as per their module milestones; CTC members about 3 h/month in the peak. Headcount and budget are consolidated in [12-roadmap-team-budget.md](./12-roadmap-team-budget.md).
+**Staffing (estimate).** VA full time from 2026-10-23 (the second data-engineer position in [12](./12-roadmap-team-budget.md); FL covers VA duties in Phase 0, and in the minimum variant VA duties fall on FL and CS); FL about 40% on V&V in Phases 1–2; LI about 4 h/week (Thursday review plus co-signing); IM, AI, HYD and EPI as per their module milestones; CTC members about 3 h/month in the peak. Headcount and budget are consolidated in [12-roadmap-team-budget.md](./12-roadmap-team-budget.md).
 
 ---
 
@@ -1151,14 +1158,17 @@ gantt
 
 - **Training overlap of the WeatherNext archives.** Which model versions produced the WN2 2022–2024 archive and the WN3 2026-01→2026-08 archive, and when those runs were actually generated. If the WN2 archive was produced with checkpoints trained through 2024, the 2023 El Niño evaluation that D12 relies on is in-sample; this document keeps the decision (use WN2 2022→) but labels 2023 scores as an upper bound and bases gates on 2025→ (WN2) and 2026-07→ (WN3). Ask weathernext@google.com in Phase 0 (VV-0.3).
 - **WN3 backfill.** A secondary note says the archive up to August 2026 was backfilled about 20 days after initialisation (unverified), while OCF found the archive starts on 2026-01-01 and that a documented 2024/2025 backfill does not exist. Real-time availability before our own archiving began is therefore assumed, not observed.
-- **CHIRPS v3 in Earth Engine** (catalogue source vs STAC mirror), its day boundary and the meaning of the `sat` and `rnl` variants; the CHC COG fallback is ready.
+- **CHIRPS v3 in Earth Engine** (catalogue source vs STAC mirror) and its day boundary. The catalogue source describes `DAILY_SAT` as split to days with IMERG Late V07 and `DAILY_RNL` with ERA5; confirm this with CHC documentation before choosing the default truth variant per model (§2.3). The CHC COG fallback is ready.
 - **IMERG V08** back-processing date. Until then there is no IMERG Final for any 2026 event.
 - **INAMHI data.** Historical station and discharge series, QC flags, the official climatological day, the *umbrales* table, and the right to publish station-level scores, all under the MoU.
 - **Independence of CHIRPS v3 and INAMHI stations.** Which INAMHI stations CHIRPS v3 ingests, so that held-out stations are truly independent.
 - **GEOGloWS bias-corrected KGE (0.33).** Whether it is in-sample; and whether scores computed against its CC BY-NC-SA return periods can be published openly.
 - **Flood API in Ecuador.** Number of quality-verified gauges, thresholds and whether inundation maps exist; this needs an approved key. Until then TR-05 stays at TU-0.
 - **Acceptance thresholds.** All §5.2 criteria are proposals to agree with INAMHI, trigger owners and the CTC; the sample sizes of a single season may be too small to pass TU-2 for rare, high thresholds.
-- **CTC composition and chair** and its legal form (a *convenio* annex or an INAMHI resolution), to settle in [13](./13-governance-legal-risk.md) §9.1.
+- **CTC and TAG.** This document treats the CTC as the TAG's model-governance session, as [12](./12-roadmap-team-budget.md) does. Still open: whether SNGR holds a voting seat (listed in 12's partner table but not in 12 §6.1), the chair, and the legal form of the terms of reference (a *convenio* annex or an INAMHI resolution), to settle with [12 §6.1](./12-roadmap-team-budget.md) and [13 §9.1](./13-governance-legal-risk.md).
+- **Freeze exceptions.** §8.5 and §9.2 let the CTC grant a documented exception to the 2026-12-01 → 2027-04-30 event-season freeze (for example an in-season bias-correction refit after the 2027-02-15 mid-season review), but [07 §5.5](./07-impact-modules-and-triggers.md) and [11 §3.6](./11-operations-runbook.md) allow only patches and the `ri-2.0.0` promotion. One rule should be adopted in all three documents.
+- **Tiering of M1, M2, M9 and M10.** They feed Tier A outputs (river impacts, urban flooding, roads, shelters) but have no MR entry in [13 §9.3](./13-governance-legal-risk.md).
+- **Model-incident severity.** [13 §9.3](./13-governance-legal-risk.md) sets a wrong published product at P2 minimum; [11](./11-operations-runbook.md) raises it to P1 when levels have reached users in N1+. §8.4 rule 4 follows the stricter reading until the MRC confirms.
 - **ECU 911 daily aggregates** (convenio A9) and whether they can be used as verification truth under DPIA-02.
 - **Groundsource circularity.** Whether Groundsource records after March 2026 were derived partly from the same news signals the Flood Hub flash-flood model uses, and hence whether they can verify any Google product.
 - **Readability metric and target** for Spanish bulletins (ETH to propose).
