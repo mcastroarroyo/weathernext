@@ -7,13 +7,14 @@
 # All .gob.ec / .mil.ec endpoints are secondary-verified only (third-party live probes Aug-Sep 2026);
 # re-probe from southamerica-west1 in Phase 0 (milestone M0.3, 2026-10-09) before relying on them.
 
-version: "1.1.0"
+version: "1.2.0"
 updated: "2026-09-30"
 
 fields_doc:
   id: "Unique snake_case key; referenced by docs/05-data-catalog.md, layer_registry.source_ids and commons_ops tables."
   name: "Human-readable dataset name."
   provider: "Institution or organisation that publishes the data."
+  provider_id: "Optional. `id` of the provider's entry in the top-level `institutions:` list (docs/05 section 4.2); set when the provider is a registered institution, so renames and domain moves are tracked in one place."
   category: "official_alerts | enso_ocean | atmosphere_obs | forecast | hydrology | terrain_hydrography | exposure | vulnerability | impacts | health | admin_boundaries | basemap"
   url_or_id: "Exact endpoint, bucket path, Earth Engine asset id, BigQuery table or dataset id. Patterns use {placeholders}."
   access_method: "Protocol and client (REST JSON, WFS, EE, BigQuery, GCS Zarr, cdsapi, PDF, etc.) plus auth notes."
@@ -34,11 +35,106 @@ fields_doc:
   last_checked: "ISO date (YYYY-MM-DD) the endpoint and vintage were last confirmed current, or null if never confirmed. 2026-09-29 = research-brief check; for .gob.ec/.mil.ec entries that date rests on third-party probe records, and the M0.3 re-probe overwrites it. CI warns when null or older than 90 days (30 days for P1 sources that are not static). Updated at the quarterly source-currency review (docs/11 section 12.3; exposure layers 'reviewed quarterly' per docs/02 section 6.2) and whenever a job detects a new release."
   job: "Optional. Commons job that ingests or builds from this source (names from docs/03 section 7.2 and docs/11 section 2.1, or new ones listed in docs/05 section 4.4)."
   region: "Optional. GCP region where the job runs (southamerica-west1 for .gob.ec; us-central1 otherwise; us-east1 for WN3 members)."
-  owner: "Optional. Role code: DL, FL, PL, FE, AI, SRE, DPO, PM, PA."
+  owner: "Optional. Role code: DL, FL, PL, FE, AI, SRE, DPO, PM, PT."
   allowed_hosts: "Optional. Hosts the ingest job may contact or be redirected to (docs/11 RB-07)."
   tls_quirks: "Optional. Known TLS/transport issues and the approved handling (never verify=False for official sources)."
   rename_history: "Optional. Previous hosts/institution names."
   notes: "Free text: caveats, known issues, tables written."
+
+# Institution registry (docs/05 section 4.2; CTX-13 in docs/01 section 11.1). One entry per provider
+# institution; sources point here with `provider_id`. Fields: id (key used by provider_id), acronym (the
+# one used in the UI and the docs), name_es (official full name) with name_confirmed, aliases (former or
+# reported names/acronyms with the date of change; null = date to confirm), domains (current and legacy
+# hosts; they feed allowed_hosts and rename_history), probe_url (checked daily by ops-synthetic-probe;
+# a redirect outside `domains` or a TLS name mismatch sets verdict = moved and opens a review_queue item
+# for PT (name) and DL (hosts), docs/11 RB-07), focal_point (role code; PT by default) and notes.
+# Names are confirmed under V10 in docs/01 section 5.4 (due 2026-10-16); probe URLs are the home page on
+# the current domain and are re-probed from southamerica-west1 at M0.3 (2026-10-09).
+institutions:
+
+  - id: sngr
+    acronym: SNGR
+    name_es: "Secretaria Nacional de Gestion de Riesgos"
+    name_confirmed: true
+    aliases:
+      - {acronym: SGR, changed: "2023-01", note: "Renamed SNGR by Decreto Ejecutivo 641, Jan 2023 (secondary source in docs/01)"}
+      - {acronym: SNGRE, changed: "2023-01", note: "Earlier acronym listed in the SNGR rename_history (Decreto 641, 2023; Ley Organica GIRD 2024)"}
+    domains:
+      current: ["gestionderiesgos.gob.ec", "sgrportal.gestionderiesgos.gob.ec"]
+      legacy:
+        - {host: "srvportal.gestionderiesgos.gob.ec", status: dead}
+    probe_url: "https://www.gestionderiesgos.gob.ec/"
+    focal_point: PT
+    notes: "Only SNGR declares alerts. Rename recorded from a secondary source; the name is not on the V10 list."
+
+  - id: mit
+    acronym: MIT
+    name_es: "Ministerio de Infraestructura y Transporte"
+    name_confirmed: false
+    aliases:
+      - {acronym: MTOP, changed: null, note: "Former transport and public-works ministry; date of change to confirm"}
+    domains:
+      current: ["mit.gob.ec"]
+      legacy:
+        - {host: "obraspublicas.gob.ec", status: "TLS name mismatch"}
+        - {host: "geoportal.mtop.gob.ec", status: dead}
+    probe_url: "https://mit.gob.ec/"
+    focal_point: PT
+    notes: "Full name to confirm: '...y Transporte' in one source, '...y Tecnologia' in another (V10)."
+
+  - id: mag
+    acronym: MAG
+    name_es: "Ministerio de Agricultura y Ganaderia"
+    name_confirmed: false
+    aliases:
+      - {acronym: MAGP, changed: null, note: "Reported as the new acronym (docs/01 V10); rename to confirm"}
+    domains:
+      current: ["agricultura.gob.ec", "geoportal.agricultura.gob.ec", "sipa.agricultura.gob.ec"]
+      legacy: []
+    probe_url: "https://agricultura.gob.ec/"
+    focal_point: PT
+    notes: "Rename to confirm. geoportal.agricultura.gob.ec works over HTTP only (public, non-personal layers; transport_insecure=true)."
+
+  - id: ambiente_energia
+    acronym: "Ambiente y Energia"
+    name_es: "Ministerio de Ambiente y Energia"
+    name_confirmed: false
+    aliases:
+      - {acronym: MAATE, changed: null, note: "Former environment ministry acronym; date of change to confirm"}
+      - {acronym: null, changed: null, note: "Energy ministry possibly merged into this ministry; merger and former name to confirm"}
+    domains:
+      current: ["ambienteyenergia.gob.ec"]
+      legacy:
+        - {host: "ambiente.gob.ec", status: "redirects to atencionintegral.gob.ec (prison service); not the ministry"}
+        - {host: "sinias.ambiente.gob.ec", status: dead}
+    probe_url: "https://ambienteyenergia.gob.ec/"
+    focal_point: PT
+    notes: "Merger to confirm; docs refer to the 'energy ministry' until V10 closes."
+
+  - id: mineduc
+    acronym: MINEDUC
+    name_es: "Ministerio de Educacion"
+    name_confirmed: false
+    aliases:
+      - {acronym: MINEDEC, changed: null, note: "Used on educacion.gob.ec/datos-abiertos-minedec/; which acronym is current to confirm"}
+    domains:
+      current: ["educacion.gob.ec"]
+      legacy: []
+    probe_url: "https://educacion.gob.ec/"
+    focal_point: PT
+    notes: "Acronym to confirm (MINEDUC or MINEDEC)."
+
+  - id: mies
+    acronym: MIES
+    name_es: "Ministerio de Inclusion Economica y Social"
+    name_confirmed: false
+    aliases: []
+    domains:
+      current: ["desarrollohumano.gob.ec"]
+      legacy: []
+    probe_url: "https://desarrollohumano.gob.ec/"
+    focal_point: PT
+    notes: "Domain moved to desarrollohumano.gob.ec; current name to confirm (name_es is the last known name). Legacy host not recorded in docs/05."
 
 sources:
 
@@ -1727,7 +1823,7 @@ sources:
     verified: false
     vintage: "not held (agreements A2 and A8 pending)"
     last_checked: null
-    owner: PA
+    owner: PT
     rename_history: "obraspublicas.gob.ec (TLS mismatch) -> mit.gob.ec"
     notes: "SNGR analysis: 3,113 km of state roads highly exposed (1,870 km flood, 1,243 km landslide) and 94 transport structures (press). Agreements A2 and A8."
 
@@ -1854,7 +1950,7 @@ sources:
     verified: false
     vintage: "not held (agreement A10 pending)"
     last_checked: null
-    owner: PA
+    owner: PT
     notes: "ENOS 2026 report: 3,431 farms, 2,977 (86.8%) flood-susceptible (press). Fallback: MapBiomas class 31. Agreement A10."
 
   - id: energy_assets
@@ -2179,6 +2275,31 @@ sources:
     last_checked: "2026-09-29"
     owner: FL
     notes: "Landslide threshold calibration with SNGR events (docs/07)."
+
+  - id: igepn_events
+    name: "IG-EPN seismic and volcanic event list"
+    provider: "Instituto Geofisico - EPN"
+    category: impacts
+    url_or_id: "https://www.igepn.edu.ec/portal/eventos/www/events.csv"
+    access_method: "CSV over HTTPS, public"
+    spatial_resolution: "point (epicentre); dpa_parish by point-in-polygon"
+    temporal_resolution: "event"
+    latency: "unverified (recent-events feed; window length unverified)"
+    update_cadence: "poll every 15 min (initial)"
+    licence: "None published"
+    licence_class: pending_review
+    attribution: "Fuente: Instituto Geofisico - Escuela Politecnica Nacional (IG-EPN)"
+    commercial_use: "unclear"
+    plane: commons
+    ingestion: pull
+    priority: P2
+    phase: 2
+    verified: true
+    vintage: "live feed (recent events only; window length unverified)"
+    last_checked: "2026-09-29"
+    owner: DL
+    allowed_hosts: ["www.igepn.edu.ec"]
+    notes: "Multi-hazard context (CTX-18, docs/01 section 11.1): a concurrent earthquake or eruption compounds the El Nino response (2016 precedent). dpa_parish by point-in-polygon on dim_dpa (NULL offshore). Feeds the multi-hazard context layer, not impact_events. Full catalogues and volcanic hazard maps need a login and are not ingested. pending_review: commons_pub_nc only until the licence is cleared (G-02)."
 
   - id: ecu911_ckan
     name: "ECU 911 monthly emergency statistics (CKAN) and road status page"
