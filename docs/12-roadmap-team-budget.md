@@ -134,7 +134,7 @@ gantt
 | AR-07 | Copernicus Marine account (sea-level `zos`, waves) | Commons | Account registration | Same day (estimate) | EE copies of CMEMS assets ([05](./05-data-catalog.md)) | DL |
 | AR-08 | NASA Earthdata login (IMERG, LHASA inputs) | Commons | Account registration | Same day (estimate) | EE `NASA/GPM_L3/IMERG_V07` | DL |
 | AR-09 | OAuth sensitive-scope verification for path B | Platform | Google Auth Platform console; submit **2026-10-05** (IT-M2) | Days to weeks (unverified) | Path A covers all pilots | PL, DPO |
-| AR-10 | Google Cloud credits: research credits for university partners (up to US$5,000) and startup or nonprofit programmes where eligible | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup); nonprofit route (unverified) | Weeks | Budget line C7 (§5.2) | PM |
+| AR-10 | Google Cloud credits: research credits for university partners (up to US$5,000) and startup or nonprofit programmes where eligible | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup); nonprofit route (unverified) | Weeks | None needed: no credits are assumed (B10, §5.2); credits obtained reduce lines C1–C8 | PM |
 | AR-11 | Quota increases ([11 §3.7](./11-operations-runbook.md)) | Commons, platform | Console requests | Days | Posture-based throttling | DL, FL, SRE |
 
 **Deliverables**
@@ -515,7 +515,7 @@ The monthly figures are the spine anchors, reconciled line by line with the item
 |---|---|---|---|---|---|---|
 | C1 Control plane `ectwin-platform-prod` | Anchor ≈US$23–43; budget 45 ([04 G3](./04-identity-tenancy-byo-gcp.md)). Strict control plane per [09 §4.2.1](./09-cost-model.md): ≈US$5–25 at pilot, ≈US$23–43 in a season (N1) month, ≈US$75–95 in an N2 month with the warm broker (≤US$52). P2 average (2 N1 + 3 N2 months) ≈US$54–74; budget 145 leaves headroom for the 10× spike of NFR-010 | 45 / 45 / 145 / 45 | Same | 27 / 63 / 725 / 225 | 1,040 | 1,040 |
 | C2 `-dev` and `-stg` projects | Mostly free tier (estimate) | 30 | 30 | 18 / 42 / 150 / 150 | 360 | 360 |
-| C3 Commons base `ectwin-commons-prod` | Anchor ≈US$100–300; budget the upper end. Commons invoice incl. Block D ≈US$72–97 at pilot and ≈US$273–356 in an N1 month ([09 §4.3.2](./09-cost-model.md)). One-off WN3/WN2 backfills, exposure builds, Jev build and verification bootstrap in P1 ≈US$58–155 ([09 §5](./09-cost-model.md) items B3–B11); budget ≈US$200 (estimate) | 300 | 300 | 180 / 620 / 1,500 / 1,500 | 3,800 | 3,800 |
+| C3 Commons base `ectwin-commons-prod` | Anchor ≈US$100–300; budget the upper end. Commons invoice incl. Block D ≈US$72–97 at pilot and ≈US$273–356 in an N1 month ([09 §4.3.2](./09-cost-model.md)). One-off WN3/WN2 backfills, exposure builds, Jev build and verification bootstrap in P1 ≈US$63–175 ([09 §5](./09-cost-model.md) items B3–B11); budget ≈US$200 (estimate) | 300 | 300 | 180 / 620 / 1,500 / 1,500 | 3,800 | 3,800 |
 | C4 Commons peak extras (P2) | Raises the P2 Commons envelope (C3 + C4) to US$600/month. The Commons invoice incl. Block D is ≈US$444–602 in a full N2 month, and the P2 average (2 N1 + 3 N2 months) is ≈US$376–504 ([09 §4.3.2](./09-cost-model.md)). Drivers: Jev at national peak (≈US$113 spine anchor; ≈US$91 in 09), EE Commercial – Limited (up to 200 EECU-h × US$0.40 = US$80; AR-04), WN3 full members (≈US$25–50 if M2.2 says go), Block D egress (≈US$122–188) | 300 in P2 | 200 (no WN3 members) | 0 / 0 / 1,500 / 0 | 1,500 | 1,000 |
 | C5 Heavy campaigns (one-off) | P2: SFINCS library for 4 sites US$60–360 plus other module builds, ≈US$70–394 in all ([07 §9](./07-impact-modules-and-triggers.md)); budget 400. P3: WN2 perturbed-SST runs 50 × US$2.3–4.6 = US$115–230 (TPU self-run); OpenHydroNet and inflow-LSTM fine-tunes US$4–23 ([09 §5](./09-cost-model.md) B15), budgeted at US$70 to allow reruns (estimate) | — | 2 sites, ≈US$200 | 0 / 0 / 400 / 300 | 700 | 200 |
 | C6 Operator test tenants | 2 T2 QA tenants plus heavy-flow tests (estimate) | 150 / 150 / 250 / 150 | 100 / 100 / 150 / 100 | 90 / 210 / 1,250 / 750 | 2,300 | 1,450 |
@@ -751,7 +751,7 @@ Module IDs C1–C11 are course modules, not the budget lines C1–C8 of §5.2 or
 | D1–D3 | Admin completes C2; project connected (path A) | TA, FAC | Green checklist (IT-M8 criteria) |
 | D3–D7 | Users complete C1 and C4; AOIs and subscriptions created | FAC | ≥3 users active |
 | D7–D14 | Champion (*referente*) named; C3 in the COE's own morning routine | TR | Brief prepared with the twin for 5 days |
-| D30 | Health check: usage, cost against tier anchor, open issues | PT, TA | Checklist reviewed; issues logged |
+| D30 | Health check: usage, cost against tier anchor, open issues | PT, TA | Checklist reviewed; issues logged; TA routine of [11 §12.5](./11-operations-runbook.md) running |
 | After 29 Nov | Re-onboarding pack for new authorities: ownership transfer ([04 §3.7](./04-identity-tenancy-byo-gcp.md)), C1 for new staff | TR | Owners ≥2; new staff trained within 30 days |
 
 **Champions network.** Each pilot COE and GAD names one *referente*. Champions get early releases, a monthly call and a certificate, and co-deliver C1/C3 locally. Target: 6 champions by 11-27, 30 by 03-31.
