@@ -1,6 +1,6 @@
 # Roadmap, team and budget
 
-This document sets out how *Gemelo Digital Ecuador – El Niño* (GDE-Niño) gets from an empty cloud organisation on 29 September 2026 to a platform run by Ecuadorian institutions from October 2027 onwards. It covers the phases with exact dates, including a week-by-week plan for the six-week MVP; the ten workstreams and their leads; the team (roles, FTE per phase, skills, sourcing and RACI); the budget for Phases 0–3 with explicit assumptions and a minimum and a full variant; partnerships and governance; training and adoption; KPIs per phase; the pilot go/no-go checklist; and sustainability and hand-over. The technical components, buckets, tables and milestone IDs come from [03-architecture.md](./03-architecture.md), [04-identity-tenancy-byo-gcp.md](./04-identity-tenancy-byo-gcp.md), [07-impact-modules-and-triggers.md](./07-impact-modules-and-triggers.md) and [11-operations-runbook.md](./11-operations-runbook.md), and are not described again here. Cloud unit costs follow the anchors in [09-cost-model.md](./09-cost-model.md). Legal instruments are covered in [13-governance-legal-risk.md](./13-governance-legal-risk.md).
+This document sets out how *Gemelo Digital Ecuador – El Niño* (GDE-Niño) gets from an empty cloud organisation on 29 September 2026 to a platform handed over to Ecuadorian institutions from October 2027 (shadow and co-run to end-2027; host-led operation from 2028-01-03, proposed). It covers the phases with exact dates, including a week-by-week plan for the six-week MVP; the ten workstreams and their leads; the team (roles, FTE per phase, skills, sourcing and RACI); the budget for Phases 0–3 with explicit assumptions and a minimum and a full variant; partnerships and governance; training and adoption; KPIs per phase; the pilot go/no-go checklist; and sustainability and hand-over. The technical components, buckets, tables and milestone IDs come from [03-architecture.md](./03-architecture.md), [04-identity-tenancy-byo-gcp.md](./04-identity-tenancy-byo-gcp.md), [07-impact-modules-and-triggers.md](./07-impact-modules-and-triggers.md) and [11-operations-runbook.md](./11-operations-runbook.md), and are not described again here. Cloud unit costs follow the anchors in [09-cost-model.md](./09-cost-model.md). Legal instruments are covered in [13-governance-legal-risk.md](./13-governance-legal-risk.md).
 
 ## Contents
 
@@ -89,7 +89,8 @@ gantt
   Gate G0                                   :milestone, m3, 2026-10-16, 0d
   Polling-site exposure list to CNE         :milestone, m4, 2026-10-30, 0d
   Gate G1a pilot rollout                    :milestone, m5, 2026-11-06, 0d
-  Gate G1b MVP go-live M1.5                 :milestone, m6, 2026-11-27, 0d
+  Gate G1b go-live decision                 :milestone, g1b, 2026-11-24, 0d
+  M1.5 MVP go-live                          :milestone, m6, 2026-11-27, 0d
   Local elections                           :milestone, m7, 2026-11-29, 0d
   SFINCS Guayaquil library M2.1             :milestone, m8, 2026-12-15, 0d
   Mid-season review                         :milestone, m9, 2027-02-15, 0d
@@ -120,27 +121,27 @@ gantt
 | Research weeks W1–W3 ([02 §9](./02-users-requirements-ux.md)) | Visual design beyond the prototype |
 | Verification backlog V1–V12 ([01 §5.4](./01-context-el-nino-ecuador.md)) | Model development |
 
-**Access-request tracker (filed by Wed 2026-09-30 unless stated)**
+**Access-request tracker (filed by Wed 2026-09-30 unless stated).** IDs AR-01–AR-11; the bare IDs A1–A16 are the data-sharing agreements of [05 §6.1](./05-data-catalog.md).
 
 | # | Access | For | How | Expected lead time | Fallback while pending | Owner |
 |---|---|---|---|---|---|---|
-| A1 | WeatherNext 2 and 3 (BigQuery, Earth Engine, GCS) | Commons project, plus one platform QA account. **Use institutional, role-based Google accounts**, because access is allowlisted per account ([04 §9](./04-identity-tenancy-byo-gcp.md)) | [WeatherNext Data Request form](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform); accept the [terms of use](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf); send the question on publishing Non-Retrievable products to weathernext@google.com (GOV-M1 in [13 §13.1](./13-governance-legal-risk.md), by 10-02) | ≈5–7 business days | ECMWF IFS/AIFS open data ([06](./06-forecast-model-stack.md)) | FL |
-| A2 | WN2 on-demand runs on Agent Platform (allowlist) | Commons (Phase 3 engine) | Allowlist request; GPU quota starts at 0 ([11 §3.7](./11-operations-runbook.md)) | (unverified) | Phase 3 item; can slip | FL |
-| A3 | Google Flood Forecasting API | `ectwin-commons-prod` project ID | [Waitlist form](http://sites.research.google/gr/floodforecasting/api-waitlist/), then reply with the project ID | Possibly months | GloFAS (EWDS), GEOGloWS-INAMHI, GRRR baseline | DL |
-| A4 | Earth Engine registration; **Partner tier** application (100,000 EECU-h/month) | Commons and platform projects | Noncommercial registration and Partner application ([tiers](https://raw.githubusercontent.com/gvillarroel/gcp-radar/main/data/step-04/current/products/earth/corpus/site/site-docs-root/pages/developers.google.com_earth-engine_guides_noncommercial_tiers.md)); commercial Limited plan as fallback ([pricing](https://cloud.google.com/earth-engine/pricing)) | Several weeks | Limited plan at US$0.40/EECU-h (budgeted in §5.2, line C4) | FL |
-| A5 | TypeSafe Jev key; enquiry about enterprise ZDR and higher limits | Commons | [console.typesafe.ai](https://console.typesafe.ai/) | Days | Gemini adapter or open-weight backend (D17) | AI |
-| A6 | Copernicus CDS and EWDS accounts; accept dataset licences (C3S seasonal, GloFAS) | Commons | CDS profile token ([seasonal dataset](https://cds.climate.copernicus.eu/datasets/seasonal-monthly-single-levels)) | Same day (estimate) | — | DL |
-| A7 | Copernicus Marine account (sea-level `zos`, waves) | Commons | Account registration | Same day (estimate) | EE copies of CMEMS assets ([05](./05-data-catalog.md)) | DL |
-| A8 | NASA Earthdata login (IMERG, LHASA inputs) | Commons | Account registration | Same day (estimate) | EE `NASA/GPM_L3/IMERG_V07` | DL |
-| A9 | OAuth sensitive-scope verification for path B | Platform | Google Auth Platform console; submit **2026-10-05** (IT-M2) | Days to weeks (unverified) | Path A covers all pilots | PL, DPO |
-| A10 | Google Cloud credits: research credits for university partners (up to US$5,000) and startup or nonprofit programmes where eligible | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup); nonprofit route (unverified) | Weeks | Budget line C7 (§5.2) | PM |
-| A11 | Quota increases ([11 §3.7](./11-operations-runbook.md)) | Commons, platform | Console requests | Days | Posture-based throttling | DL, FL, SRE |
+| AR-01 | WeatherNext 2 and 3 (BigQuery, Earth Engine, GCS) | Commons project, plus one platform QA account. **Use institutional, role-based Google accounts**, because access is allowlisted per account ([04 §9](./04-identity-tenancy-byo-gcp.md)) | [WeatherNext Data Request form](https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform); accept the [terms of use](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf); send the question on publishing Non-Retrievable products to weathernext@google.com (GOV-M1 in [13 §13.1](./13-governance-legal-risk.md), by 10-02) | ≈5–7 business days | ECMWF IFS/AIFS open data ([06](./06-forecast-model-stack.md)) | FL |
+| AR-02 | WN2 on-demand runs on Agent Platform (allowlist) | Commons (Phase 3 engine) | Allowlist request; GPU quota starts at 0 ([11 §3.7](./11-operations-runbook.md)) | (unverified) | Phase 3 item; can slip | FL |
+| AR-03 | Google Flood Forecasting API | `ectwin-commons-prod` project ID | [Waitlist form](http://sites.research.google/gr/floodforecasting/api-waitlist/), then reply with the project ID | Possibly months | GloFAS (EWDS), GEOGloWS-INAMHI, GRRR baseline | DL |
+| AR-04 | Earth Engine registration; **Partner tier** application (100,000 EECU-h/month) | Commons and platform projects | Partner-tier application (100,000 EECU-h/month) filed on day 1 ([tiers](https://raw.githubusercontent.com/gvillarroel/gcp-radar/main/data/step-04/current/products/earth/corpus/site/site-docs-root/pages/developers.google.com_earth-engine_guides_noncommercial_tiers.md)); `ectwin-commons-prod` operational production registered **Commercial – Limited** (US$0.40/EECU-h, [pricing](https://cloud.google.com/earth-engine/pricing); budgeted in §5.2, line C4) unless Google confirms in writing that the Partner tier covers it ([13 §3.4](./13-governance-legal-risk.md), LP-07) | Several weeks (Partner decision) | Commercial – Limited is the working basis until then | FL |
+| AR-05 | TypeSafe Jev key; enquiry about enterprise ZDR and higher limits | Commons | [console.typesafe.ai](https://console.typesafe.ai/) | Days | Gemini adapter or open-weight backend (D17) | AI |
+| AR-06 | Copernicus CDS and EWDS accounts; accept dataset licences (C3S seasonal, GloFAS) | Commons | CDS profile token ([seasonal dataset](https://cds.climate.copernicus.eu/datasets/seasonal-monthly-single-levels)) | Same day (estimate) | — | DL |
+| AR-07 | Copernicus Marine account (sea-level `zos`, waves) | Commons | Account registration | Same day (estimate) | EE copies of CMEMS assets ([05](./05-data-catalog.md)) | DL |
+| AR-08 | NASA Earthdata login (IMERG, LHASA inputs) | Commons | Account registration | Same day (estimate) | EE `NASA/GPM_L3/IMERG_V07` | DL |
+| AR-09 | OAuth sensitive-scope verification for path B | Platform | Google Auth Platform console; submit **2026-10-05** (IT-M2) | Days to weeks (unverified) | Path A covers all pilots | PL, DPO |
+| AR-10 | Google Cloud credits: research credits for university partners (up to US$5,000) and startup or nonprofit programmes where eligible | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup); nonprofit route (unverified) | Weeks | Budget line C7 (§5.2) | PM |
+| AR-11 | Quota increases ([11 §3.7](./11-operations-runbook.md)) | Commons, platform | Console requests | Days | Posture-based throttling | DL, FL, SRE |
 
 **Deliverables**
 
 | ID | Deliverable | Due | Owner | Acceptance |
 |---|---|---|---|---|
-| P0-01 | Access requests A1–A10 filed; tracker in the programme board | 2026-09-30 (A9: 10-05) | PM | Screenshot or receipt archived for each |
+| P0-01 | Access requests AR-01–AR-10 filed; tracker in the programme board | 2026-09-30 (AR-09: 10-05) | PM | Screenshot or receipt archived for each |
 | P0-02 | Letters of intent and draft *convenios* sent to INAMHI, SNGR, INOCAR/CN-ERFEN, CELEC/CENACE, MSP, MAG (plus CEDIA for the relay) | 2026-10-02 | PT | Receipt acknowledged by each; named contacts for 5 of 7 |
 | M0.1 | Projects created with budgets, org policies, Terraform state ([03 §13](./03-architecture.md)) | 2026-10-02 | PL | `terraform plan` clean on all four |
 | IT-M1 | Identity Platform in `-dev` ([04 §14](./04-identity-tenancy-byo-gcp.md)) | 2026-10-02 | PL | 7-case identity test matrix passes |
@@ -151,35 +152,37 @@ gantt
 | OPS-M0 | Pager rota, channels, contacts register, status page | 2026-10-09 | SRE | Test page acknowledged within 10 min |
 | IT-M3 | Bootstrap v0.1.x (script and Terraform) on 2 internal tenants | 2026-10-09 | PL | PF-01–PF-12 green |
 | P0-05 | Steering Committee constituted; first meeting held | 2026-10-14 | PM | Terms of reference approved; minutes |
-| P0-06 | 3–5 pilot tenants shortlisted, with letters of intent (at least 1 T4 GAD, 1 T2) | 2026-10-16 | PT | Signed letters of intent |
+| P0-06 | 3–5 pilot tenants shortlisted, with letters of intent (≥1 T4 GAD, ≥1 T2 public, ≥1 commercial private tenant, e.g. a CNA shrimp cluster or an AgroProtege insurer) | 2026-10-16 | PT | Signed letters of intent |
 | P0-07 | Procurement kit v0: terms-of-reference template, tax note v0, reseller route. The SERCOP OCDS search for past GCP purchases follows by 10-23 (PT, [13 §7.1](./13-governance-legal-risk.md)); the signed tax and procurement memo by 11-06 (GOV-M5) | 2026-10-16 | PM, DPO | Reviewed by counsel |
 | P0-08 | DPIA v0, RAT template and processor-contract template | 2026-10-16 | DPO | Counsel review scheduled |
 | P0-09 | Verification backlog V1–V12 closed or re-dated | 2026-10-16 | Per [01 §5.4](./01-context-el-nino-ecuador.md) | Each item has a result or a new date |
 | M0.4 / IT-M4 | Broker skeleton, registry, connect flow | 2026-10-16 | PL | Cross-tenant isolation suite passes |
 | OPS-M1 | Day-1 archiving monitored | 2026-10-16 | DL, SRE | `source_health` filled from both regions for ≥3 days |
 | P0-10 | Budget baseline, Phase 0–1 variant decision (§5.5) and hiring plan approved | 2026-10-16 | PM, SC | SC minute |
+| P0-11 | Jev build start ([08 §3.8](./08-ai-decision-layer-jev.md)): B5 DQ flags in ingestion jobs in shadow (10-09); B1 catalogue triage of ≈5,000 items (10-16) | 2026-10-16 (B5: 10-09) | DL, AI | B5 flags visible in `commons_ops.dq_results`; B1 meets the acceptance in [08 §3.2](./08-ai-decision-layer-jev.md) |
 
 **Exit gate G0 (2026-10-16), signed by the Steering Committee.** Pass when all of these hold:
 
-- (a) A1–A8 are filed and ≥1 WeatherNext approval has arrived, or the IFS fallback is running.
+- (a) AR-01–AR-08 are filed and ≥1 WeatherNext approval has arrived, or the IFS fallback is running.
 - (b) M0.1–M0.4 are accepted.
 - (c) ≥10 FTE are under contract.
 - (d) Bridge funding is committed.
 - (e) At least INAMHI and SNGR have named focal points (LI, LS).
 - (f) ≥3 pilot letters of intent are signed.
+- (g) Jev B1 catalogue triage is accepted (P0-11).
 
 A failed G0 does not stop Phase 1. The SC instead switches to the minimum variant (§5.5) and records the scope cuts.
 
-**Dependencies.** Sponsor decision; Google approvals (A1, A3, A4); partner contacts; the geoblock result; counsel availability.
+**Dependencies.** Sponsor decision; Google approvals (AR-01, AR-03, AR-04); partner contacts; the geoblock result; counsel availability.
 
-**Phase 0 risks** (full register in §2.6): R1 access delays; R2 hiring lag; R3 geoblocking; R8 funding gap.
+**Phase 0 risks** (§2.6; the single register is [13 §11.2](./13-governance-legal-risk.md)): PRG-01 access delays; PRG-02 hiring lag; PRG-03 geoblocking; PRG-08 funding gap.
 
 ### 2.2 Phase 1 – MVP "Monitoreo y Exposición" (2026-10-19 → 2026-11-27)
 
 **Objectives**
 
 1. Put a trusted national view in front of COEs: official alerts first, then the ENSO panel, parish exceedance probabilities, river status and exposure, in a text-first PWA with daily canton PDFs and WhatsApp cards.
-2. Connect 3–5 pilot tenants through the BYO-GCP flow, with cost guardrails, including at least one sponsored (T4) GAD.
+2. Connect 3–5 pilot tenants through the BYO-GCP flow, with cost guardrails, including at least one sponsored (T4) GAD and one self-paid commercial private tenant (P0-06).
 3. Deliver two early products: the polling-site exposure list for the CNE (**30 Oct**) and the reservoir watch card (CTX-09).
 4. Be ready to operate: SLOs, runbooks rehearsed, N2 rota trained, pen test passed.
 
@@ -198,25 +201,25 @@ A failed G0 does not stop Phase 1. The SC instead switches to the minimum varian
 
 **Deliverables.** These are the milestones already committed in other documents, gathered here into one list:
 
-| Date | Architecture ([03 §13](./03-architecture.md)) | Identity ([04 §14](./04-identity-tenancy-byo-gcp.md)) | Operations ([11 §13](./11-operations-runbook.md)) | Impacts ([07 §8](./07-impact-modules-and-triggers.md)) | UX ([02 §9](./02-users-requirements-ux.md)) |
-|---|---|---|---|---|---|
-| 10-23 | — | IT-M5 domain-restriction note | — | Reservoir watch card (IMP-13) | Usability round 1 |
-| 10-30 | M1.1 forecast cycle v1 | IT-M6 guard kill switch | — | **Polling-site list (IMP-16)** | Usability round 2 |
-| 11-06 | M1.2 listings, tiles | IT-M7 path B, invitations | OPS-M2 SLOs in stg | — | Tabletop; **G1a** |
-| 11-13 | M1.3 PWA, band, PDFs | IT-M8 3 pilot tenants | OPS-M3 game day | — | — |
-| 11-20 | M1.4 pen test, DR, pilots | IT-M9 pen test | OPS-M4 event drill | Risk index v1 (IMP-01) | — |
-| 11-27 | **M1.5 MVP gate** | IT-M10 MVP gate | OPS-M5 ops gate | Phase 1 IMP set | — |
+| Date | Architecture ([03 §13](./03-architecture.md)) | Identity ([04 §14](./04-identity-tenancy-byo-gcp.md)) | Operations ([11 §13](./11-operations-runbook.md)) | Impacts ([07 §8](./07-impact-modules-and-triggers.md)) | UX ([02 §9](./02-users-requirements-ux.md)) | Jev build ([08 §3.8](./08-ai-decision-layer-jev.md)) |
+|---|---|---|---|---|---|---|
+| 10-23 | — | IT-M5 domain-restriction note | — | Reservoir watch card (IMP-13) | Usability round 1 | B3 place resolver |
+| 10-30 | M1.1 forecast cycle v1 | IT-M6 guard kill switch | — | **Polling-site list (IMP-16)** | Usability round 2 | — |
+| 11-06 | M1.2 listings, tiles | IT-M7 path B, invitations | OPS-M2 SLOs in stg | — | Tabletop; **G1a** | — |
+| 11-13 | M1.3 PWA, band, PDFs | IT-M8 3 pilot tenants | OPS-M3 game day | — | — | B2 SITREP 2026 tables |
+| 11-20 | M1.4 pen test, DR, pilots | IT-M9 pen test | OPS-M4 event drill | Risk index v1 (IMP-01) | — | — |
+| 11-27 | **M1.5 MVP gate** | IT-M10 MVP gate | OPS-M5 ops gate | Phase 1 IMP set | — | — |
 
 **Week-by-week plan, engineering workstreams**
 
 | Week | Theme | WS1 Platform (PL) | WS2 Commons data (DL) | WS3 Forecast and verification (FL) | WS4 Impacts (IM) |
 |---|---|---|---|---|---|
-| **W1** 19–23 Oct | Real data end to end in stg | Registry and broker in stg; bootstrap v1 with T1/T2 profiles; funnel events; **IT-M5** | ≥10 days of continuous archive; `.gob.ec` ingest via the chosen route (direct or relay); `official_alerts` parser v1 tested on resolution PDFs; exposure v0 loaded | Forecast-cycle skeleton in `-dev` (WN2 members, WN3 statistics); `enso_indices` with provenance (V2 reconciled); bias-correction plan agreed with LI | **Reservoir watch card** in dev; polling-site join started; M10 population and M5 crop exposure |
+| **W1** 19–23 Oct | Real data end to end in stg | Registry and broker in stg; bootstrap v1 with T1/T2 profiles; funnel events; **IT-M5** | ≥10 days of continuous archive; `.gob.ec` ingest via the chosen route (direct or relay); `official_alerts` parser v1 tested on resolution PDFs; exposure v0 loaded; Jev B3 place resolver accepted (10-23) | Forecast-cycle skeleton in `-dev` (WN2 members, WN3 statistics); `enso_indices` with provenance (V2 reconciled); bias-correction plan agreed with LI | **Reservoir watch card** in dev; polling-site join started; M10 population and M5 crop exposure |
 | **W2** 26–30 Oct | Cycle v1 and first partner delivery | **IT-M6** guard and cost dashboard; first pilot bootstrap (sponsored T4) | Flood API snapshots if approved, else GloFAS/GEOGloWS only; seasonal canton tables from the 13 Oct C3S release (unverified date); Analytics Hub listing in stg | **M1.1**: 8 consecutive cycles, ≤60 min after WN3 availability, ≤1 GB scanned per cycle | **Polling-site list to CNE (30 Oct)**; M1 river × exposure and M2 tide + rain calendar started |
 | **W3** 2–6 Nov (2–3 Nov holidays, to confirm) | Listings live; pilot decision | **IT-M7** path B behind a flag; invitations; project switcher | **M1.2** listings `ectwin_commons_v1` in prod; tiles and national JSON | Bias correction v0 (quantile mapping against INAMHI + CHIRPS v3); verification scaffolding | Risk index v1 build (11-02 → 11-20); MSP gazette parser (M7) |
-| **W4** 9–13 Nov | Pilots connected | **IT-M8**: 3 pilot tenants green (≥1 T4, ≥1 T2) | Canton PDF and WhatsApp card pipeline; DQ gates set to `block` | CPC 12 Nov update ingested; coupling/confidence v1; C3S November run (first to cover all of DJFMA) processed | M1 and M2 in stg; M6 basic shrimp card |
-| **W5** 16–20 Nov | Hardening | **IT-M9** pen test T01–T20; fixes | DR restore rehearsal with SRE; archive audit green | Brier baseline for parish exceedance published; methodology pages | **Risk index v1 done**; exposure final for the 6 provinces |
-| **W6** 23–27 Nov | Go-live | Release candidate promoted **Wed 25 Nov**, the last change window before the freeze | All Phase 1 products in prod; freshness SLOs green | Cycle success ≥98% over 7 days | Phase 1 IMP set complete ([07 §8](./07-impact-modules-and-triggers.md)) |
+| **W4** 9–13 Nov | Pilots connected | **IT-M8**: 3 pilot tenants green (≥1 T4, ≥1 T2) | Canton PDF and WhatsApp card pipeline; DQ gates set to `block`; Jev B2 SITREP 2026 tables accepted (11-13, [08 §3.8](./08-ai-decision-layer-jev.md)) | CPC 12 Nov update ingested; coupling/confidence v1 | M1 and M2 in stg; M6 basic shrimp card |
+| **W5** 16–20 Nov | Hardening | **IT-M9** pen test T01–T20; fixes | DR restore rehearsal with SRE; archive audit green | Brier baseline for parish exceedance published; methodology pages; C3S November run ingested (13–16 Nov); calibrated full-DJFMA canton outlook by 2026-11-18 (FS-M1.3 in [06](./06-forecast-model-stack.md)) | **Risk index v1 done**; exposure final for the 6 provinces |
+| **W6** 23–27 Nov | Go-live | Release candidate promoted **Wed 25 Nov**, the last change window before the freeze | All Phase 1 products in prod; freshness SLOs green | Cycle success ≥95% over 7 days (SLO-06); pilot tenant pipelines ≥98% (M1.4) | Phase 1 IMP set complete ([07 §8](./07-impact-modules-and-triggers.md)) |
 
 **Week-by-week plan, product, operations and adoption workstreams**
 
@@ -231,13 +234,13 @@ A failed G0 does not stop Phase 1. The SC instead switches to the minimum varian
 
 **Exit gate G1b.** The decision is on Tue 2026-11-24; the formal go-live (M1.5) is Fri 2026-11-27. It passes when every blocking item in §9 is green, the Phase 1 "Must" requirements in [02](./02-users-requirements-ux.md) pass acceptance, and the Phase 1 product set in [07 §8](./07-impact-modules-and-triggers.md) is live. From 28 Nov to 1 Dec (election weekend) a hypercare roster runs at posture N1 under the freeze.
 
-**Dependencies.** WeatherNext approval (A1); INAMHI station archive and thresholds (*umbrales*); SNGR alert feed or relay; pilot tenants' ability to create projects and billing accounts; counsel sign-off on the disclaimer (blocked in part by V6/V7).
+**Dependencies.** WeatherNext approval (AR-01); INAMHI station archive and thresholds (*umbrales*); SNGR alert feed or relay; pilot tenants' ability to create projects and billing accounts; counsel sign-off on the disclaimer (blocked in part by V6/V7).
 
 **Phase 1 risks.**
 
 | Risk | Early sign | Response |
 |---|---|---|
-| WeatherNext not approved by W2 | A1 still pending on 10-26 | Run the cycle on IFS open data labelled "modelo de respaldo"; M1.1 accepted on the fallback |
+| WeatherNext not approved by W2 | AR-01 still pending on 10-26 | Run the cycle on IFS open data labelled "modelo de respaldo"; M1.1 accepted on the fallback |
 | Flood API waitlist | No approval by 11-06 | Leave the feature flag off; ship GloFAS and GEOGloWS only (already the plan) |
 | Pilot GADs cannot get billing in time | No billing account by 11-06 | Move them to T4 sponsored projects (budget line C7) |
 | Usability shows platform levels are confused with official alerts | Below 95% correct in round 2 | Stop and redesign the band before G1a; this item blocks the gate |
@@ -260,11 +263,11 @@ A failed G0 does not stop Phase 1. The SC instead switches to the minimum varian
 
 | Month | Platform and operations | Data, forecast and verification | Impacts and triggers | Users, training and partners |
 |---|---|---|---|---|
-| **Dec 2026** | Posture N1; N2 as criteria dictate; **M2.1 (12-15)**: event mode tested, CDN decision; OPS-M6 threshold review (12-15); holiday freeze 24 Dec – 2 Jan | Daily provisional verification in event mode; CPC 10 Dec update | SFINCS Guayaquil/Durán library (11-23 → 12-15); drought-lite card (→ 12-15); risk index v2 in shadow (from 12-15); LHASA and dengue started; trigger work started | Training wave 3 in the 6 flood provinces; onboarding to ≈15 tenants. Gemini 3.8 Flash doubles in price on 2027-01-01 ([pricing](https://cloud.google.com/vertex-ai/generative-ai/pricing)), so review copilot model routing before then |
+| **Dec 2026** | Posture N1; N2 as criteria dictate; **M2.1 (12-15)**: event mode tested, CDN decision; OPS-M6 threshold review (12-15); holiday freeze 24 Dec – 2 Jan | Daily provisional verification in event mode; CPC 10 Dec update; Jev B4 impact database 2010–2026 labelled (12-11, [08 §3.8](./08-ai-decision-layer-jev.md)) | SFINCS Guayaquil/Durán library (11-23 → 12-15); drought-lite card (→ 12-15); risk index v2 in shadow (from 12-15); LHASA and dengue started; trigger work started | Training wave 3 in the 6 flood provinces; onboarding to ≈15 tenants. Gemini 3.8 Flash doubles in price on 2027-01-01 ([pricing](https://cloud.google.com/vertex-ai/generative-ai/pricing)), so Gemini budgets and routing are re-baselined by 2026-12-15 (AI-20 in [08](./08-ai-decision-layer-jev.md)); the analyst copilot only starts in Phase 3 |
 | **Jan 2027** | **IT-M11** WIF path C2 (01-31); SAML tier 2 for the first ministry | **M2.2 (01-15)**: go/no-go on WN3 full members; CPC 14 Jan | Machala and Portoviejo/Chone libraries (→ 01-15); Esmeraldas (→ 01-31); risk index v2 promoted (01-12); LHASA and dengue at G1 (01-15); triggers and evidence packs (→ 01-31) | Onboarding of new GAD authorities (start date V12, to confirm); second tabletop exercise |
 | **Feb 2027** | **OPS-M7 mid-season review (02-15)**: staffing fatigue, costs, recalibration. Carnival 8–9 Feb (to confirm) needs an explicit rota | Recalibration decision now that WN3 has more history; CPC 11 Feb | Module G2 reviews with partners (INAMHI, MSP, MAG, Segura EP) | ≈25 tenants; user council; SUS re-test |
 | **Mar 2027** | Capacity review for the national scale-up | CPC 11 Mar; seasonal outlook for the end of the rains | ≥3 partner trigger sets with signed thresholds and backtests | **≥30 tenants and ≥300 WAU (03-31)**; trust survey drafted |
-| **Apr 2027** | Posture back to N0/N1; end-of-season preparation | Season archive frozen; verification data set assembled | Evidence pack reproduced by an external reviewer | Phase 2 report; **G2 (04-30)** |
+| **Apr 2027** | Posture back to N0/N1; end-of-season preparation | Verification data set assembled; season archive freeze prepared (freeze at VV-3.1/OPS-M8, 2027-05-15 at the latest) | Evidence pack reproduced by an external reviewer | Phase 2 report; **G2 (04-30)** |
 
 **Exit gate G2 (2027-04-30).** Pass when all of these hold:
 - (a) The Phase 2 exit in [07 §8](./07-impact-modules-and-triggers.md) is met: four SFINCS sites at G2; M4, M7 and the M5 disease index at G2; `ri-2.0.0` promoted; ≥3 signed trigger sets; one evidence pack reproduced.
@@ -276,7 +279,7 @@ A failed G0 does not stop Phase 1. The SC instead switches to the minimum varian
 
 **Dependencies.** Spot capacity; INAMHI and MSP data flows; partner reviewers for G2; sponsor tranche for Phase 2.
 
-**Phase 2 risks.** Fatigue in long N2 periods (R7); Spot shortage (R13); a missed or over-forecast event damaging trust (R5); new GAD authorities not re-onboarded (R10); price and terms changes from vendors (R11).
+**Phase 2 risks.** Fatigue in long N2 periods (PRG-07); Spot shortage (PRG-13); a missed or over-forecast event damaging trust (PRG-05); new GAD authorities not re-onboarded (PRG-10); price and terms changes from vendors (PRG-11).
 
 ### 2.4 Phase 3 – Learn and extend (2027-05-03 → 2027-09-30)
 
@@ -287,8 +290,8 @@ A failed G0 does not stop Phase 1. The SC instead switches to the minimum varian
 | 2027-05-15 | **OPS-M8** end-of-season review; runbook v2 | PM | Report published |
 | 2027-05-31 | Post-season user survey (trust KPI) and a lessons-learned workshop with the COEs | UX, PT | ≥70% "confío en la herramienta" ([02 §10](./02-users-requirements-ux.md)) |
 | 2027-06-30 | Post-event verification report, including misses and false alarms (VV-3.2 in [14 §11](./14-verification-and-validation.md)) | FL | Published openly; approved by the TAG in its model-governance role (the CTC of [14 §8.5](./14-verification-and-validation.md)) |
-| 2027-06-30 | Legal hand-over plan approved by the SC: instruments, novation of *convenios*, transfer of projects and approvals (GOV-M11, [13 §9.4](./13-governance-legal-risk.md)) | PM, PA | SC minute; feeds the host options paper |
-| 2027-06-30 | M8 full hydro-energy module for Paute–Mazar–Sopladora and Coca Codo Sinclair ([07 §4.8](./07-impact-modules-and-triggers.md)) | IM, HML | G2 with CELEC/CENACE review |
+| 2027-06-30 | Legal hand-over plan approved by the SC: instruments, novation of *convenios*, transfer of projects and approvals (GOV-M11, [13 §9.4](./13-governance-legal-risk.md)) | PM, PT | SC minute; feeds the host options paper |
+| 2027-06-30 | M8 full hydro-energy module for Paute–Mazar–Sopladora and Coca Codo Sinclair ([07 §4.8](./07-impact-modules-and-triggers.md)) | IM, HML | Delivered at G1 with CELEC/CENACE review; G2 decided 2027-09-15 after verification (VV-3.5 in [14 §11](./14-verification-and-validation.md)) |
 | 2027-07-30 | OpenHydroNet fine-tuned on Ecuadorian basins, plus a Caravan extension for Ecuador (none exists yet) | HML, FL | Model delivered; leave-basin-out skill against GRRR, GEOGloWS and GloFAS and the `OHN-EC` gate decided by 2027-08-31 (VV-3.4 in [14 §11](./14-verification-and-validation.md)) |
 | 2027-07-30 | Transition plan and host options paper (§10) | PM | SC decision on the host |
 | 2027-07-31 | WN2 perturbed-SST scenario engine at G1, or formally parked with the result published | FL | Per [07 §7.4](./07-impact-modules-and-triggers.md) |
@@ -299,7 +302,7 @@ A failed G0 does not stop Phase 1. The SC instead switches to the minimum varian
 
 **Exit gate G3 (2027-09-30).** Host agreement signed; Phase 3 exit in [07 §8](./07-impact-modules-and-triggers.md) met; post-event report published; ≥60% of operational roles have a named counterpart in an Ecuadorian institution.
 
-**Risks.** Funding cliff after the peak (R8); the host fails to secure a budget line (R15); key staff leave after the season.
+**Risks.** Funding cliff after the peak (PRG-08); the host fails to secure a budget line (PRG-15); key staff leave after the season.
 
 ### 2.5 Phase 4 – Institutionalise (from 2027-10-01)
 
@@ -311,27 +314,27 @@ A failed G0 does not stop Phase 1. The SC instead switches to the minimum varian
 | Channels | From 2027-10 | Procurement kit for ministries and GADs; evaluate a Marketplace listing so that ministries can pay from existing GCP commitments ([integrated SaaS](https://docs.cloud.google.com/marketplace/docs/partners/integrated-saas)) |
 | Regional extension | From 2028 | Transboundary basins shared with Peru and Colombia, through CAPRADE and CIIFEN (to confirm) |
 
-### 2.6 Programme risk register
+### 2.6 Programme delivery risks
 
-L = likelihood, I = impact (H/M/L).
+The single risk register is [13 §11.2](./13-governance-legal-risk.md) (`legal/risk/register.yaml`, R01–R35). The delivery risks below use the prefix PRG- so that they do not clash with its IDs; the column "13 ID" maps each one to the register where they overlap. L = likelihood, I = impact (H/M/L).
 
-| ID | Risk | L | I | Mitigation | Indicator | Owner |
-|---|---|---|---|---|---|---|
-| R1 | Access approvals late (WeatherNext, Flood API waitlist, EE Partner tier) | H | M | File on day 1; fallbacks in the A-tracker; Limited-plan budget | Any A-item pending >10 working days | PM |
-| R2 | Hiring lag for scarce skills (SRE, hydraulic modelling) | H | H | University agreements, secondees, contractors; RM-01 scope cuts | <10 FTE contracted by 10-09 | PM |
-| R3 | `.gob.ec` sources geoblocked from GCP | M | H | Relay at CEDIA or INAMHI; agency push ([03 §4.1](./03-architecture.md)) | M0.3 report | DL |
-| R4 | Slow *convenios* (INAMHI licence, SNGR feed) | M | H | Letters of intent early; verbatim link-outs; scraped endpoints only as a stopgap | Unsigned by 11-06 | PT |
-| R5 | Over-forecast or a missed event damages credibility (2023-24 precedent) | M | H | Coupling indicator; open verification; analog envelopes; D3 | Brier skill below baseline for 4 weeks | FL |
-| R6 | Platform output mistaken for an official alert; legal exposure | M | H | D1 vocabulary guard; disclaimers; usability gate; counsel review | Any confusion report | PM, DPO |
-| R7 | Staff fatigue in long N2 periods | M | H | Pool of 9 trained people; rest rules ([11 §1.3](./11-operations-runbook.md)); secondee top-up | >14 consecutive N2 days | SRE, PM |
-| R8 | Sponsor funding gap or late tranche | M | H | Bridge for Phases 0–1; minimum variant; tranche linked to gates | Tranche >15 days late | PM |
-| R9 | Public tenants cannot procure GCP in time | H | M | T4 sponsored projects; reseller route; procurement kit ([Google LLC is the contracting entity for Ecuador](https://cloud.google.com/terms/google-entity)) | Pilot without billing by 11-06 | PT |
-| R10 | Change of GAD authorities after 29 Nov | H | M | Org-owned projects, ≥2 Owners (G5 in [04](./04-identity-tenancy-byo-gcp.md)); re-onboarding pack | New authorities not onboarded within 30 days | TR |
-| R11 | Vendor changes: WeatherNext terms (effective 14 days after posting) or fees (≥1 month's notice) ([13 §3.2](./13-governance-legal-risk.md)); TypeSafe maturity (no SLA); Gemini price rises (3.8 Flash doubles on 2027-01-01) | M | M | `DecisionBackend` fallbacks; IFS fallback; model tiering | Notice received | AI, FL |
-| R12 | Power cuts and blackouts affect users and staff | M | M | Offline PWA, PDFs, WhatsApp cards; field connectivity kits (line O10) | Rationing announced by CENACE | FE, SRE |
-| R13 | Spot capacity shortage at peak | M | L | On-demand fallback ([11 §3.8](./11-operations-runbook.md)) | Queued >20 min | FL |
-| R14 | Tax treatment adds cost (IVA on operator invoices, ISD, withholding) | M | M | Tax note in Phase 0; contract structure chosen accordingly | Tax note v0 by 10-16 (P0-07); signed memo by 11-06 (GOV-M5, [13 §13.1](./13-governance-legal-risk.md)) | PM, DPO |
-| R15 | No national host or budget line for 2028 | M | H | Host options paper by 07-30; multilateral bridge; keep-the-lights-on variant (§10.4) | No SC decision by 08-31 | PM, SC |
+| ID | 13 ID | Risk | L | I | Mitigation | Indicator | Owner |
+|---|---|---|---|---|---|---|---|
+| PRG-01 | R05 (Flood API) | Access approvals late (WeatherNext, Flood API waitlist, EE Partner tier) | H | M | File on day 1; fallbacks in the AR tracker (§2.1); Limited-plan budget | Any AR item pending >10 working days | PM |
+| PRG-02 | R26 | Hiring lag for scarce skills (SRE, hydraulic modelling) | H | H | University agreements, secondees, contractors; RM-01 scope cuts | <10 FTE contracted by 10-09 | PM |
+| PRG-03 | R11 | `.gob.ec` sources geoblocked from GCP | M | H | Relay at CEDIA or INAMHI; agency push ([03 §4.1](./03-architecture.md)) | M0.3 report | DL |
+| PRG-04 | R10 | Slow *convenios* (INAMHI licence, SNGR feed) | M | H | Letters of intent early; verbatim link-outs; scraped endpoints only as a stopgap | Unsigned by 11-06 | PT |
+| PRG-05 | R02 | Over-forecast or a missed event damages credibility (2023-24 precedent) | M | H | Coupling indicator; open verification; analog envelopes; D3 | Brier skill below baseline for 4 weeks | FL |
+| PRG-06 | R01 | Platform output mistaken for an official alert; legal exposure | M | H | D1 vocabulary guard; disclaimers; usability gate; counsel review | Any confusion report | PM, DPO |
+| PRG-07 | — | Staff fatigue in long N2 periods | M | H | Pool of 9 trained people; rest rules ([11 §1.3](./11-operations-runbook.md)); secondee top-up | >14 consecutive N2 days | SRE, PM |
+| PRG-08 | R15 | Sponsor funding gap or late tranche | M | H | Bridge for Phases 0–1; minimum variant; tranche linked to gates | Tranche >15 days late | PM |
+| PRG-09 | R14 | Public tenants cannot procure GCP in time | H | M | T4 sponsored projects; reseller route; procurement kit ([Google LLC is the contracting entity for Ecuador](https://cloud.google.com/terms/google-entity)) | Pilot without billing by 11-06 | PT |
+| PRG-10 | R27 | Change of GAD authorities after 29 Nov | H | M | Org-owned projects, ≥2 Owners (G5 in [04](./04-identity-tenancy-byo-gcp.md)); re-onboarding pack | New authorities not onboarded within 30 days | TR |
+| PRG-11 | R03, R17 | Vendor changes: WeatherNext terms (effective 14 days after posting) or fees (≥1 month's notice) ([13 §3.2](./13-governance-legal-risk.md)); TypeSafe maturity (no SLA); Gemini price rises (3.8 Flash doubles on 2027-01-01) | M | M | `DecisionBackend` fallbacks; IFS fallback; model tiering | Notice received | AI, FL |
+| PRG-12 | — | Power cuts and blackouts affect users and staff | M | M | Offline PWA, PDFs, WhatsApp cards; field connectivity kits (line O10) | Rationing announced by CENACE | FE, SRE |
+| PRG-13 | — | Spot capacity shortage at peak | M | L | On-demand fallback ([11 §3.8](./11-operations-runbook.md)) | Queued >20 min | FL |
+| PRG-14 | R14 | Tax treatment adds cost (IVA on operator invoices, ISD, withholding) | M | M | Tax note in Phase 0; contract structure chosen accordingly | Tax note v0 by 10-16 (P0-07); signed memo by 11-06 (GOV-M5, [13 §13.1](./13-governance-legal-risk.md)) | PM, DPO |
+| PRG-15 | R35 | No national host or budget line for 2028 | M | H | Host options paper by 07-30; multilateral bridge; keep-the-lights-on variant (§10.4) | No SC decision by 08-31 | PM, SC |
 
 ---
 
@@ -421,7 +424,7 @@ Rates are **assumptions**: fully loaded monthly cost to the programme (salary, s
 
 Secondee time is valued at US$3,000 per FTE-month (**assumption**) and reported as co-financing, not cash.
 
-Hourly equivalents at ≈168 h per month (estimate): US$10.7 (FAC), US$14.9 (ADM), US$20.8 (US$3,500 roles), US$26.8 (US$4,500 roles) and US$32.7 (leads at US$5,500). The US$15/h loaded analyst cost assumed in [08 §3.7](./08-ai-decision-layer-jev.md) is therefore at the FAC–ADM level; at the DE rate the human-review costs there rise by ≈40%.
+Hourly equivalents at ≈168 h per month (estimate): US$10.7 (FAC), US$14.9 (ADM), US$20.8 (US$3,500 roles), US$26.8 (US$4,500 roles) and US$32.7 (leads at US$5,500). The US$15/h loaded analyst cost assumed in [08 §3.7](./08-ai-decision-layer-jev.md) is therefore at the FAC–ADM level; at the DE rate the human-review costs there rise by ≈40%. The Jev build review queues (B1–B4, [08 §3.7–§3.8](./08-ai-decision-layer-jev.md)) need ≈620 analyst-hours (617 h estimated there) between 2026-10-05 and 2026-12-11; they are planned within the DE line in Phases 0–1 and December (≈3.7 FTE-months at ≈168 h/month, estimate), so the totals do not change.
 
 ### 4.3 Event-mode staffing reconciliation
 
@@ -441,7 +444,7 @@ In Phase 1 the minimum variant has only 6.5 people in the pool (SRE, BE and DE �
 | Institution | Location | Proposed contribution | Roles | Mechanism | Status |
 |---|---|---|---|---|---|
 | **INAMHI** | Quito | Forecasters or hydrologists in the forecaster seat; station archive and thresholds; joint verification | SEC ×1–2; LI | Secondment (*comisión de servicios*) under the data *convenio*; legal basis **(unverified)** | Letter of intent 10-02 |
-| **SNGR** | National | Monitoring analyst for liaison; COE access for research and tabletop exercises | LS; TAG member | *Convenio de cooperación* | Letter of intent 10-02 |
+| **SNGR** | National | Monitoring analyst for liaison; COE access for research and tabletop exercises | LS; TAG seat to confirm in the terms of reference | *Convenio de cooperación* | Letter of intent 10-02 |
 | **CIIFEN** | Guayaquil | ENSO and seasonal expertise; WMO Regional Climate Centre link; GeoNode layers ([01 §8.2](./01-context-el-nino-ecuador.md)) | CS; TAG | Technical cooperation agreement | To approach by 10-09 |
 | **ESPOL** | Guayaquil | Coastal and Guayas hydraulic modelling; data engineering; field trainers for Guayas, Los Ríos and Santa Elena | HYD, DE, FAC | *Convenio marco* plus research contract; theses and internships | To approach by 10-09 |
 | **EPN** | Quito | Hydrology and software engineering. This is distinct from IG-EPN, whose event catalogue is only ingested (CTX-18) | DE, BE, HML | Research contract | To approach by 10-09 |
@@ -502,7 +505,7 @@ R = responsible, A = accountable, C = consulted, I = informed. SC = Steering Com
 | B7 | Secondee time is in kind, valued at US$3,000 per FTE-month (**assumption**); only stipends and travel are cash |
 | B8 | Contingency is **15%** of the subtotal (personnel, cloud, uplift and other costs) |
 | B9 | Other unit costs are **assumptions**: training event US$2,500 (venue, travel, per diem, materials, 25–40 people); external counsel US$150/h; pen test US$12,000; accessibility audit US$6,000; laptop US$1,200; liability insurance US$6,000/year (availability to confirm) |
-| B10 | No cloud credits are assumed. Any credits obtained (A10) reduce lines C1–C8 |
+| B10 | No cloud credits are assumed. Any credits obtained (AR-10) reduce lines C1–C8 |
 
 ### 5.2 Cloud lines
 
@@ -512,16 +515,16 @@ The monthly figures are the spine anchors, reconciled line by line with the item
 |---|---|---|---|---|---|---|
 | C1 Control plane `ectwin-platform-prod` | Anchor ≈US$23–43; budget 45 ([04 G3](./04-identity-tenancy-byo-gcp.md)). Strict control plane per [09 §4.2.1](./09-cost-model.md): ≈US$5–25 at pilot, ≈US$23–43 in a season (N1) month, ≈US$75–95 in an N2 month with the warm broker (≤US$52). P2 average (2 N1 + 3 N2 months) ≈US$54–74; budget 145 leaves headroom for the 10× spike of NFR-010 | 45 / 45 / 145 / 45 | Same | 27 / 63 / 725 / 225 | 1,040 | 1,040 |
 | C2 `-dev` and `-stg` projects | Mostly free tier (estimate) | 30 | 30 | 18 / 42 / 150 / 150 | 360 | 360 |
-| C3 Commons base `ectwin-commons-prod` | Anchor ≈US$100–300; budget the upper end. Commons invoice incl. Block D ≈US$72–97 at pilot and ≈US$275–370 in an N1 month ([09 §4.3.2](./09-cost-model.md)). One-off WN3/WN2 backfills, exposure builds, Jev build and verification bootstrap in P1 ≈US$73–155 ([09 §5](./09-cost-model.md) items B3–B11); budget ≈US$200 (estimate) | 300 | 300 | 180 / 620 / 1,500 / 1,500 | 3,800 | 3,800 |
-| C4 Commons peak extras (P2) | Raises the P2 Commons envelope (C3 + C4) to US$600/month. The Commons invoice incl. Block D is ≈US$448–603 in a full N2 month, and the P2 average (2 N1 + 3 N2 months) is ≈US$379–510 ([09 §4.3.2](./09-cost-model.md)). Drivers: Jev at national peak (≈US$113 spine anchor; ≈US$91 in 09), EE Limited fallback (up to 200 EECU-h × US$0.40 = US$80), WN3 full members (≈US$25–50 if M2.2 says go), Block D egress (≈US$122–188) | 300 in P2 | 200 (no WN3 members) | 0 / 0 / 1,500 / 0 | 1,500 | 1,000 |
-| C5 Heavy campaigns (one-off) | P2: SFINCS library for 4 sites US$60–360 plus other module builds, ≈US$70–395 in all ([07 §9](./07-impact-modules-and-triggers.md)); budget 400. P3: WN2 perturbed-SST runs 50 × US$2.3–4.6 = US$115–230 (TPU self-run); OpenHydroNet and inflow-LSTM fine-tunes US$4–23 ([09 §5](./09-cost-model.md) B15), budgeted at US$70 to allow reruns (estimate) | — | 2 sites, ≈US$200 | 0 / 0 / 400 / 300 | 700 | 200 |
+| C3 Commons base `ectwin-commons-prod` | Anchor ≈US$100–300; budget the upper end. Commons invoice incl. Block D ≈US$72–97 at pilot and ≈US$273–356 in an N1 month ([09 §4.3.2](./09-cost-model.md)). One-off WN3/WN2 backfills, exposure builds, Jev build and verification bootstrap in P1 ≈US$58–155 ([09 §5](./09-cost-model.md) items B3–B11); budget ≈US$200 (estimate) | 300 | 300 | 180 / 620 / 1,500 / 1,500 | 3,800 | 3,800 |
+| C4 Commons peak extras (P2) | Raises the P2 Commons envelope (C3 + C4) to US$600/month. The Commons invoice incl. Block D is ≈US$444–602 in a full N2 month, and the P2 average (2 N1 + 3 N2 months) is ≈US$376–504 ([09 §4.3.2](./09-cost-model.md)). Drivers: Jev at national peak (≈US$113 spine anchor; ≈US$91 in 09), EE Commercial – Limited (up to 200 EECU-h × US$0.40 = US$80; AR-04), WN3 full members (≈US$25–50 if M2.2 says go), Block D egress (≈US$122–188) | 300 in P2 | 200 (no WN3 members) | 0 / 0 / 1,500 / 0 | 1,500 | 1,000 |
+| C5 Heavy campaigns (one-off) | P2: SFINCS library for 4 sites US$60–360 plus other module builds, ≈US$70–394 in all ([07 §9](./07-impact-modules-and-triggers.md)); budget 400. P3: WN2 perturbed-SST runs 50 × US$2.3–4.6 = US$115–230 (TPU self-run); OpenHydroNet and inflow-LSTM fine-tunes US$4–23 ([09 §5](./09-cost-model.md) B15), budgeted at US$70 to allow reruns (estimate) | — | 2 sites, ≈US$200 | 0 / 0 / 400 / 300 | 700 | 200 |
 | C6 Operator test tenants | 2 T2 QA tenants plus heavy-flow tests (estimate) | 150 / 150 / 250 / 150 | 100 / 100 / 150 / 100 | 90 / 210 / 1,250 / 750 | 2,300 | 1,450 |
 | C7 Sponsored T4 tenant pool | P1: 5 × US$14. P2–P3: 25 T1 × US$14 + 5 T2 × US$60 = US$650. On one sponsor billing account the itemised pool costs ≈US$446, or ≈US$216 if the projects qualify for noncommercial EE ([09 §4.7](./09-cost-model.md)) | 0 / 70 / 650 / 650 | 10 × 14 + 2 × 60 = 260 | 0 / 98 / 3,250 / 3,250 | 6,598 | 2,698 |
-| C8 Sponsored T3 for national monitoring (SNGR P01) until SNGR's own procurement completes | Peak ≈US$1,210 × 4 months + US$800 × 1, then US$800/month. After the Gemini 3.8 Flash price step on 2027-01-01 a peak month can reach ≈US$1,264 ([09 §4.6](./09-cost-model.md)); the excess (≤US$54/month) comes from contingency or from routing the copilot to Flash-Lite | — / — / 1,128 avg / 800 | Not funded | 0 / 0 / 5,640 / 4,000 | 9,640 | 0 |
+| C8 Sponsored T3 for national monitoring (SNGR P01) until SNGR's own procurement completes | Peak ≈US$1,210 × 4 months + US$800 × 1, then US$800/month. The copilot (FR-062) starts only in Phase 3 ([08 §8.2](./08-ai-decision-layer-jev.md)), so peak months stay ≤≈US$1,210; from P3 a normal month with the copilot at the 2027 price is ≈US$852 (US$795 itemised in [09 §4.6](./09-cost-model.md) + US$56 for the Gemini 3.8 Flash price step, estimate), ≈US$52 above the US$800 line, covered by contingency or by routing the copilot to Flash-Lite | — / — / 1,128 avg / 800 | Not funded | 0 / 0 / 5,640 / 4,000 | 9,640 | 0 |
 | **Cloud subtotal** | | | | **315 / 1,033 / 14,415 / 10,175** | **25,938** | **10,548** |
 | Tax and channel uplift 20% (B4) | | | | 63 / 207 / 2,883 / 2,035 | 5,188 | 2,110 |
 
-In Phase 2 the programme-paid envelope for the control plane and the Commons (C1 + C3 + C4 = US$745/month) covers the itemised need of ≈US$433–584/month (strict control plane ≈US$54–74 plus Commons invoice ≈US$379–510, P2 averages from [09](./09-cost-model.md)). This resolves the C1 shortfall flagged in [09 §6](./09-cost-model.md) without changing any total.
+In Phase 2 the programme-paid envelope for the control plane and the Commons (C1 + C3 + C4 = US$745/month) covers the itemised need of ≈US$430–578/month (strict control plane ≈US$54–74 plus Commons invoice ≈US$376–504, P2 averages from [09](./09-cost-model.md)). This resolves the C1 shortfall flagged in [09 §6](./09-cost-model.md) without changing any total.
 
 Cloud is **under 2% of the budget**. The architecture's "compute once, tenants pay" design (AP-02, AP-03) works as intended: people, not infrastructure, are the cost to plan for.
 
@@ -538,7 +541,7 @@ Cloud is **under 2% of the budget**. The architecture's "compute once, tenants p
 | O7 Training materials | Videos, printed cards, e-learning | 0 / 5,000 / 3,000 / 3,000 | 11,000 | 5,500 | Fewer videos |
 | O8 Kichwa review and audio | Native-speaker review (D19) | 0 / 0 / 0 / 4,000 | 4,000 | 0 | Deferred to Phase 4 |
 | O9 Travel and field presence | COE presence, partner meetings: US$1,200/month (P0, P3), US$2,000 (P1, P2) | 720 / 2,800 / 10,000 / 6,000 | 19,520 | 12,000 | US$1,000/month |
-| O10 Equipment | 8 laptops; low-end Android test phones; 4G routers and power banks for pilot COEs (R12) | 9,600 / 3,000 / 0 / 0 | 12,600 | 6,300 | 4 laptops; half the kits |
+| O10 Equipment | 8 laptops; low-end Android test phones; 4G routers and power banks for pilot COEs (PRG-12) | 9,600 / 3,000 / 0 / 0 | 12,600 | 6,300 | 4 laptops; half the kits |
 | O11 Professional liability insurance | PI/E&O and cyber cover ([13 §12.4](./13-governance-legal-risk.md)); 12-month premium **assumption** pending broker quotes due 2026-11-06, bound before go-live ([13 §13.2](./13-governance-legal-risk.md)); reserved in P0. Google's liability under the WeatherNext terms is capped at US$500 ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)) | 6,000 / 0 / 0 / 0 | 6,000 | 6,000 | Same |
 | O12 Communications | Editing, launch material, post-season report layout | 0 / 3,000 / 0 / 2,000 | 5,000 | 1,500 | Launch only |
 | O13 Secondee stipends and travel | US$400 per FTE-month | 120 / 560 / 4,000 / 2,000 | 6,680 | 3,680 | Fewer secondees |
@@ -600,11 +603,11 @@ Cloud is **under 2% of the budget**. The architecture's "compute once, tenants p
 | World Bank subnational programme through BDE: US$800M; phase 1 US$200M + US$50M AECID; GAD disaster-risk management is an eligible use ([press release](https://www.bancomundial.org/es/news/press-release/2026/09/24/world-bank-group-expands-subnational-infrastructure-finance-in-ecuador)) | GAD tenant costs; GAD training (eligibility of software and cloud **to confirm**) | Approved 24 Sep 2026 | PT |
 | CAF contingent line for disaster prevention and response, US$200M ([CAF](https://www.caf.com/es/actualidad/noticias/caf-aprueba-usd-450-millones-para-fortalecer-la-seguridad-y-la-capacidad-de-respuesta-ante-desastres-naturales-en-ecuador/)); IDB contingent loan, US$400M ([EC-X1008](https://www.iadb.org/en/project/EC-X1008)) | Possibly prevention-side work (**to confirm**; contingent lines usually need a declaration) | CAF line approved Mar 2026; IDB loan status **(to confirm)** | PM |
 | Anticipatory-action partners (Cruz Roja/IFRC, WFP, FAO, OCHA) | Trigger dashboards and evidence packs they use ([01 §10](./01-context-el-nino-ecuador.md)) | To explore | PT |
-| Google programmes: research credits for universities; startup credits for the operator if eligible; Earth Engine Partner tier (in kind) | Cloud lines; EE usage | A4, A10 | PM |
+| Google programmes: research credits for universities; startup credits for the operator if eligible; Earth Engine Partner tier (in kind) | Cloud lines; EE usage | AR-04, AR-10 | PM |
 | INAMHI and SNGR in kind | Secondees, data, liaison | Via *convenios* | PT |
 | Tenants | Their own T1–T3 usage (B6) | By design | — |
 
-**Tenant-paid costs outside the budget (estimate).** Take 30 tenants: 20 T1 at ≤US$14, 8 T2 at ≤US$60 and 2 T3 at ≤US$1,210 in a peak month. That totals **≤US$3,180/month**, paid by the tenants, before IVA/ISD. The itemised estimate for the same mix in a peak month is ≈US$2,769–3,051 ([09 §4.9](./09-cost-model.md)).
+**Tenant-paid costs outside the budget (estimate).** Take 30 tenants: 20 T1 at ≤US$14, 8 T2 at ≤US$60 and 2 T3 at ≤US$1,210 in a peak month. That totals **≤US$3,180/month**, paid by the tenants, before IVA/ISD. The itemised estimate for the same mix in a peak month is ≈US$2,656–3,051 ([09 §4.9](./09-cost-model.md)).
 
 ### 5.7 Budget control
 
@@ -626,7 +629,7 @@ Cloud is **under 2% of the budget**. The architecture's "compute once, tenants p
 | Body (es) | Members (proposed) | Chair | Cadence | Decides |
 |---|---|---|---|---|
 | *Comité Directivo* (Steering Committee, SC) | SNGR (national monitoring director or delegate), INAMHI (executive director or delegate), sponsor, PM; observer from AME for GADs (**to confirm**) | SNGR (proposed) | Weekly in Phases 0–1; biweekly in Phase 2; monthly after | Gates, variant, budget, host, co-branding, public statements |
-| *Grupo Técnico Asesor* (TAG) | INAMHI, INOCAR/CN-ERFEN, CIIFEN, 2 universities, MSP, MAG, CELEC/CENACE; FL and IM as secretaries. Its model-risk sub-committee (MRC) is set out in [13 §9.1](./13-governance-legal-risk.md); its model-governance sessions are the *Comité Técnico-Científico* (CTC) of [14 §8.5](./14-verification-and-validation.md), first session 2026-11-19 | INAMHI (proposed) | Biweekly; weekly verification slot in Phase 2; CTC sessions monthly in the peak | Method changes, *umbrales*, G2 module gates, verification publication |
+| *Grupo Técnico Asesor* (TAG) | INAMHI, INOCAR/CN-ERFEN, CIIFEN, 2 universities, MSP, MAG, CELEC/CENACE; an SNGR monitoring seat is to confirm in the terms of reference ([14 §8.5](./14-verification-and-validation.md)); FL and IM as secretaries. Its model-risk sub-committee (MRC) is set out in [13 §9.1](./13-governance-legal-risk.md); its model-governance sessions are the *Comité Técnico-Científico* (CTC) of [14 §8.5](./14-verification-and-validation.md), first session 2026-11-19 | INAMHI (proposed) | Biweekly; weekly verification slot in Phase 2; CTC sessions monthly in the peak | Method changes, *umbrales*, G2 module gates, verification publication |
 | *Consejo de Usuarios* (User Council) | 2 provincial COEs, 2 cantonal GADs, Segura EP, Cruz Roja, CNA or Acorbanec, one insurer, one university | Rotating user | Monthly from November | Priorities for the backlog; UX changes; training needs |
 | *Comité de Datos y Privacidad* | DPO, counsel, SNGR and INAMHI data officers, one tenant IT admin | DPO | Quarterly plenary; weekly 30-minute licence-clearance slot in Phases 0–2 ([13 §9.1](./13-governance-legal-risk.md)); ad hoc for incidents | DPIA, licences, retention, data-sharing annexes |
 | Delivery team | Workstream leads (§3) | PM | Daily stand-up; weekly demo | Everything not reserved above |
@@ -679,7 +682,7 @@ flowchart TB
 | CIIFEN | Technical cooperation | ENSO and seasonal expertise; GeoNode | Co-authorship; regional extension | FL | By 2026-10-30 |
 | ESPOL, EPN, USFQ, UCuenca | *Convenio marco* plus research contracts | Staff, students, trainers | Funded research, data, theses, credits | PM | By 2026-10-23 |
 | Cruz Roja, WFP, OCHA | Letters of collaboration | Trigger definitions, EAP thresholds | Trigger dashboards, evidence packs | PT | By 2026-12-01 |
-| CNA, Acorbanec, insurers | Tenant onboarding letters | Farm clusters, feedback | T1–T3 workspaces (self-paid) | PT | Phase 2 |
+| CNA, Acorbanec, insurers | Tenant onboarding letters | Farm clusters, feedback | T1–T3 workspaces (self-paid) | PT | Phase 1 (≥1 commercial pilot by 2026-10-16, P0-06); the rest in Phase 2 |
 | Google | Terms acceptance; access programmes | WeatherNext, Flood API, EE tiers, credits | — | PM | Phase 0 |
 | TypeSafe | Account terms; enterprise ZDR enquiry | Jev access | — | AI | Phase 0 |
 
@@ -704,14 +707,14 @@ Targets are **estimates**; they are validated with the user council by 2026-11-3
 
 | ID | Audience | Personas ([02 §2.2](./02-users-requirements-ux.md)) | Trained by 2026-11-27 | By 2027-03-31 | By 2027-09-30 |
 |---|---|---|---|---|---|
-| A1 | COE *mesa técnica* members (provincial and cantonal) in the 6 flood provinces | P01, P02 | 30 | 200 | 250 |
-| A2 | GAD risk units, including Segura EP | P03, P04 | 15 | 100 | 130 |
-| A3 | Tenant IT administrators | P13 | 8 | 40 | 60 |
-| A4 | INAMHI forecasters and hydrologists | P05 | 5 | 20 | 25 |
-| A5 | Sector analysts: MAG, MSP, CELEC/CENACE, MIT | P06–P08 | 5 | 60 | 80 |
-| A6 | Humanitarian partners | P09 | — | 20 | 25 |
-| A7 | Private sector: exporters, insurers, banks | P10, P11 | — | 40 | 60 |
-| A8 | University trainers (ToT) | P12 | — | 6 | 20 |
+| AUD-1 | COE *mesa técnica* members (provincial and cantonal) in the 6 flood provinces | P01, P02 | 30 | 200 | 250 |
+| AUD-2 | GAD risk units, including Segura EP | P03, P04 | 15 | 100 | 130 |
+| AUD-3 | Tenant IT administrators | P13 | 8 | 40 | 60 |
+| AUD-4 | INAMHI forecasters and hydrologists | P05 | 5 | 20 | 25 |
+| AUD-5 | Sector analysts: MAG, MSP, CELEC/CENACE, MIT | P06–P08 | 5 | 60 | 80 |
+| AUD-6 | Humanitarian partners | P09 | — | 20 | 25 |
+| AUD-7 | Private sector: exporters, insurers, banks | P10, P11 | — | 40 | 60 |
+| AUD-8 | University trainers (ToT) | P12 | — | 6 | 20 |
 | | **Total** | | **≈63** | **≈486** | **≈650** |
 
 ### 7.2 Curriculum
@@ -721,15 +724,15 @@ Module IDs C1–C11 are course modules, not the budget lines C1–C8 of §5.2 or
 | Module | Title (es) | Length | Format | Audience | From |
 |---|---|---|---|---|---|
 | C1 | *Leer el Gemelo: probabilidades, niveles de riesgo y alertas oficiales* | 45 min | Live remote or in person; 3-min video | All | Phase 1 |
-| C2 | *Conectar su proyecto GCP y controlar costos* | 90 min | Hands-on with a test project (path A) | A3 | Phase 1 |
-| C3 | *El reporte matutino en 10 minutos* | 45 min | Role play with that day's canton PDF | A1, A2 | Phase 1 |
-| C4 | *Áreas de interés, suscripciones y avisos* | 30 min | Hands-on | A1, A2, A7 | Phase 1 |
-| C5 | *Disparadores y paquetes de evidencia* | 60 min | Case study (IFRC EAP 2023, [Anticipation Hub](https://www.anticipation-hub.org/news/ecuador-activates-its-early-action-protocol-for-floods-related-to-el-nino)) | A5, A6, A7 | Phase 2 |
-| C6 | *Escenarios de inundación y años análogos* | 60 min | Hands-on with the SFINCS library | A1, A2 | Phase 2 |
-| C7 | *Análisis en su proyecto: BigQuery, Earth Engine y licencias* | 3 h | Lab | A4, A5, A7, A8 | Phase 2 |
-| C8 | *Verificación e incertidumbre: cómo leer el desempeño* | 45 min | Live with the weekly scores | A1, A4, A5 | Phase 2 |
-| C9 | *Simulacro de escritorio* (tabletop) | 3 h | Scripted event night (J3) with a replayed 2026 event | A1, A2, A6 | Phases 1–3 |
-| C10 | *Formación de formadores* (ToT) | 2 days | Workshop plus certification | A8 | Phase 3 |
+| C2 | *Conectar su proyecto GCP y controlar costos* | 90 min | Hands-on with a test project (path A) | AUD-3 | Phase 1 |
+| C3 | *El reporte matutino en 10 minutos* | 45 min | Role play with that day's canton PDF | AUD-1, AUD-2 | Phase 1 |
+| C4 | *Áreas de interés, suscripciones y avisos* | 30 min | Hands-on | AUD-1, AUD-2, AUD-7 | Phase 1 |
+| C5 | *Disparadores y paquetes de evidencia* | 60 min | Case study (IFRC EAP 2023, [Anticipation Hub](https://www.anticipation-hub.org/news/ecuador-activates-its-early-action-protocol-for-floods-related-to-el-nino)) | AUD-5, AUD-6, AUD-7 | Phase 2 |
+| C6 | *Escenarios de inundación y años análogos* | 60 min | Hands-on with the SFINCS library | AUD-1, AUD-2 | Phase 2 |
+| C7 | *Análisis en su proyecto: BigQuery, Earth Engine y licencias* | 3 h | Lab | AUD-4, AUD-5, AUD-7, AUD-8 | Phase 2 |
+| C8 | *Verificación e incertidumbre: cómo leer el desempeño* | 45 min | Live with the weekly scores | AUD-1, AUD-4, AUD-5 | Phase 2 |
+| C9 | *Simulacro de escritorio* (tabletop) | 3 h | Scripted event night (J3) with a replayed 2026 event | AUD-1, AUD-2, AUD-6 | Phases 1–3 |
+| C10 | *Formación de formadores* (ToT) | 2 days | Workshop plus certification | AUD-8 | Phase 3 |
 | C11 | *Operación del Gemelo* (host staff) | 8 weeks | Shadowing, then co-running rotas and releases | Host staff | Phase 3–4 |
 
 **Design rules.**
@@ -786,15 +789,15 @@ Product and UX metrics follow [02 §10](./02-users-requirements-ux.md); verifica
 | # | KPI | Definition | P0 target | P1 target | P2 target | P3 target | Owner |
 |---|---|---|---|---|---|---|---|
 | K1 | Milestones on time | Share of dated milestones met within 2 working days | ≥80% | ≥85% | ≥85% | ≥90% | PM |
-| K2 | Access requests | A1–A8 filed; decisions obtained | 100% filed by 09-30 | WeatherNext approved; EE tier decided | Flood API decided (best effort) | All renewals scheduled | PM |
+| K2 | Access requests | AR-01–AR-08 filed; decisions obtained | 100% filed by 09-30 | WeatherNext approved; EE tier decided | Flood API decided (best effort) | All renewals scheduled | PM |
 | K3 | Agreements | Letters of intent or *convenios* signed | 7 letters of intent sent | INAMHI and SNGR signed | ≥5 signed | ≥7 + host agreement | PT |
 | K4 | Team in place | Paid FTE against plan | ≥10 by 10-09 | ≥20 by 10-23 (full variant; ≥15 in the minimum) | ≥95% of plan | ≥90% of plan | PM |
 | K5 | Tenants connected | Green preflight | 2 internal | 3–5 pilots | ≥30 by 03-31 | ≥40 (estimate) | PL, PT |
 | K6 | Weekly active COE and GAD users | Distinct users per week | — | ≥40 | ≥300 | ≥150 (off-season) | PM |
 | K7 | Official versus platform distinction | Correct identification in tests | — | ≥95% | ≥95% | ≥95% | UX |
 | K8 | Confusion incidents | Platform output taken for an official alert | — | 0 | 0 | 0 | PM |
-| K9 | Bulletin punctuality | Canton PDFs by 06:30 ECT | — | 5 of 5 test days | ≥95% of days | ≥95% | DL |
-| K10 | Forecast-cycle success | Cycles published or fallback within SLO | — | ≥98% over 7 days | ≥98% monthly | ≥98% | FL |
+| K9 | Bulletin punctuality | Canton PDFs by 06:30 ECT | — | 5 of 5 test days | ≥97% of days (NFR-007, [11 SLO-05](./11-operations-runbook.md)) | ≥97% | DL |
+| K10 | Forecast-cycle success | Cycles published or fallback within SLO | — | ≥95% of cycles over 7 days (SLO-06) | ≥95% monthly | ≥95% | FL |
 | K11 | Verification openness | Scores published | — | Brier baseline | Weekly, ≥16 weeks | Post-event report | FL |
 | K12 | Forecast skill | Brier skill score for parish exceedance against climatology ([14](./14-verification-and-validation.md)) | — | Baseline | >0 at days 1–3 (target to confirm with TAG) | Reported per lead and province | FL |
 | K13 | Module maturity | Modules at G2 | — | Phase 1 set live (G1) | M3 (4 sites), M4, M7 and the M5 disease index at G2 ([07 §8](./07-impact-modules-and-triggers.md)) | M8 at G2 | IM |
@@ -828,6 +831,7 @@ There are two gates in Phase 1. **G1a, pilot rollout (Fri 2026-11-06)**, decides
 | B2 | Only Non-Retrievable WeatherNext products leave WeatherNext licensees' projects; NC layers gated | Licence audit of every layer | DL, DPO | B | B |
 | B3 | SNGR and INAMHI *convenios* signed, or written interim consent for the pilot | Signed documents | PT | — | B |
 | B4 | Co-branding decision recorded | SC minute | PM | — | — |
+| B5 | The commercial-profile pilot tenant sees no NC layer (FR-073 test) | Licence-gating test log in that tenant | DL | B | B |
 | **C** | **Data and forecast** | | | | |
 | C1 | Forecast cycle meets M1.1 (8 consecutive cycles; ≤60 min; ≤1 GB) or the fallback is labelled | Pipeline run records | FL | B | B |
 | C2 | Day-1 archive complete: INAMHI, alerts, Flood API if approved | Archive audit green 14 days | DL | B | B |
@@ -898,7 +902,7 @@ The SC chooses by **2027-08-31**, against the options paper due 2027-07-30 and t
 |---|---|---|---|
 | GCP projects `ectwin-platform-prod`, `ectwin-commons-prod` (+ `-dev`, `-stg`) | Move the projects into the host organisation and switch billing, rather than recreating them. Project IDs stay the same (procedure **to confirm**) | The Flood API allowlist is per project, so keeping the project should preserve access (**to confirm with Google**). Analytics Hub listings and Identity Platform users move with the project | PL |
 | WeatherNext approvals | Host files its own request for institutional accounts, or approved role-based accounts transfer | Approval is per Google account; access that is terminated cannot be re-requested ([terms](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf)), so any transfer is agreed with Google in writing first ([13 §9.4](./13-governance-legal-risk.md)) | FL |
-| Earth Engine | Re-register under the host; re-verify noncommercial status every year | Operational use may be classed as commercial | FL |
+| Earth Engine | Re-register under the host: Commercial – Limited for operational production unless Google has confirmed in writing that the Partner tier covers it ([13 §3.4](./13-governance-legal-risk.md)) | Noncommercial tiers need yearly re-verification; operational use is classed as commercial (LP-07) | FL |
 | TypeSafe account and keys | Transfer or reissue. Consider the GCP-billed Gemini adapter (D17 option c) for procurement | Jev is not billed through GCP | AI |
 | OAuth brand, domains, status page, paging, chat | Transfer ownership | OAuth verification is tied to the project brand | PL, SRE |
 | Code, images, Terraform state | GitHub organisation ownership; Artifact Registry moves with the project | Keep images addressed by digest | PL |
@@ -960,10 +964,10 @@ Once the national service is stable (2028, proposed), extend the Commons to basi
 - **Secondments.** The legal basis and approval route for INAMHI and SNGR secondments (*comisión de servicios*) are **unverified**. The minimum variant's N2 rota depends on a second INAMHI secondee.
 - **Partner capacity.** Every university, CEDIA and CIIFEN contribution in §4.4 is a proposal. Willingness, capacity and contracting times are unknown until the approaches in Phase 0.
 - **Sponsored T3 for SNGR (line C8).** Funding SNGR's heavy tenant bends the "who benefits pays" rule (AP-02). The SC should decide whether to fund it until SNGR's own procurement completes, and for how long.
-- **Commons Earth Engine tier.** The Partner tier would remove line C4's EE component. Operational government use may need the commercial Limited plan anyway.
+- **Commons Earth Engine tier.** Commons operational production is budgeted on Commercial – Limited (LP-07, [13 §3.4](./13-governance-legal-risk.md)). If Google confirms in writing that the Partner tier covers it, line C4's EE component (≤US$80/month) is released.
 - **Calendar.** Guayaquil's independence holiday on Fri 9 Oct 2026 (the due date of M0.3, IT-M3, OPS-M0, P0-03 and P0-04), the 2–3 Nov 2026 national holidays, Carnival on 8–9 Feb 2027 and the date new GAD authorities take office (V12) are **to confirm**. The Phase 0 deadlines, the Phase 1 week plan and the re-onboarding wave depend on them; if 9 Oct is a holiday, those deliverables move to Thu 8 Oct.
-- **Cost anchors.** Lines C1–C8 keep the spine anchors and are reconciled with the itemised figures of [09](./09-cost-model.md) (§5.2). Two items remain: C8 can exceed its peak figure by ≤US$54/month from January 2027, and the T4 pool (C7) assumes one sponsor billing account; whether a reseller can give each GAD its own sub-account is **(to confirm)** ([09 §4.7](./09-cost-model.md)). §10.4 gives Phase 4 at both pilot-scale cloud (US$630/month, the figure [09 §6](./09-cost-model.md) quotes) and national-scale cloud (≈US$1,453/month).
-- **Verification analyst (VA).** [14 §11](./14-verification-and-validation.md) assumes a full-time VA from 2026-10-02. This budget fills the role with the second DE position from 2026-10-23, with FL covering Phase 0. The minimum variant has one DE, so VA duties fall on FL and CS; a dedicated VA would add ≈US$42,000–54,000 over 12 months at the DE or CS rate before contingency (estimate: US$3,500–4,500 × 12).
-- **Committee names.** [13 §9.1](./13-governance-legal-risk.md) uses the TAG and its MRC; [14 §8.5](./14-verification-and-validation.md) describes a CTC with SNGR as a voting member and monthly peak sessions. This document treats the CTC as the TAG's model-governance session; the charter should settle one name and one membership list.
+- **Cost anchors.** Lines C1–C8 keep the spine anchors and are reconciled with the itemised figures of [09](./09-cost-model.md) (§5.2). Two items remain: from Phase 3, when the copilot (FR-062) starts at the 2027 Gemini price, a normal C8 month is ≈US$852, ≈US$52 above its US$800 line; and the T4 pool (C7) assumes one sponsor billing account; whether a reseller can give each GAD its own sub-account is **(to confirm)** ([09 §4.7](./09-cost-model.md)). §10.4 gives Phase 4 at both pilot-scale cloud (US$630/month; the pilot-scale anchors behind the ≈US$0.66M/year in [09 §6](./09-cost-model.md)) and national-scale cloud (≈US$1,453/month).
+- **Verification analyst (VA).** This budget fills the role with the second DE position (VA profile) from 2026-10-23; [14](./14-verification-and-validation.md) VV-0.1 adopts this plan, with FL covering VA duties until then. The minimum variant has one DE, so VA duties fall on FL and CS; a dedicated VA would add ≈US$42,000–54,000 over 12 months at the DE or CS rate before contingency (estimate: US$3,500–4,500 × 12).
+- **Committee names.** [13 §9.1](./13-governance-legal-risk.md) uses the TAG and its MRC; the CTC of [14 §8.5](./14-verification-and-validation.md) is the TAG's model-governance session, with monthly peak sessions. SNGR's TAG/CTC seat is to be settled in the TAG terms of reference (14 §8.5 leaves it to confirm); the charter should settle one name and one membership list.
 - **Host.** Whether SNGR can take on 24/7 operation and a budget line from fiscal year 2028. If not, H2 or a hybrid of H1 and H3 must be designed by 2027-07-30.
 - **Project moves between organisations.** Whether moving projects preserves the Flood API allowlist, Analytics Hub listings, the OAuth verification status and the Identity Platform configuration must be confirmed with Google before the hand-over plan is final.
