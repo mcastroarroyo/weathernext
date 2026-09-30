@@ -1,0 +1,126 @@
+# -----------------------------------------------------------------------------
+# GDE-Nino tenant bootstrap - example inputs.
+# Copy to infra/tenant-bootstrap/terraform.tfvars and edit. Never commit the
+# filled-in copy (it names your billing account).
+#
+#   cp examples/terraform.tfvars.example terraform.tfvars
+#   terraform init && terraform plan -out=bootstrap.tfplan && terraform apply bootstrap.tfplan
+# -----------------------------------------------------------------------------
+
+# --- Required -----------------------------------------------------------------
+
+# Your organisation's own project (org-owned, not personal - D7).
+project_id = "gad-portoviejo-ectwin" # illustrative
+
+# Billing account that pays for the project:
+#   gcloud billing projects describe PROJECT_ID --format='value(billingAccountName)'
+billing_account = "012345-6789AB-CDEF01" # illustrative
+
+# --- Usually left at defaults -------------------------------------------------
+
+# Optional; looked up automatically when omitted.
+# project_number = "123456789012"
+
+# The only principal that receives a grant (TokenCreator on ectwin-runner).
+# Set to "" for connection path D (self-deployed, no operator access).
+platform_broker_sa = "ectwin-broker@ectwin-platform-prod.iam.gserviceaccount.com"
+
+# One-time code from the web app ("Conectar proyecto"); lowercase, 8-63 chars.
+# connection_code = "c-7k2m9x4q8w"
+
+# Locations (D10). BigQuery must stay US.
+bq_location        = "US"
+gcs_location       = "us-central1"
+firestore_location = "southamerica-west1" # or southamerica-east1; us-* triggers an LOPDP warning
+
+# --- Tier profile ---------------------------------------------------------------
+# Pick ONE block. Budget anchors come from docs/09-cost-model.md:
+#   T1 Light    ~US$0-14/month      -> budget 20
+#   T2 Standard ~US$20-60/month     -> budget 75
+#   T3 Heavy    ~US$540-800/month   -> budget 800 (1,250 in Dec-Apr peak months)
+#   T4 Sponsored: as T1/T2, billed to the sponsor's billing account
+
+# T1 Light (municipality / GAD cantonal)
+tier               = "T1"
+monthly_budget_usd = 20
+enable_vertex      = false
+enable_batch       = false
+
+# T2 Standard (province / ministry)
+# tier               = "T2"
+# monthly_budget_usd = 75
+
+# T3 Heavy (national agency / insurer)
+# tier                     = "T3"
+# monthly_budget_usd       = 800
+# enable_vertex            = true
+# enable_batch             = true
+# enable_managed_pipelines = true
+
+# T4 Sponsored (project inside a sponsor folder)
+# tier   = "T4"
+# labels = { ectwin-sponsor = "sngr", ectwin-dpa = "1301" } # DPA code illustrative
+
+budget_currency       = "USD"
+budget_thresholds     = [0.5, 0.9, 1.0]
+budget_forecast_alert = true
+
+# Optional BigQuery daily quota via Cloud Quotas, in MiB (1 TiB = 1048576).
+# Leave commented until the quota id/unit is confirmed (README step 6);
+# set it in the console instead.
+# bq_query_usage_per_day_mib = 1048576
+# quota_contact_email        = "tic@example.gob.ec"
+
+# --- Storage ------------------------------------------------------------------------
+
+scratch_retention_days     = 30
+nearline_after_days        = 90
+nearline_prefixes          = ["runs/", "reports/", "evidence/", "exports/", "raw/"]
+soft_delete_retention_days = 7
+# app_origins              = ["https://app.<DOMAIN>"] # domain to confirm
+
+# --- Firestore ------------------------------------------------------------------------
+
+create_firestore_database   = true # false if (default) already exists
+firestore_delete_protection = true
+firestore_pitr              = false
+enable_session_ttl          = true
+
+# --- Optional APIs ------------------------------------------------------------------
+
+enable_flood_forecasting_api = false # true only with your own allow-listed access
+# extra_services             = ["dlp.googleapis.com"]
+
+# --- Second pass: linked datasets (after approvals) ---------------------------------
+# Either list datasets you subscribed in the console ...
+# linked_dataset_ids = ["ectwin_commons", "weathernext_3", "weathernext_2"]
+#
+# ... or let Terraform subscribe. The applying identity must already be allowed
+# to subscribe (WeatherNext Data Request form approved for that Google account;
+# Commons listing published - milestone M1.2, 2026-11-06).
+# listing_subscriptions = {
+#   ectwin_commons = {
+#     exchange_project = "ectwin-commons-prod"
+#     location         = "us"
+#     data_exchange_id = "ectwin_exchange"
+#     listing_id       = "ectwin_commons_v1"
+#   }
+#   # Exchange id verified; listing id from a secondary source - confirm in the
+#   # BigQuery sharing console after approval. The exchange project may appear
+#   # as a project number (871883017250) in listing paths.
+#   weathernext_2 = {
+#     exchange_project = "gcp-public-data-weathernext"
+#     location         = "us"
+#     data_exchange_id = "weathernext_19397e1bcb7"
+#     listing_id       = "weathernext_2_19a39fe59dd"
+#   }
+#   # weathernext_3 = { ... listing id to confirm after approval ... }
+# }
+
+# --- Notifications (after the platform domain is fixed) -----------------------------
+# notifier_push_endpoint           = "https://api.<DOMAIN>/internal/notify"
+# notifier_push_audience           = ""
+# grant_pubsub_agent_token_creator = false
+
+# --- Secrets (placeholders without versions) -----------------------------------------
+secret_ids = ["typesafe-api-key", "floodforecasting-api-key"]
