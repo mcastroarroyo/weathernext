@@ -532,11 +532,12 @@ Jobs `verification-daily`, `verification-weekly` and `verification-monthly` are 
 | `verification-hindcast` | On demand | `hc_*`, `availability_log` | Pairs with `hindcast_run_id` | Hours (Delayed Jobs) | VA |
 | `verification-event` | On demand, ≤ 5 days after an event closes | Products, S1/EMS extents, SITREPs | `event_verification` rows; post-event report draft | 1–2 h + EECU | VA, IM |
 
-**Cost (estimate, from the verification brief's unit prices).** The items below sum to ≈US$9–48 one-off (WN2 0–4 + Sentinel-1 4–24 + IFS 5–20) and ≈US$4–7/month (EE 0.80–4 + storage ≈3). The planning envelope keeps the brief's rounded-up figure of **US$20–80 one-off plus US$5–15/month** to absorb re-runs:
+**Cost (estimate, from the verification brief's unit prices).** The items below sum to ≈US$9–52 one-off (WN2 hindcast pairs 0–8 + Sentinel-1 4–24 + IFS 5–20) and ≈US$4–7/month (EE 0.80–4 + storage ≈3). The planning envelope keeps the brief's rounded-up figure of **US$20–80 one-off plus US$5–15/month** to absorb re-runs:
 
 | Item | Assumption | Cost |
 |---|---|---|
-| WN2 hindcast extract | ≈70 GB (good pruning) to ≈0.63 TiB (poor pruning), 00Z inits only ([06 §3.9](./06-forecast-model-stack.md), §4.4) | US$0 if spread over two billing months; at most 0.63 TiB × US$6.25 ≈ US$4 if billed in full |
+| WN2 hindcast extract | ≈70 GB (good pruning) to ≈0.63 TiB (poor pruning), 00Z inits only ([06 §3.9](./06-forecast-model-stack.md), §4.4) | Costed in [09](./09-cost-model.md) B4/B5 (US$0 over two billing months; ≤US$4 if billed at once) |
+| WN2 hindcast pairs (scoring) | ≈0.3 TiB scan (inside the free TiB) + 20 EECU-h × US$0–0.40 ([09](./09-cost-model.md) B10) | US$0–8 one-off |
 | WN3 statistics, daily scoring | ≈135 MB per init, ≈16 GB/month | US$0 (inside the free TiB) |
 | Earth Engine reductions (WN3, IMERG, CHIRPS) | 2–10 EECU-h/month × US$0.40 | US$0.80–4/month |
 | Sentinel-1 flood maps | 10–60 EECU-h per event season × US$0.40 | US$4–24 |
@@ -810,7 +811,7 @@ Anything that turns data into a number, level, class or text that users see is a
 
 | Model id (examples) | Kind | Owner | Version key | Initial gate | Model-risk id and tier ([13 §9.3](./13-governance-legal-risk.md)) |
 |---|---|---|---|---|---|
-| `EXT-WN3`, `EXT-WN2`, `EXT-IFS`, `EXT-GLOFAS`, `EXT-GEOGLOWS`, `EXT-FLOODAPI`, `EXT-GRRR` | External source | FL | Provider version (`weathernext_3_0_0`, GloFAS v4.x/v5.0, `gauge_model_id`, `model_id_8583a5c2_v0`) | Registered | Inputs to MR-01 and MR-03 |
+| `EXT-WN3`, `EXT-WN2`, `EXT-WN2-VERTEX`, `EXT-IFS`, `EXT-AIFS`, `EXT-GLOFAS`, `EXT-GEOGLOWS`, `EXT-FLOODAPI`, `EXT-GRRR`, `EXT-C3S`, `EXT-CFSV2`, `EXT-XRO` | External source | FL | Provider version (`weathernext_3_0_0`, GloFAS v4.x/v5.0, `gauge_model_id`, `model_id_8583a5c2_v0`) | Registered | Inputs to MR-01 and MR-03 |
 | `FC-RAIN-WN2-EXC`, `FC-RAIN-WN3-EXC`, `FC-RAIN-IFS-EXC` | Forecast post-processing | FL | `method_version` | G1 | MR-01, A |
 | `FC-BC-QM` (quantile mapping), `FC-BC-EMOS` (Phase 2) | Bias correction | FL | `bc_params` version | G1 | MR-01, A |
 | `FC-RIVER-STATUS` (fusion of Flood API, GEOGloWS BC and GloFAS) | Forecast post-processing | FL | `method_version` | G1 | MR-03, A |
@@ -1037,9 +1038,9 @@ flowchart LR
 
 | Output | Content | Channel | Licence | Cadence |
 |---|---|---|---|---|
-| Open scores | `commons_pub.verification_scores`, `reliability_bins`, `event_verification`, `skill_lookup` | Analytics Hub listing `ectwin_commons_v1` → tenant `ectwin_commons`; CSV/Parquet under `gs://ectwin-commons-prod-public/verification/<yyyy-mm>/` (new prefix, to reconcile with [03 §5.1](./03-architecture.md); public-read only after the LP-05 confirmation below, until then served by signed URL like other forecast-derived objects); STAC collection `verification` | CC BY 4.0 for the scores; scores computed against CC BY-NC-SA GEOGloWS return periods go to `commons_pub_nc` until legal review **(to confirm)** | Weekly (provisional), monthly (final) |
+| Open scores | `commons_pub.verification_scores`, `reliability_bins`, `event_verification`, `skill_lookup` | Analytics Hub listing `ectwin_commons_v1` → tenant `ectwin_commons`; CSV/Parquet under `gs://ectwin-commons-prod-products/verification/<yyyy-mm>/` (prefix listed in [03 §5.1](./03-architecture.md)), served by 60-min signed URLs to signed-in users like every Commons object (FR-001); the open-data copy (CC BY 4.0) is released with the public code repository (D20) after the LP-05 confirmation below, never as a public-read bucket object; STAC collection `verification` | CC BY 4.0 for the scores; scores computed against CC BY-NC-SA GEOGloWS return periods go to `commons_pub_nc` until legal review **(to confirm)** | Weekly (provisional), monthly (final) |
 | Public dashboard | DB-08 public copy: CRPSS, BSS, POD/FAR by region and lead; reliability diagrams; misses and false alarms | Looker Studio link from the methodology page | — | Weekly |
-| Weekly scorecard (*Boletín de verificación semanal*) | One page in Spanish: headline skill by region and lead, events of the week, hits, misses and false alarms, confidence changes | PDF in the public bucket; link in tenant console | CC BY 4.0 | Weekly from 2026-11-23 |
+| Weekly scorecard (*Boletín de verificación semanal*) | One page in Spanish: headline skill by region and lead, events of the week, hits, misses and false alarms, confidence changes | PDF in `ectwin-commons-prod-products` (signed URL); link in tenant console and on the public methodology/help page | CC BY 4.0 | Weekly from 2026-11-23 |
 | Monthly verification report | Final scores, reliability, per-product notes, open MCRs | PDF + notebook | CC BY 4.0 | Monthly from January 2027 |
 | Post-event reports | Per significant event (§10.2) | PDF | CC BY 4.0 | ≤ 30 days after the event |
 | Hindcast reports VR-01 … VR-06 | Methods, data, results, limitations | PDF + notebooks under `gs://ectwin-commons-prod-bulk/hindcast/` (Requester Pays) | CC BY 4.0 | Once, then updated |

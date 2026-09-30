@@ -1101,7 +1101,7 @@ Default thresholds pending INAMHI's official *umbrales* (co-signed by LI; values
   fallback: [EXT-WN2, EXT-IFS]
   owner: FL
   verification: {table: commons_pub.verification_scores, model: WN3}
-- id: EXT-WN2-VERTEX                  # proposed id; to be added to 14 §8.1
+- id: EXT-WN2-VERTEX                  # id per 14 §8.1
   kind: self_run
   version: "WeatherNext2_<2025_model{1..4}"
   image: us-docker.pkg.dev/vertex-ai-restricted/vertex-vision-model-garden-dockers/weather-next-2-inference.gpu.0-1:latest
@@ -1119,7 +1119,7 @@ Default thresholds pending INAMHI's official *umbrales* (co-signed by LI; values
 CREATE TABLE IF NOT EXISTS `ectwin-commons-prod.commons_internal.model_registry` (
   model_id        STRING NOT NULL,   -- 14 §8.1 scheme: 'EXT-WN3', 'EXT-WN2', 'EXT-IFS', 'EXT-GLOFAS', 'EXT-GEOGLOWS',
                                      -- 'EXT-FLOODAPI', 'EXT-GRRR', 'OHN-EC', 'FC-BC-QM', 'FC-RAIN-*', 'SEAS-CANTON-MME', ...;
-                                     -- EXT- ids for AIFS ENS, C3S, CFSv2, XRO and WN2 on Vertex to be requested from 14 §8.1
+                                     -- also 'EXT-AIFS', 'EXT-C3S', 'EXT-CFSV2', 'EXT-XRO' and 'EXT-WN2-VERTEX' (WN2 on Vertex), per 14 §8.1
   kind            STRING NOT NULL,
   version         STRING NOT NULL,   -- e.g. 'weathernext_3_0_0', 'model_id_8583a5c2_v0', 'qm-wn2-tp24-1.0.0'
   identifiers     JSON,
