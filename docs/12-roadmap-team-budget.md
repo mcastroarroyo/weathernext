@@ -626,6 +626,8 @@ Cloud is **under 2% of the budget**. The architecture's "compute once, tenants p
 
 ## 6. Partnerships and governance
 
+The options for the Commons sponsor, with a recommended blend by horizon and the term-sheet contents (P0-03), are in [sponsor options](../outreach/sponsor-options.md).
+
 ### 6.1 Bodies
 
 | Body (es) | Members (proposed) | Chair | Cadence | Decides |

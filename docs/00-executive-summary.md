@@ -193,7 +193,7 @@ Week of 2026-09-29 to 2026-10-02:
 |---|---|---|---|
 | 1 | **Access requests.** Approve institutional role accounts and confirm requests AR-01 to AR-08: WeatherNext, the WN2 allowlist, the Flood Forecasting API, Earth Engine, TypeSafe, CDS/EWDS, Copernicus Marine and Earthdata | Filed 2026-09-30; email weathernext@google.com by 2026-10-02 | FL, DL, PL |
 | 2 | **MoUs.** Sign letters and draft *convenios* for INAMHI, SNGR, INOCAR/CN-ERFEN, CELEC/CENACE, MSP and MAG | 2026-10-02; SNGR and INAMHI signed by 2026-11-06 | PT |
-| 3 | **Commons sponsor.** Name the sponsor; sign the term sheet and bridge funding (US$305,311; floor US$223,776); commit Commons funding through 2027-04-30 | 2026-10-09 | PM |
+| 3 | **Commons sponsor.** Name the sponsor; sign the term sheet and bridge funding (US$305,311; floor US$223,776); commit Commons funding through 2027-04-30. Options and a recommendation: [sponsor options](../outreach/sponsor-options.md) | 2026-10-09 | PM |
 | 4 | **Pilot tenants.** Nominate 3–5 pilots, including one T4 *GAD* and one T2, each with an organisation-owned project | Letters by 2026-10-16 | PT |
 | 5 | **GitHub and GCP organisation.** Verify the domain; name two organisation administrators; create the folders, groups and billing accounts; open the public repository with keyless deployment | Projects (M0.1) 2026-10-02 | PL |
 | 6 | **Governance.** Approve hiring (≥10 FTE by 2026-10-09) and form the Steering Committee | 2026-10-14 | PM |

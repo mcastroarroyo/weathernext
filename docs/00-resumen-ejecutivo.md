@@ -143,7 +143,7 @@ De 35 riesgos registrados (2 críticos, 14 altos, 19 medios), estos tienen mayor
 ## 9. Decisiones solicitadas a las autoridades
 
 1. **Accesos:** aprobar cuentas institucionales de Google para las solicitudes de acceso (WeatherNext, API de inundaciones, Earth Engine, TypeSafe y otras), presentadas el 2026-09-30.
-2. **Patrocinador (por ejemplo, SNGR/INAMHI con banca multilateral):** designarlo y comprometer el financiamiento puente **hasta 2026-10-09**, y garantizar el Commons hasta 2027-04-30 (US$450 al mes, US$650 en meses de evento).
+2. **Patrocinador (por ejemplo, SNGR/INAMHI con banca multilateral):** designarlo y comprometer el financiamiento puente **hasta 2026-10-09**, y garantizar el Commons hasta 2027-04-30 (US$450 al mes, US$650 en meses de evento). Opciones y recomendación (en inglés): [opciones de patrocinio](../outreach/sponsor-options.md).
 3. **SNGR e INAMHI:** nombrar enlaces técnicos hasta el 2026-10-16. La SNGR presidirá el Comité Directivo, que se constituye el 2026-10-14 y debe respaldar la posición "apoyo a la decisión, nunca alertas". Ambas instituciones deben firmar los convenios **hasta 2026-11-06** o dar un consentimiento interino por escrito, y aprobar las comisiones de servicios.
 4. **INOCAR/CN-ERFEN, MSP y MAG:** firmar convenios hasta 2026-12-15. **CELEC/CENACE:** hasta 2027-01-31.
 5. **GAD y COE:** firmar al menos 3 cartas de intención de pilotos hasta 2026-10-16, crear proyectos institucionales antes del 2026-11-29 o pedir un proyecto T4, y designar a las mesas técnicas que recibirán el PDF cantonal.
