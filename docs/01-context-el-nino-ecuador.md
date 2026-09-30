@@ -463,7 +463,7 @@ flowchart TB
   TWIN -.->|"tenant workspaces"| PRIV
 ```
 
-Solid arrows are official flows. Dashed arrows are twin outputs, which are always advisory. The twin has **no arrow to the public** for alerts: public-facing pages show official alerts verbatim and non-retrievable indices only (D1, WeatherNext terms §3).
+Solid arrows are official flows. Dashed arrows are twin outputs, which are always advisory. The twin has **no arrow to the public** for alerts: signed-in T0 pages (the read-only national view; there is no public no-login view, D6) show official alerts verbatim and non-retrievable indices only (D1, WeatherNext terms §3).
 
 ---
 
@@ -546,7 +546,7 @@ gantt
   Phase 0 Mobilise :p0, 2026-09-29, 2026-10-16
   Phase 1 MVP :p1, 2026-10-19, 2026-11-27
   Phase 2 Peak operations :p2, 2026-12-01, 2027-04-30
-  Phase 3 Learn and extend :p3, 2027-05-01, 2027-09-30
+  Phase 3 Learn and extend :p3, 2027-05-03, 2027-09-30
 ```
 
 ### 9.4 Recurring information calendar
@@ -585,7 +585,7 @@ The matrix should be kept as configuration so that the product, the notification
   inputs: [wn3_exceedance_24h, gefs_weekly_anomaly, exposure_roads]   # add ec46_weekly_anomaly if EC46 open data is confirmed
   product: polling_site_pack
   outputs: [pdf_es, csv, whatsapp_card]
-  label_es: "Apoyo a la decisión – no constituye alerta oficial"
+  label_es: "Apoyo a la decisión · Pronóstico experimental · No es una alerta oficial"   # disclaimer D1 (02 §8.5, 13 §1.4)
   phase: MVP
 - id: LT-05
   owner: [energy_ministry, CELEC, CENACE]   # ministry name to confirm (possibly Ambiente y Energia)
