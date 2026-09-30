@@ -45,6 +45,8 @@ This document specifies the hydrometeorological forecast stack of *Gemelo Digita
 
 Bands L0–L5 are those of the decision calendar in [01 §9.1](./01-context-el-nino-ecuador.md#91-lead-time-bands).
 
+Decision rows served ([01 §9.2](./01-context-el-nino-ecuador.md#92-lead-time-matrix); requirement and screen trace in [02 §5.3](./02-users-requirements-ux.md#53-traceability-to-the-lead-time-matrix-ctx-06)): L0 LT-25–LT-28; L1 LT-18–LT-21, LT-24, LT-25, LT-27, LT-28; L2 LT-03, LT-07, LT-10, LT-13–LT-16, LT-18–LT-24, LT-28; L3 LT-03, LT-07, LT-10, LT-12–LT-17, LT-32; L4 LT-01, LT-03–LT-05, LT-07, LT-09–LT-12, LT-32; L5 LT-01, LT-02, LT-04–LT-08; post-event verification (§6, [14](./14-verification-and-validation.md)) LT-02, LT-17, LT-29–LT-31.
+
 | Horizon | Band | Primary source(s) | Resolution / members | Latency and cadence | Role in the twin | Fallback | Product table(s) | Phase |
 |---|---|---|---|---|---|---|---|---|
 | **Observations and nowcast, 0–6 h** | L0 | INAMHI stations (Visor API); IMERG V07 Early/Late; GSMaP v8 NRT; Oya precipitation (EE); GOES-19 ABI flood product; Sentinel-1 GRD | Points (≈1,858–1,894 stations catalogued, ≈202 transmitting); 0.1°; 0.1°; 5 km / 30 min; 0.01° daily; 10 m | Stations ≈2.5 h observed lag; satellite products hours **(latency per product to confirm)**; GOES flood daily at ≈07:00 UTC next day; S1 revisit ≥6 days | State estimation, antecedent rain, flash-flood and landslide context, observed flood extent | Any single source; INAMHI Visor embed | `inamhi_station_obs_hourly`, `obs_precip_h3` (§6) | P1 display, P2 fusion |
@@ -190,7 +192,7 @@ ec = ds.sel(longitude=slice(-92.1 % 360, -75.1 % 360), latitude=slice(1.7, -5.1)
 
 ### 3.4 Terms: real-time vs historic, retrievable vs non-retrievable
 
-The WeatherNext terms of use ([PDF](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf), last modified 2026-09-03) govern every design choice below.
+The WeatherNext terms of use ([PDF](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf), last modified 2026-09-03) govern every design choice below. The legal reading and the export policy code are in [13 §3.2](./13-governance-legal-risk.md#32-weathernext-clause-by-clause-reading-and-controls) and [§4.2](./13-governance-legal-risk.md#42-gating-decision-flow); the gating classes, including `wn_internal`, are listed in [05 §5.1](./05-data-catalog.md#51-licence-classes).
 
 | Data class | Definition | Examples in the twin | Who may receive it | Where it lives | `licence_class` |
 |---|---|---|---|---|---|
