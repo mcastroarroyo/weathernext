@@ -239,7 +239,7 @@ The IDs A1–A11 are the same as the Phase 0 tracker in [12 §2.1](./12-roadmap-
 **A3 Flood Forecasting API.**
 1. File the waitlist for `ectwin-commons-prod`; mention national government partners (SNGR, INAMHI) and humanitarian use.
 2. On approval, reply with the project ID, then run the commands in §5.8 (enable the API, create a restricted key, store it in `floodforecasting-api-key`).
-3. First call: `gauges.searchGaugesByArea` with `regionCode: "EC"` to measure real Ecuador coverage (§5.11, backfill B3).
+3. First call: `gauges.searchGaugesByArea` with `{"regionCode": "EC", "includeNonQualityVerified": true, "includeGaugesWithoutHydroModel": true}` to measure real Ecuador coverage (verified versus `hybas_` virtual gauges); a 2023-era press report (search summary, [Primicias](https://www.primicias.ec/noticias/tecnologia/google-ecuador-mapa-inundaciones/)) mentions only four locations (Zapotal, Babahoyo, Daule, Pula), so the current count is unknown until this call (§5.11, backfill B3).
 
 **A4 Earth Engine.**
 ```bash
@@ -453,7 +453,7 @@ mkbudget ectwin-commons-prod     "$BA_SPONSOR"  450 ectwin-commons-prod
 mkbudget ectwin-nonprod-commons  "$BA_SPONSOR"  15  ectwin-commons-dev,ectwin-commons-stg
 ```
 
-Posture changes to N2/N3 switch the two prod budgets to the higher amounts through `scripts/ops/posture.sh` ([09 §9.3](./09-cost-model.md), [11 §3.3](./11-operations-runbook.md)); after M0.1 the budgets move into Terraform (`infra/commons/budget.tf` in 09). The operator console subscribes to `ops-budget`; alert routing is in [11 §4.5](./11-operations-runbook.md). Also lower the Commons BigQuery `QueryUsagePerDay` quota to 2 TiB/day as a guard ([11 §3.7](./11-operations-runbook.md)) in *IAM & Admin → Quotas & System Limits*.
+After M0.1 the budgets move into Terraform (`infra/commons/budget.tf` in 09). Switching the two prod budgets to the N2/N3 amounts is a separate SRE step: `scripts/ops/posture.sh` ([11 §3.3](./11-operations-runbook.md)) does not change budgets, so SRE also applies the Terraform with `-var posture_high=true`, and `false` on return to N0/N1 ([09 §9.3](./09-cost-model.md)). The operator console subscribes to `ops-budget`; alert routing is in [11 §4.5](./11-operations-runbook.md). Also lower the Commons BigQuery `QueryUsagePerDay` quota to 2 TiB/day as a guard ([11 §3.7](./11-operations-runbook.md)) in *IAM & Admin → Quotas & System Limits*.
 
 ### 3.7 Acceptance for §3 (M0.1, due 2026-10-02, owner PL)
 
@@ -1415,7 +1415,7 @@ Pick one path. All produce the same resources ([README §2](../infra/tenant-boot
 git clone <REPO_URL> weathernext && cd weathernext
 scripts/bootstrap-tenant.sh --project gad-portoviejo-ectwin --dry-run            # preview only
 scripts/bootstrap-tenant.sh --project gad-portoviejo-ectwin --tier T1 --budget-usd 20 \
-  --connection-code c-7k2m9x4q8w                                                 # code from the web app
+  --connection-code c-7k2m9x4q8w      # code from the web app (illustrative; real codes are c- plus 26 base32 characters, 04 §4.2)
 echo "exit code: $?"   # 0 complete; 1 error (safe to re-run); 2 usage; 3 complete with actions (budget or org policy)
 ```
 
@@ -1490,7 +1490,7 @@ Exit codes: 0 no FAIL (WARN allowed unless `--strict`), 1 at least one FAIL, 2 u
 
 ### 6.6 Connect and preflight
 
-1. Web app → *Conectar* with the project id. The broker mints a 900-s runner token with `generateAccessToken`, reads the `ectwin-connection` label on dataset `ectwin` and compares it with the code it issued ([README §3.4](../infra/tenant-bootstrap/README.md#34-proving-control-of-the-project-connection-code)).
+1. Web app → *Conectar* with the project id. The broker mints a 900-s runner token with `generateAccessToken`, reads the `ectwin-connection` label on dataset `ectwin`, and compares its hash with `connect_code_sha256`, checking the 24 h expiry and that the caller is the user who started the wizard ([04 §4.2](./04-identity-tenancy-byo-gcp.md#42-path-a--cloud-shell-or-infrastructure-manager-default) step 7, [README §3.4](../infra/tenant-bootstrap/README.md#34-proving-control-of-the-project-connection-code)).
 2. The broker applies the tenant DDL (proposal in §4.9) and runs the preflight PF-01 to PF-15 ([04 §4.7](./04-identity-tenancy-byo-gcp.md#47-preflight-checks-fr-009)); most checks have a `verify-tenant.sh` equivalent ([README §7 step 1](../infra/tenant-bootstrap/README.md#step-1--connect-in-the-web-app)). With the v0.1.0 artefacts, PF-10 (guard function `ectwin-guard`) stays amber until the guard ships (IT-M6, 2026-10-30), and PF-09 looks for topic `ectwin-budget` while the artefacts create `ectwin-budget-alerts` (naming decision due at IT-M3, [04 §5.8.4](./04-identity-tenancy-byo-gcp.md)).
 3. The registry entry `tenants/{tid}` moves to `status=active`; the admin becomes Owner. From now on the preflight runs daily at 05:00 ECT, and two consecutive red results notify the Owners (FR-009).
 
@@ -1684,21 +1684,21 @@ Roles: incident commander on standby (IC), SRE primary and secondary, FL for cyc
 | T+8 h | Billing: first cost rows appear in the export; no unexpected SKU | Billing report by SKU | RB-18 |
 | T+12 h (02:00 / 21:00) | 12Z cycle done; log volume per project on track for <50 GiB/month | Log metrics | Add exclusions |
 | T+15 h (05:00 / 00:00) | `raw-dr-copy` ran; `ops-iam-drift` clean | DQ results | [11 §10–§11](./11-operations-runbook.md) |
-| T+18 h (08:10 / 03:10) | 00Z cycle feeds the morning products | `parish_exceedance` partition for 00Z present | RB-01 |
+| T+18 h 10 min (08:10 / 03:10) | 00Z cycle feeds the morning products | `parish_exceedance` partition for 00Z present | RB-01 |
 | T+21 h (11:00 / 06:00) | Canton PDFs and WhatsApp cards ready by 06:30 ECT | `bulletins/<date>/` count equals canton count | RB-20 |
 | T+22 h | Morning COE sessions: pilots confirm they received and understood the products; collect issues | Pilot feedback log | Triage in stand-up |
 | T+24 h | Review: SLOs, errors, costs vs estimate (platform ≈US$0.8–1.4/day at pilot scale: US$23–43/month ÷ 30, estimate), support tickets | Written summary to Steering Committee | Actions with owners |
 | T+30 h | Verification: `verification-daily` provisional scores computed if N1+ | Rows present | Skip; weekly covers |
-| T+36 h | Second morning cycle clean; no P1/P2 open | — | IC decides on posture |
+| T+42 h (08:10 / 03:10, second morning) | Second morning 00Z cycle and canton PDFs clean; no P1/P2 open | — | IC decides on posture |
 | T+48 h (Fri 2026-11-27, M1.5) | Close the window: set `ectwin-api` back to the posture profile (N1: min 0, max 50; N2+: min 1, max 100); the election and go-live freeze stays in force until 2026-12-01 23:59 UTC; publish release notes in Spanish | PL sign-off | Extend the window by 24 h |
 
 ### 8.3 Tenant's first 48 hours (TA with PL support)
 
 | When | Check |
 |---|---|
-| Day 0 | `verify-tenant.sh --strict` green; preflight green; first AOI run succeeded; second Owner invited |
-| +6 h | Next scheduled run succeeded without intervention (`ectwin.run`) |
-| +12 h | Budget page shows month-to-date spend; BigQuery bytes today far below the quota; EE EECU far below the cap |
+| Day 0 | `verify-tenant.sh --strict` green; preflight green within the TA-02 allowances; first AOI run succeeded; second Owner invited |
+| Next scheduled run (≤12 h later for T1, ≤6 h for T2+) | It succeeded without intervention (`ectwin.run`) |
+| +12 h | *Proyecto y costos* live counters: BigQuery bytes today far below the quota; EE EECU far below the cap (month-to-date spend appears only after the ≈24 h billing-export lag, [09 §9](./09-cost-model.md)) |
 | +24 h | Daily preflight (05:00 ECT) green; notifications received for test rules; no "Modo ahorro" |
 | +48 h | Cost trend consistent with the tier anchor (T1 ≈US$0–14/month); support ticket closed or actions listed |
 

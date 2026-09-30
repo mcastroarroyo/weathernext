@@ -34,11 +34,11 @@ gcs_location       = "us-central1"
 firestore_location = "southamerica-west1" # or southamerica-east1; us-* triggers an LOPDP warning
 
 # --- Tier profile ---------------------------------------------------------------
-# Pick ONE block. Budget anchors come from docs/09-cost-model.md:
+# Pick ONE block. Cost anchors from docs/09-cost-model.md; budgets from docs/04 section 8.2:
 #   T1 Light    ~US$0-14/month      -> budget 20
-#   T2 Standard ~US$20-60/month     -> budget 75
-#   T3 Heavy    ~US$540-800/month   -> budget 800 (1,250 in Dec-Apr peak months)
-#   T4 Sponsored: as T1/T2, billed to the sponsor's billing account
+#   T2 Standard ~US$20-60/month     -> budget 80
+#   T3 Heavy    ~US$540-800/month   -> budget 1000 (Owner may raise to 1300 in Dec-Apr peak months)
+#   T4 Sponsored: as T1/T2 (sponsor default 20), billed to the sponsor's billing account
 
 # T1 Light (municipality / GAD cantonal)
 tier               = "T1"
@@ -48,11 +48,11 @@ enable_batch       = false
 
 # T2 Standard (province / ministry)
 # tier               = "T2"
-# monthly_budget_usd = 75
+# monthly_budget_usd = 80
 
 # T3 Heavy (national agency / insurer)
 # tier                     = "T3"
-# monthly_budget_usd       = 800
+# monthly_budget_usd       = 1000
 # enable_vertex            = true
 # enable_batch             = true
 # enable_managed_pipelines = true
@@ -73,7 +73,7 @@ budget_forecast_alert = true
 
 # --- Storage ------------------------------------------------------------------------
 
-scratch_retention_days     = 30
+scratch_retention_days     = 7
 nearline_after_days        = 90
 nearline_prefixes          = ["runs/", "reports/", "evidence/", "exports/", "raw/"]
 soft_delete_retention_days = 7

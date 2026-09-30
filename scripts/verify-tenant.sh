@@ -72,7 +72,7 @@ Usage: ${SCRIPT_NAME} --project PROJECT_ID [options]
                             Expect the matching APIs/roles (same flags as bootstrap-tenant.sh)
   --impersonate             Also mint a runner token and test it (caller needs TokenCreator
                             on ectwin-runner: normally only the platform operator)
-  --json                    Print a machine-readable JSON report at the end
+  --json                    Print a machine-readable JSON report on stdout (check lines go to stderr)
   --strict                  Treat WARN as failure (exit 1)
   -h, --help                This help
 EOF
@@ -89,7 +89,7 @@ trap cleanup EXIT
 
 record() { # STATUS ID MESSAGE
   local status=$1 id=$2 msg=$3
-  printf '[%-4s] %s  %s\n' "$status" "$id" "$msg"
+  printf '[%-4s] %s  %s\n' "$status" "$id" "$msg" >&3
   printf '%s\t%s\t%s\n' "$id" "$status" "$msg" >>"${TMP_DIR}/results.tsv"
   case "$status" in
   PASS) N_PASS=$((N_PASS + 1)) ;;
@@ -184,7 +184,11 @@ SA_EMAIL="ectwin-runner@${PROJECT_ID}.iam.gserviceaccount.com"
 TOKEN="$(gcloud auth print-access-token 2>/dev/null)" || die "no gcloud credentials; run: gcloud auth login"
 BUCKET="${PROJECT_ID}-ectwin"
 
-printf '%s v%s - project %s - %s\n\n' "$SCRIPT_NAME" "$VERSION" "$PROJECT_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+# Human-readable lines go to fd 3: stdout normally, stderr with --json so that stdout carries
+# only the JSON report (scripts/verify-tenant.sh --json > verify.json yields a valid file).
+if [[ "$JSON_OUT" == "true" ]]; then exec 3>&2; else exec 3>&1; fi
+
+printf '%s v%s - project %s - %s\n\n' "$SCRIPT_NAME" "$VERSION" "$PROJECT_ID" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&3
 
 # ----------------------------------------------------------------------------
 # VT-01 / VT-02 project and billing
@@ -199,7 +203,7 @@ if pj="$(gcloud projects describe "$PROJECT_ID" --format=json 2>/dev/null)"; the
   fi
 else
   fail VT-01 "cannot read project ${PROJECT_ID}"
-  printf '\nCannot continue without project access.\n'
+  printf '\nCannot continue without project access.\n' >&3
   exit 1
 fi
 
@@ -561,7 +565,7 @@ fi
 # ----------------------------------------------------------------------------
 # Summary
 # ----------------------------------------------------------------------------
-printf '\nSummary: %d PASS, %d WARN, %d FAIL, %d INFO\n' "$N_PASS" "$N_WARN" "$N_FAIL" "$N_INFO"
+printf '\nSummary: %d PASS, %d WARN, %d FAIL, %d INFO\n' "$N_PASS" "$N_WARN" "$N_FAIL" "$N_INFO" >&3
 if [[ "$JSON_OUT" == "true" ]]; then
   python3 - "${TMP_DIR}/results.tsv" "$PROJECT_ID" "$VERSION" "$N_PASS" "$N_WARN" "$N_FAIL" "$N_INFO" <<'PY'
 import json, sys, datetime

@@ -168,7 +168,7 @@ variable "labels" {
 # ---------------------------------------------------------------------------
 
 variable "monthly_budget_usd" {
-  description = "Monthly budget amount (whole units of budget_currency). Suggested: T1 20, T2 75, T3 800 (1,250 in peak months). Budgets alert; they do NOT cap spend."
+  description = "Monthly budget amount (whole units of budget_currency). Suggested (docs/04 section 8.2): T1 20, T2 80, T3 1000 (Owner may raise to 1300 in peak months), T4 as set by the sponsor (default 20). Budgets alert; they do NOT cap spend."
   type        = number
   default     = 20
 
@@ -224,9 +224,9 @@ variable "bucket_name_override" {
 }
 
 variable "scratch_retention_days" {
-  description = "Delete objects under scratch/ after this many days."
+  description = "Delete objects under scratch/ after this many days (7, as in docs/03 section 5.1 and docs/04 section 5.8.4)."
   type        = number
-  default     = 30
+  default     = 7
 }
 
 variable "nearline_after_days" {

@@ -78,7 +78,7 @@ All names below are fixed by [03-architecture.md §5](../../docs/03-architecture
 | 5 | BigQuery dataset | `ectwin` | `US` | `delete_contents_on_destroy = false`; optional label `ectwin-connection` | Curated tenant tables ([03 §5.4](../../docs/03-architecture.md#54-tenant-table-schemas-ddl)) | US$0 until data exists; first 10 GiB of storage free ([BigQuery pricing](https://cloud.google.com/bigquery/pricing)) |
 | 6 | BigQuery dataset | `ectwin_scratch` | `US` | Default table expiration 7 days (604,800,000 ms); 48 h time travel | Temporary results | US$0 |
 | 7 | Dataset IAM | Runner: `roles/bigquery.dataEditor` on both datasets | — | Dataset-level | Write access only where needed | US$0 |
-| 8 | Bucket | `gs://<TENANT_PROJECT>-ectwin` | `us-central1` | Uniform bucket-level access; public access prevention **enforced**; soft delete 7 d; no versioning; lifecycle: `scratch/` deleted at 30 d; `runs/ reports/ evidence/ exports/ raw/` to NEARLINE at 90 d; incomplete multipart uploads aborted at 7 d; CORS only if `app_origins` is set | Tenant files ([03 §5.1](../../docs/03-architecture.md#51-gcs-buckets-and-prefixes)) | US$0 inside the 5 GB-month Always Free tier in us-central1 ([storage pricing](https://cloud.google.com/storage/pricing)) |
+| 8 | Bucket | `gs://<TENANT_PROJECT>-ectwin` | `us-central1` | Uniform bucket-level access; public access prevention **enforced**; soft delete 7 d; no versioning; lifecycle: `scratch/` deleted at 7 d; `runs/ reports/ evidence/ exports/ raw/` to NEARLINE at 90 d; incomplete multipart uploads aborted at 7 d; CORS only if `app_origins` is set | Tenant files ([03 §5.1](../../docs/03-architecture.md#51-gcs-buckets-and-prefixes)) | US$0 inside the 5 GB-month Always Free tier in us-central1 ([storage pricing](https://cloud.google.com/storage/pricing)) |
 | 9 | Bucket IAM | Runner: `roles/storage.objectAdmin` | — | Bucket-level | Pipeline outputs, signed URLs | US$0 |
 | 10 | Firestore | `(default)`, `FIRESTORE_NATIVE` | `southamerica-west1` | Optimistic concurrency; App Engine integration off; delete protection on; point-in-time recovery off; `deletion_policy = ABANDON` | Sessions, AOIs, runs, notifications ([03 §5.6](../../docs/03-architecture.md#56-firestore--tenant-tenant_project-default-southamerica-west1-by-default)) | US$0 within 1 GiB, 50k reads and 20k writes per day. There is one free database per project ([Firestore pricing](https://cloud.google.com/firestore/pricing)). |
 | 11 | Firestore TTL | Collection group `sessions`, field `expire_at` | — | TTL policy | 30-day session expiry | US$0 |
@@ -226,21 +226,21 @@ The full list, with validation rules, is in [`variables.tf`](./variables.tf). An
 | `enable_vertex`, `enable_batch` | `false` | T3 |
 | `enable_managed_pipelines` | `false` | [§3.1](#31-project-level-roles-held-by-ectwin-runner) |
 | `enable_flood_forecasting_api` (`--enable-flood-api`) | `false` | Only if you have your own allow-listed access. National snapshots come from Commons. |
-| `scratch_retention_days`, `nearline_after_days`, `nearline_prefixes`, `soft_delete_retention_days` | `30`, `90`, `[runs/, reports/, evidence/, exports/, raw/]`, `7` | `tiles/`, `curated/` and `catalog/` stay STANDARD because they are read often; NEARLINE charges US$0.01/GiB for retrieval |
+| `scratch_retention_days`, `nearline_after_days`, `nearline_prefixes`, `soft_delete_retention_days` | `7`, `90`, `[runs/, reports/, evidence/, exports/, raw/]`, `7` | `tiles/`, `curated/` and `catalog/` stay STANDARD because they are read often; NEARLINE charges US$0.01/GiB for retrieval |
 | `app_origins` (`--app-origins`) | `[]` | Bucket CORS for signed-URL range reads from the web app **(domain to confirm)** |
 | `listing_subscriptions`, `linked_dataset_ids` | `{}`, `[]` | Second pass ([§7 step 5](#step-5--analytics-hub-subscriptions-linked-datasets)) |
 | `bq_query_usage_per_day_mib` | `null` | Optional Terraform-managed quota ([§7 step 6](#step-6--bigquery-custom-quota)) |
 | `notifier_push_endpoint` | `""` | Set once the platform API domain is fixed |
 | `secret_ids` | `[typesafe-api-key, floodforecasting-api-key]` | Created without versions |
 
-**Tier profiles.** The budget amounts are derived from the cost anchors in [09-cost-model.md](../../docs/09-cost-model.md): roughly the top of each band plus about 25% headroom (estimate).
+**Tier profiles.** The budget amounts are the tier defaults of [04 §8.2](../../docs/04-identity-tenancy-byo-gcp.md), which the web wizard passes: roughly the top of each cost band in [09-cost-model.md](../../docs/09-cost-model.md) plus 25–45% headroom (estimate).
 
 | Tier (D9) | Typical tenant | Expected monthly cost | `monthly_budget_usd` | Flags |
 |---|---|---|---|---|
 | T1 Light | Municipality (*GAD cantonal*), about 20 users | ≈US$0–14 | 20 | none |
-| T2 Standard | Province or ministry, about 50 users, daily analytics | ≈US$20 (noncommercial EE) to 60 | 75 | none; add WeatherNext linked datasets |
-| T3 Heavy | National agency or insurer, ensembles plus 2D flood modelling | ≈US$540–800; ≈US$1,070–1,210 in a peak month | 800 (raise to 1,250 for Dec 2026–Apr 2027) | `enable_vertex`, `enable_batch`, usually `enable_managed_pipelines` |
-| T4 Sponsored | *GAD* or *COE* project inside a sponsor folder | As T1/T2 | 20–75 | `labels = { ectwin-sponsor = "...", ectwin-dpa = "<DPA code>" }`; billed to the sponsor's account |
+| T2 Standard | Province or ministry, about 50 users, daily analytics | ≈US$20 (noncommercial EE) to 60 | 80 | none; add WeatherNext linked datasets |
+| T3 Heavy | National agency or insurer, ensembles plus 2D flood modelling | ≈US$540–800; ≈US$1,070–1,210 in a peak month | 1,000 (the Owner may raise it to 1,300 for Dec 2026–Apr 2027) | `enable_vertex`, `enable_batch`, usually `enable_managed_pipelines` |
+| T4 Sponsored | *GAD* or *COE* project inside a sponsor folder | As T1/T2 | Set by the sponsor per project (default 20; 80 for a T2 profile) | `labels = { ectwin-sponsor = "...", ectwin-dpa = "<DPA code>" }`; billed to the sponsor's account |
 
 Taxes are not included: add 15% IVA, plus ISD where applicable ([09](../../docs/09-cost-model.md)).
 
@@ -292,7 +292,7 @@ Taxes are not included: add 15% IVA, plus ISD where applicable ([09](../../docs/
 git clone <REPO_URL> weathernext && cd weathernext
 scripts/bootstrap-tenant.sh --project gad-portoviejo-ectwin --budget-usd 20 --connection-code c-7k2m9x4q8w
 # T3 example
-scripts/bootstrap-tenant.sh --project minagua-ectwin --tier T3 --budget-usd 800 --enable-vertex --enable-batch
+scripts/bootstrap-tenant.sh --project minagua-ectwin --tier T3 --budget-usd 1000 --enable-vertex --enable-batch
 # Preview without changing anything
 scripts/bootstrap-tenant.sh --project gad-portoviejo-ectwin --dry-run
 ```
@@ -557,7 +557,7 @@ Then re-apply. The notifier checks that the OIDC token's email is the registered
 
 ```bash
 scripts/verify-tenant.sh --project PROJECT_ID                  # human-readable
-scripts/verify-tenant.sh --project PROJECT_ID --json --strict  # for tickets and CI; WARN counts as failure
+scripts/verify-tenant.sh --project PROJECT_ID --json --strict > verify.json  # for tickets and CI; WARN counts as failure; check lines go to stderr
 ```
 
 **Expected result for a fresh T1 tenant**
@@ -581,7 +581,7 @@ scripts/verify-tenant.sh --project PROJECT_ID --json --strict  # for tickets and
 | `maximumBytesBilled` 50 GiB per platform job | Broker | BigQuery | Yes; the job fails without charge |
 | EE `daily_eecu_usage_time` | [§7 step 3](#step-3--earth-engine-daily-eecu-cap) | Earth Engine | Yes, approximate |
 | Cloud Run `max-instances` and task timeouts | Pipeline deployment | Cloud Run | Yes |
-| `ectwin_scratch` 7-day expiry, `scratch/` deleted at 30 d | This module | BigQuery, GCS | Yes |
+| `ectwin_scratch` 7-day expiry, `scratch/` deleted at 7 d | This module | BigQuery, GCS | Yes |
 
 **Idle cost of the bootstrap** (estimate; list prices in [costs](../../docs/09-cost-model.md)): US$0.00/month.
 
@@ -741,7 +741,7 @@ scripts/verify-tenant.sh --project PROJECT_ID --json --strict  # for tickets and
 
 ## 15. Open questions
 
-- **Scratch retention mismatch.** [03 §5.1](../../docs/03-architecture.md#51-gcs-buckets-and-prefixes) lists `scratch/` objects as deleted after **7 days**. This module defaults to **30 days**, following the bootstrap specification. Set `scratch_retention_days = 7` to match 03, or update 03. Decide before M0.4 (2026-10-16).
+- **Scratch retention (resolved).** The default is now **7 days**, matching [03 §5.1](../../docs/03-architecture.md#51-gcs-buckets-and-prefixes) and the resolution in [04 §5.8.4](../../docs/04-identity-tenancy-byo-gcp.md). Tenants created with an earlier 30-day default converge on the next apply or script run.
 - **Connection-code handshake** ([§3.4](#34-proving-control-of-the-project-connection-code)): align it with [04](../../docs/04-identity-tenancy-byo-gcp.md) and the `POST /v1/tenants/{tid}:connect` contract, including the label name, the 24 h validity and whether the broker may clear the label.
 - **Infrastructure Manager.**
   - The supported Terraform versions (possibly 1.5.x only).

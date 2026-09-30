@@ -66,7 +66,7 @@ ENABLE_MANAGED_PIPELINES="${ENABLE_MANAGED_PIPELINES:-false}"
 ENABLE_FLOOD_API="${ENABLE_FLOOD_API:-false}"
 CONNECTION_CODE="${CONNECTION_CODE:-}"
 APP_ORIGINS="${APP_ORIGINS:-}" # comma-separated https origins for bucket CORS
-SCRATCH_RETENTION_DAYS="${SCRATCH_RETENTION_DAYS:-30}"
+SCRATCH_RETENTION_DAYS="${SCRATCH_RETENTION_DAYS:-7}"
 NEARLINE_AFTER_DAYS="${NEARLINE_AFTER_DAYS:-90}"
 SOFT_DELETE_DAYS="${SOFT_DELETE_DAYS:-7}"
 SUBSCRIBE_COMMONS="${SUBSCRIBE_COMMONS:-false}"
@@ -128,7 +128,7 @@ Other:
 
 Examples:
   ${SCRIPT_NAME} --project gad-portoviejo-ectwin --budget-usd 20
-  ${SCRIPT_NAME} --project minagua-ectwin --tier T3 --budget-usd 800 --enable-vertex --enable-batch
+  ${SCRIPT_NAME} --project minagua-ectwin --tier T3 --budget-usd 1000 --enable-vertex --enable-batch
   ${SCRIPT_NAME} --project sovereign-ectwin --no-broker
   ${SCRIPT_NAME} --project gad-portoviejo-ectwin --revoke-broker
 EOF

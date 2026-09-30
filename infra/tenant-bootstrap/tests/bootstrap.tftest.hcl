@@ -92,7 +92,7 @@ run "heavy_path_d" {
     enable_batch             = true
     enable_managed_pipelines = true
     platform_broker_sa       = ""
-    monthly_budget_usd       = 1250
+    monthly_budget_usd       = 1300
     notifier_push_endpoint   = "https://api.example.org/internal/notify"
     linked_dataset_ids       = ["ectwin_commons"]
     listing_subscriptions = {
