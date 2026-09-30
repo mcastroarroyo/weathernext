@@ -9,7 +9,7 @@ Este resumen, dirigido a autoridades del Gobierno nacional, de los GAD y del sec
 ## 1. Situación y urgencia
 
 - **Está en curso un El Niño muy fuerte, posiblemente histórico, y es del tipo más peligroso para Ecuador.** El CN-ERFEN lo declaró activo el 2026-08-28. Su informe 009-2026 (17 de septiembre) reporta anomalías de **+4.5 °C** en Niño 1+2 y de hasta **+2.9 °C** en Niño 3.4, y da **más de 90 %** de probabilidad de intensidad "muy fuerte" a fines de 2026. NOAA CPC asigna **75 %** de probabilidad a que el trimestre OND 2026 sea "histórico" (RONI ≥ +2.5 °C).
-- **Los impactos empezaron en la época seca.** Hubo 11 inundaciones por marea en agosto, con el mar **+40 cm** sobre lo normal (1997-98: +42 a +47 cm), y siete ríos se desbordaron en Guayas, Esmeraldas y Manabí entre el 25 y el 28 de septiembre.
+- **Los impactos empezaron en la época seca.** Hubo 11 inundaciones por marea en agosto, con el nivel del mar **+40 cm** sobre lo normal (1997-98: +42 a +47 cm), y siete ríos se desbordaron en Guayas, Esmeraldas y Manabí entre el 25 y el 28 de septiembre.
 - **Dos vías de amenaza pueden coincidir.** En la **Costa**: inundaciones, deslizamientos, dengue y pérdidas agrícolas, acuícolas y viales. En las **cuencas hidroeléctricas andino-amazónicas**: caudales bajos y riesgo de racionamiento. El embalse Mazar estaba en **2,134.2 msnm** el 2026-09-28; los apagones de 2024 empezaron cerca de 2,115 msnm.
 - **Ventana crítica.** Los mayores impactos se esperan entre noviembre de 2026 y marzo de 2027, y las lluvias costeras van de diciembre a abril. Tras las elecciones seccionales del **2026-11-29** cambiarán las autoridades de los GAD.
 - **Lo que está en juego.** El Niño 1997-98 costó **US$2,869.3M** (CEPAL), cerca del 13–15 % del PIB, y 286–288 vidas. El escenario extremo del plan nacional estima pérdidas de US$1.3 mil millones entre octubre de 2026 y enero de 2027.
@@ -18,7 +18,7 @@ Este resumen, dirigido a autoridades del Gobierno nacional, de los GAD y del sec
 
 ## 2. Qué es GDE-Niño
 
-GDE-Niño es una plataforma de **apoyo a la decisión**. Convierte la información oficial y la de los modelos en evidencia probabilística por **parroquia** (1,041) y **cantón** (221 GAD cantonales), con anticipación de meses a horas. Sus usuarios son el COE nacional y los COE provinciales y cantonales con sus **mesas técnicas**, los GAD, ministerios, empresas públicas y privadas, aseguradoras, academia y organismos humanitarios.
+GDE-Niño es una plataforma de **apoyo a la decisión**. Convierte la información oficial y la de los modelos en evidencia probabilística por **parroquia** (1,041) y **cantón** (221 GAD cantonales), de meses a horas de anticipación. Sus usuarios son el COE nacional y los COE provinciales y cantonales con sus **mesas técnicas**, los GAD, ministerios, empresas públicas y privadas, aseguradoras, academia y organismos humanitarios.
 
 **GDE-Niño no emite alertas.** Según la Ley Orgánica para la Gestión Integral del Riesgo de Desastres, solo la **SNGR** declara alertas. El **INAMHI** emite advertencias hidrometeorológicas, el **CN-ERFEN** se pronuncia sobre El Niño y el **INOCAR** cubre el océano. Por eso la plataforma:
 
@@ -32,7 +32,7 @@ El núcleo será de código abierto (Apache-2.0), lo que facilita la contrataci�
 
 ## 3. Cómo funciona
 
-El gemelo sigue un ciclo: **observar → pronosticar → simular impactos → evaluar escenarios → decidir → verificar y aprender**. Usa estaciones del INAMHI y satélites para las primeras horas. De 0 a 15 días usa **WeatherNext 3** de Google (64 miembros, 0.1°) y **WeatherNext 2**, con ECMWF como respaldo. Para ríos usa la **API de pronóstico de inundaciones de Google**, GEOGloWS y GloFAS, y para el horizonte estacional, C3S, NMME y los índices ENSO.
+El gemelo sigue un ciclo: **observar → pronosticar → simular impactos → evaluar escenarios → decidir → verificar y aprender**. Para las primeras horas usa estaciones del INAMHI y satélites. De 0 a 15 días usa **WeatherNext 3** de Google (64 miembros, 0.1°) y **WeatherNext 2**, con ECMWF como respaldo. Para ríos usa la **API de pronóstico de inundaciones de Google**, GEOGloWS y GloFAS, y para el horizonte estacional, C3S, NMME y los índices ENSO.
 
 La arquitectura tiene **tres planos**:
 
@@ -96,7 +96,7 @@ Se suman IVA (15 %) e ISD (2.5 %, por confirmar con el SRI). Para 30 organizacio
 ## 5. Cómo se minimizan los costos
 
 - **WeatherNext.** Se consulta donde Google lo publica, sin copiarlo, y solo para la geografía de Ecuador: unos 0.07 GB por variable y corrida de WeatherNext 3, frente a 18.7 GB a escala global, lo que cuesta **≈US$0** dentro del nivel gratuito de BigQuery. Hoy los datos no tienen costo, aunque Google podría cobrar con un mes de aviso. El Commons publica solo derivados permitidos (probabilidades por parroquia, nivel de riesgo), así que las organizaciones no necesitan aprobación propia; quien quiera campos crudos (T2 o superior) la tramita en unos 5–7 días hábiles. WeatherNext 2 se ejecuta por cuenta propia solo para escenarios, a ≈US$2.3–4.6 por corrida.
-- **API de pronóstico de inundaciones.** Una sola llave central toma cuatro instantáneas diarias que se comparten con todos, así que las organizaciones no necesitan llave propia. Se cree que el servicio es gratuito (no verificado). Como la API no guarda historial, se archiva desde el primer día. Mientras llega la aprobación, que puede tardar meses, se usan GloFAS y GEOGloWS.
+- **API de pronóstico de inundaciones.** Una sola llave central toma cuatro instantáneas diarias para todos, así que las organizaciones no necesitan llave propia. Se cree que el servicio es gratuito (no verificado). Como la API no guarda historial, se archiva desde el primer día. Mientras llega la aprobación, que puede tardar meses, se usan GloFAS y GEOGloWS.
 - **Jev (modelo System One de TypeSafe) en la construcción.** Jev responde preguntas tipificadas (sí/no, elección, puntaje) a muy bajo costo. Con él se catalogan capas, se revisan tablas de PDF y se asignan nombres de lugares a códigos DPA. La curación baja de ≈3,608 a ≈617 horas de analista (−83 %), y el trabajo termina antes de la temporada. La API cuesta US$15.49 por pasada, frente a ≈US$188 con Gemini Flash-Lite; el gasto total de construcción es de ≈US$35–90.
 - **Jev en la operación.** En el pico se estiman ≈4.3M de decisiones al mes por ≈US$113, frente a ≈US$1,450 con Gemini Flash-Lite (−92 %). Los casos dudosos, con probabilidad entre 0.30 y 0.70, pasan a revisión humana.
 - **Otras palancas.** Cada organización aprovecha los niveles gratuitos de su propia cuenta. Las corridas pesadas usan máquinas Spot (−59 %), y los escenarios costeros precalculados cuestan menos de US$0.01 por mapa.
@@ -121,7 +121,7 @@ No habrá cambios riesgosos entre 2026-11-26 y 2026-12-01 (salida en producción
 - **Por fase:** F0 US$76,128; F1 US$229,183; F2 US$691,205; F3 US$603,704.
 - **Variante mínima:** ≈US$1,022,922.
 - **Financiamiento puente para las fases 0–1:** se recomiendan **US$305,311**, con un piso de US$223,776. La variante de las fases 2–3 se decide en G1b (2026-11-24).
-- **Fuera del presupuesto:** las organizaciones pagan sus proyectos (como máximo US$3,180 al mes para 30 organizaciones en pico).
+- **Fuera del presupuesto:** las organizaciones pagan sus proyectos (hasta US$3,180 al mes para 30 organizaciones en pico).
 - **Fase 4:** ≈US$0.66M al año (9.75 FTE); mínimo de continuidad ≈US$0.28M al año (4.5 FTE).
 
 ## 8. Riesgos principales
@@ -144,7 +144,7 @@ De 35 riesgos registrados (2 críticos, 14 altos, 19 medios), estos tienen mayor
 
 1. **Accesos:** aprobar cuentas institucionales de Google para las solicitudes de acceso (WeatherNext, API de inundaciones, Earth Engine, TypeSafe y otras), presentadas el 2026-09-30.
 2. **Patrocinador (por ejemplo, SNGR/INAMHI con banca multilateral):** designarlo y comprometer el financiamiento puente **hasta 2026-10-09**, y garantizar el Commons hasta 2027-04-30 (US$450 al mes, US$650 en meses de evento).
-3. **SNGR e INAMHI:** nombrar enlaces técnicos hasta el 2026-10-16. La SNGR presidirá el Comité Directivo, que se constituye el 2026-10-14. Ambas instituciones deben firmar los convenios **hasta 2026-11-06** o dar un consentimiento interino por escrito, y aprobar las comisiones de servicios. Ese día el Comité debe respaldar la posición "apoyo a la decisión, nunca alertas".
+3. **SNGR e INAMHI:** nombrar enlaces técnicos hasta el 2026-10-16. La SNGR presidirá el Comité Directivo, que se constituye el 2026-10-14 y debe respaldar la posición "apoyo a la decisión, nunca alertas". Ambas instituciones deben firmar los convenios **hasta 2026-11-06** o dar un consentimiento interino por escrito, y aprobar las comisiones de servicios.
 4. **INOCAR/CN-ERFEN, MSP y MAG:** firmar convenios hasta 2026-12-15. **CELEC/CENACE:** hasta 2027-01-31.
 5. **GAD y COE:** firmar al menos 3 cartas de intención de pilotos hasta 2026-10-16, crear proyectos institucionales antes del 2026-11-29 o pedir un proyecto T4, y designar a las mesas técnicas que recibirán el PDF cantonal.
 6. **Ministerios y empresas públicas:** habilitar la compra de nube mediante un revendedor local.
@@ -173,8 +173,9 @@ Dónde se responde cada elemento de la solicitud original (*request traceability
 
 ## 11. Mapa de documentos
 
-Documentos detallados, en inglés:
+Documentos en inglés:
 
+- [00 Resumen ejecutivo (versión en inglés)](./00-executive-summary.md)
 - [01 Contexto de El Niño en Ecuador](./01-context-el-nino-ecuador.md)
 - [02 Usuarios, requisitos y experiencia de uso](./02-users-requirements-ux.md)
 - [03 Arquitectura](./03-architecture.md)
