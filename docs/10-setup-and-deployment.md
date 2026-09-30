@@ -79,7 +79,7 @@ gantt
   dateFormat YYYY-MM-DD
   axisFormat %d %b
   section Access
-  Access requests A1 to A14 filed          :a1, 2026-09-29, 2d
+  Access requests AR-01 to AR-14 filed    :a1, 2026-09-29, 2d
   WeatherNext approval window              :a2, 2026-09-30, 9d
   OAuth verification submitted and review  :a3, 2026-10-05, 21d
   Flood API waitlist - may take months     :a4, 2026-09-30, 60d
@@ -137,7 +137,7 @@ The operator needs a Google Cloud **organisation** (Cloud Identity or Workspace 
 
 | Billing account | Pays for | Anchor ([09](./09-cost-model.md)) | Who administers |
 |---|---|---|---|
-| `<BA_OPERATOR>` | `ectwin-platform-{dev,stg,prod}`, sandbox tenants | ≈US$23–43/month in prod at pilot scale | PM + `ectwin-finance@` |
+| `<BA_OPERATOR>` | `ectwin-platform-{dev,stg,prod}`, sandbox tenants | prod ≈US$5–25/month at the Nov 2026 pilot, ≈US$23–43 in a season month ([09 §4.2.1](./09-cost-model.md)); budget US$45 | PM + `ectwin-finance@` |
 | `<BA_SPONSOR>` | `ectwin-commons-{dev,stg,prod}` | ≈US$100–300/month in prod | Sponsor finance, with PM as Costs Manager |
 | Sponsor T4 account (optional) | Projects in `ectwin-sponsored` for *GADs*/*COEs* that cannot procure quickly (FR-010) | ≈US$0–14 (T1) to 20–60 (T2) per project | Sponsor |
 
@@ -155,7 +155,7 @@ The operator needs a Google Cloud **organisation** (Cloud Identity or Workspace 
 | Dev and staging | `app.dev.<DOMAIN>`, `api.dev.<DOMAIN>`, `app.stg.<DOMAIN>`, `api.stg.<DOMAIN>` | As above | PL |
 | Domain ownership proof | Verified in Google Search Console for the OAuth consent screen's authorised domain **(exact requirement to confirm)** | Before OAuth verification submission, 2026-10-05 | PL |
 | Email sender | `no-reply@<DOMAIN>` with SPF and DKIM for Identity Platform templates and the notifier **(to confirm)** | 2026-10-09 | PL |
-| Legal pages | `https://app.<DOMAIN>/privacidad`, `/terminos` (Spanish and English), text from [13 §1.4 and §12.3](./13-governance-legal-risk.md) | OAuth submission, 2026-10-05 | DPO |
+| Legal pages | `https://app.<DOMAIN>/legal/privacidad`, `https://app.<DOMAIN>/legal/terminos` (Spanish and English), text from [13 §1.4 and §12.3](./13-governance-legal-risk.md) | OAuth submission, 2026-10-05 | DPO |
 | Status page | Hosted outside the app stack (NFR-009) | OPS-M0, 2026-10-09 | SRE |
 
 ### 1.4 GitHub
@@ -165,7 +165,7 @@ The operator needs a Google Cloud **organisation** (Cloud Identity or Workspace 
 3. **`CODEOWNERS`** (§10.3) so that infra changes need PL and method changes need FL.
 4. **Environments** `dev`, `stg`, `prod`. `prod` requires approval by PL or SRE lead and deploys only from `main`.
 5. **Security:** secret scanning with push protection, Dependabot for Python/npm/Actions, and CodeQL **(availability for public repositories to confirm)**.
-6. **No long-lived cloud credentials in GitHub.** Authentication is Workload Identity Federation only (§4.11). A repository secret containing a service-account key is a P2 security incident ([11 §11](./11-operations-runbook.md)).
+6. **No long-lived cloud credentials in GitHub.** Authentication is Workload Identity Federation only (§4.11). A repository secret containing a service-account key is a P1 security incident (OPS-A18, [11 §11](./11-operations-runbook.md)): revoke the key, rotate, post-mortem.
 
 ### 1.5 Tools
 
@@ -187,7 +187,7 @@ The operator needs a Google Cloud **organisation** (Cloud Identity or Workspace 
 
 ### 1.6 People and role-based accounts
 
-- **Access approvals are per Google account or per project.** WeatherNext is allowlisted per Google account ([secondary source](https://github.com/chrimerss/NWP2StreamflowBench)); the Flood Forecasting API per GCP project ([Flood Hub access](https://support.google.com/flood-hub/answer/16364306?hl=en), search summary). Use **role-based institutional accounts**, not staff accounts, so access survives turnover ([12 §2.1 A1](./12-roadmap-team-budget.md)).
+- **Access approvals are per Google account or per project.** WeatherNext is allowlisted per Google account ([secondary source](https://github.com/chrimerss/NWP2StreamflowBench)); the Flood Forecasting API per GCP project ([Flood Hub access](https://support.google.com/flood-hub/answer/16364306?hl=en), search summary). Use **role-based institutional accounts**, not staff accounts, so access survives turnover ([12 §2.1 AR-01](./12-roadmap-team-budget.md)).
 - Create `wn-commons@<DOMAIN>` (a Workspace or Cloud Identity user, with MFA and two custodians: FL and DL). It files the WeatherNext form for the Commons projects and performs the Commons Analytics Hub subscriptions (§5.5).
 - Keep a **contacts register** (partner focal points, Google contacts `weathernext@google.com`, TypeSafe `sales@typesafe.ai`) in the programme board ([11 §1.4](./11-operations-runbook.md)).
 
@@ -195,13 +195,13 @@ The operator needs a Google Cloud **organisation** (Cloud Identity or Workspace 
 
 | # | Check | Evidence | Owner | Due |
 |---|---|---|---|---|
-| PR-01 | Organisation exists; `<ORG_ID>` recorded; two org admins with MFA | Screenshot of IAM at org level | PL | 2026-09-30 |
-| PR-02 | Groups created; no individual role bindings planned | Admin console export | PL | 2026-09-30 |
-| PR-03 | `<BA_OPERATOR>` open; `<BA_SPONSOR>` open or bridge account agreed | Billing console | PM | 2026-09-30 (bridge) / 2026-10-09 (sponsor, P0-03) |
-| PR-04 | `<DOMAIN>` chosen and verified | DNS TXT record, Search Console | PL | 2026-10-02 |
-| PR-05 | Public GitHub repository with protections and environments | Repository settings | PL | 2026-09-30 |
-| PR-06 | `wn-commons@<DOMAIN>` exists with MFA and two custodians | Admin console | FL | 2026-09-29 |
-| PR-07 | Tool versions confirmed in Cloud Shell | `terraform version`, `gcloud version` output archived | SRE | 2026-09-30 |
+| PQ-01 | Organisation exists; `<ORG_ID>` recorded; two org admins with MFA | Screenshot of IAM at org level | PL | 2026-09-30 |
+| PQ-02 | Groups created; no individual role bindings planned | Admin console export | PL | 2026-09-30 |
+| PQ-03 | `<BA_OPERATOR>` open; `<BA_SPONSOR>` open or bridge account agreed | Billing console | PM | 2026-09-30 (bridge) / 2026-10-09 (sponsor, P0-03) |
+| PQ-04 | `<DOMAIN>` chosen and verified | DNS TXT record, Search Console | PL | 2026-10-02 |
+| PQ-05 | Public GitHub repository with protections and environments | Repository settings | PL | 2026-09-30 |
+| PQ-06 | `wn-commons@<DOMAIN>` exists with MFA and two custodians | Admin console | FL | 2026-09-29 |
+| PQ-07 | Tool versions confirmed in Cloud Shell | `terraform version`, `gcloud version` output archived | SRE | 2026-09-30 |
 
 ---
 
@@ -209,39 +209,39 @@ The operator needs a Google Cloud **organisation** (Cloud Identity or Workspace 
 
 ### 2.1 Checklist
 
-The IDs A1–A11 are the same as the Phase 0 tracker in [12 §2.1](./12-roadmap-team-budget.md); A12–A14 are added here. File everything on **Tue 2026-09-29 or Wed 2026-09-30** unless a later date is shown. Tenants file their own per-tenant requests later (§6.7–§6.8); the national Commons products never wait for tenant approvals.
+The IDs AR-01–AR-11 are the same as the Phase 0 tracker in [12 §2.1](./12-roadmap-team-budget.md) (renamed from A1–A11 so they do not collide with the data-sharing agreements A1–A16 of [05 §6.1](./05-data-catalog.md)); AR-12–AR-14 are added here. File everything on **Tue 2026-09-29 or Wed 2026-09-30** unless a later date is shown. Tenants file their own per-tenant requests later (§6.7–§6.8); the national Commons products never wait for tenant approvals.
 
 | ID | Access | Requesting identity / project | Where and how | Owner | Lead time | Fallback while pending | Due |
 |---|---|---|---|---|---|---|---|
-| A1 | **WeatherNext 2 and 3** (BigQuery listings, Earth Engine, GCS Zarr) | `wn-commons@<DOMAIN>` for `ectwin-commons-prod` and `ectwin-commons-dev`; one QA account for the platform | WeatherNext Data Request form (link found via a third-party repository: `https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform`, **confirm on the official WeatherNext pages**); accept the [terms of use](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf); contact `weathernext@google.com` | FL | ≈5–7 business days (search summary) | ECMWF IFS/AIFS open data (`gs://ecmwf-open-data`, EE `ECMWF/NRT_FORECAST/IFS/OPER`), labelled "modelo de respaldo" ([06](./06-forecast-model-stack.md)) | 09-30 |
-| A2 | WN2 on-demand runs on Gemini Enterprise Agent Platform (allowlist) and GPU quota | Commons (Phase 3 engine) | Allowlist enquiry via `weathernext@google.com`; GPU quota starts at 0 ([WN2 notebook](https://raw.githubusercontent.com/GoogleCloudPlatform/vertex-ai-samples/main/notebooks/community/weathernext/weathernext_2_dws.ipynb)) | FL | (unverified) | Phase 3 item; scenario library without WN2 re-runs | 09-30 |
-| A3 | **Google Flood Forecasting API** | Project `ectwin-commons-prod` | [Waitlist form](http://sites.research.google/gr/floodforecasting/api-waitlist/); on approval **reply to the approval email with the project ID**, then enable the API (search summary of [Access & Set-up](https://support.google.com/flood-hub/answer/16364306?hl=en)) | DL | "Might take several months" | GloFAS 30-day (EWDS), GEOGloWS-INAMHI, GRRR baseline | 09-30 |
-| A4 | **Earth Engine registration**; **Partner tier** application (100,000 EECU-h/month) | `ectwin-commons-prod`, `ectwin-commons-dev` (platform-prod optional, as in [12](./12-roadmap-team-budget.md)) | `https://code.earthengine.google.com/register?project=<ID>`; Partner application per [noncommercial tiers](https://developers.google.com/earth-engine/guides/noncommercial_tiers) | FL | Registration minutes; Partner "several weeks" | Contributor tier (1,000 EECU-h/month, billing account required, not charged) or commercial Limited plan at US$0.40/EECU-h ([EE pricing](https://cloud.google.com/earth-engine/pricing)) | 09-30 |
-| A5 | **TypeSafe Jev** key; enterprise ZDR and higher limits enquiry | Commons | [console.typesafe.ai](https://console.typesafe.ai/) (keys under `/settings/keys`); `sales@typesafe.ai` | AI | Days (sign-ups were paused 2026-09-22 and reopened about a week later without the US$5 starter credit, per press; no free tier, no published SLA) | System One Adapter → Gemini, or open-weight Von backend (D17) | 09-30 |
-| A6 | **Copernicus CDS and EWDS** accounts; accept licences for every dataset used | Commons | Token from `https://cds.climate.copernicus.eu/profile`; accept licences on each dataset page (`seasonal-monthly-single-levels`, `seasonal-original-single-levels`, `cems-glofas-forecast`, `cems-glofas-seasonal`, `cems-glofas-historical`, `cems-glofas-reforecast`) | DL | Same day | — (no alternative for C3S; NMME/CFSv2 cover part of the horizon) | 09-30 |
-| A7 | **Copernicus Marine** account | Commons | Registration on the Copernicus Marine portal (**URL to confirm**); free account **(unverified)** | DL | Same day | EE copy `COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_PHY_DAILY` | 09-30 |
-| A8 | **NASA Earthdata** login | Commons | Earthdata registration page (**URL to confirm**) | DL | Same day | EE `NASA/GPM_L3/IMERG_V07`; LHASA inputs later | 09-30 |
-| A9 | **OAuth sensitive-scope verification** (`cloud-platform`) for path B | `ectwin-platform-prod` OAuth client | Google Auth Platform console; plan in [04 §4.3.1](./04-identity-tenancy-byo-gcp.md#431-oauth-consent-screen-and-verification-plan-owner-pl-with-dpo) | PL, DPO | Days to weeks (unverified) | Path A (Cloud Shell) for all pilots | Configure 10-02; submit **10-05** |
-| A10 | Google Cloud credits (research credits up to US$5,000 for university partners; startup or nonprofit routes where eligible) | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup) | PM | Weeks | Budget line C7 in [12 §5.2](./12-roadmap-team-budget.md) | 10-02 |
-| A11 | Quota increases ([11 §3.7](./11-operations-runbook.md)) | Commons, platform | Console quota requests | DL, FL, SRE | Days | Posture-based throttling | Per 11 §3.7 (first by 10-16) |
-| A12 | **Google Maps Platform key** (optional, only for Photorealistic 3D Tiles) | **Tenant's own project**, never the platform | Tenant creates a browser key restricted to the Map Tiles API and the app referrer (§6.10). Price after 1,000 free root requests: US$6.00 per 1,000 (secondary source) | TA | Minutes | Self-hosted PMTiles basemap and CesiumJS with Copernicus DEM terrain (D19) | When a T3 tenant asks |
-| A13 | Letters of intent and draft *convenios* (INAMHI, SNGR, INOCAR/CN-ERFEN, CELEC/CENACE, MSP, MAG; CEDIA for the relay) | Operator | Templates in [13 §5](./13-governance-legal-risk.md) | PT | Weeks to months | Public endpoints and the relay ladder ([05 §4.3](./05-data-catalog.md#43-getting-around-geoblocking)) | 10-02 (P0-02) |
-| A14 | Domain verification for the OAuth consent screen (prerequisite of A9) | `<DOMAIN>` | Search Console domain property **(requirement to confirm)** | PL | 1–2 days | — | 10-02 |
+| AR-01 | **WeatherNext 2 and 3** (BigQuery listings, Earth Engine, GCS Zarr) | `wn-commons@<DOMAIN>` for `ectwin-commons-prod` and `ectwin-commons-dev`; one QA account for the platform | WeatherNext Data Request form (link found via a third-party repository: `https://docs.google.com/forms/d/e/1FAIpQLSeCf1JY8G78UDWzbm0ly9kJxfSjUIJT5WyMR_HiNqCm-IHIBg/viewform`, **confirm on the official WeatherNext pages**); accept the [terms of use](https://storage.googleapis.com/weathernext-public/terms-of-use.pdf); contact `weathernext@google.com` | FL | ≈5–7 business days (search summary) | ECMWF IFS/AIFS open data (`gs://ecmwf-open-data`, EE `ECMWF/NRT_FORECAST/IFS/OPER`), labelled "modelo de respaldo" ([06](./06-forecast-model-stack.md)) | 09-30 |
+| AR-02 | WN2 on-demand runs on Gemini Enterprise Agent Platform (allowlist) and GPU quota | Commons (Phase 3 engine) | Allowlist enquiry via `weathernext@google.com`; GPU quota starts at 0 ([WN2 notebook](https://raw.githubusercontent.com/GoogleCloudPlatform/vertex-ai-samples/main/notebooks/community/weathernext/weathernext_2_dws.ipynb)) | FL | (unverified) | Phase 3 item; scenario library without WN2 re-runs | 09-30 |
+| AR-03 | **Google Flood Forecasting API** | Project `ectwin-commons-prod` | [Waitlist form](http://sites.research.google/gr/floodforecasting/api-waitlist/); on approval **reply to the approval email with the project ID**, then enable the API (search summary of [Access & Set-up](https://support.google.com/flood-hub/answer/16364306?hl=en)) | DL | "Might take several months" | GloFAS 30-day (EWDS), GEOGloWS-INAMHI, GRRR baseline | 09-30 |
+| AR-04 | **Earth Engine registration**; **Partner tier** application (100,000 EECU-h/month) | `ectwin-commons-prod`, `ectwin-commons-dev` (platform-prod optional, as in [12](./12-roadmap-team-budget.md)) | `https://code.earthengine.google.com/register?project=<ID>`; Partner application per [noncommercial tiers](https://developers.google.com/earth-engine/guides/noncommercial_tiers) | FL | Registration minutes; Partner "several weeks" | Register `ectwin-commons-prod` as Commercial – Limited (US$0.40/EECU-h, [EE pricing](https://cloud.google.com/earth-engine/pricing)) for operational production; file the Partner-tier application on day 1 and switch only if Google confirms in writing that it covers the use ([13 §3.4](./13-governance-legal-risk.md)); Contributor/Partner only for research/verification projects | 09-30 |
+| AR-05 | **TypeSafe Jev** key; enterprise ZDR and higher limits enquiry | Commons | [console.typesafe.ai](https://console.typesafe.ai/) (keys under `/settings/keys`); `sales@typesafe.ai` | AI | Days (sign-ups were paused 2026-09-22 and reopened about a week later without the US$5 starter credit, per press; no free tier, no published SLA) | System One Adapter → Gemini, or open-weight Von backend (D17) | 09-30 |
+| AR-06 | **Copernicus CDS and EWDS** accounts; accept licences for every dataset used | Commons | Token from `https://cds.climate.copernicus.eu/profile`; accept licences on each dataset page (`seasonal-monthly-single-levels`, `seasonal-original-single-levels`, `cems-glofas-forecast`, `cems-glofas-seasonal`, `cems-glofas-historical`, `cems-glofas-reforecast`) | DL | Same day | — (no alternative for C3S; NMME/CFSv2 cover part of the horizon) | 09-30 |
+| AR-07 | **Copernicus Marine** account | Commons | Registration on the Copernicus Marine portal (**URL to confirm**); free account **(unverified)** | DL | Same day | EE copy `COPERNICUS/MARINE/GLOBAL_ANALYSISFORECAST_PHY_DAILY` | 09-30 |
+| AR-08 | **NASA Earthdata** login | Commons | Earthdata registration page (**URL to confirm**) | DL | Same day | EE `NASA/GPM_L3/IMERG_V07`; LHASA inputs later | 09-30 |
+| AR-09 | **OAuth sensitive-scope verification** (`cloud-platform`) for path B | `ectwin-platform-prod` OAuth client | Google Auth Platform console; plan in [04 §4.3.1](./04-identity-tenancy-byo-gcp.md#431-oauth-consent-screen-and-verification-plan-owner-pl-with-dpo) | PL, DPO | Days to weeks (unverified) | Path A (Cloud Shell) for all pilots | Configure 10-02; submit **10-05** |
+| AR-10 | Google Cloud credits (research credits up to US$5,000 for university partners; startup or nonprofit routes where eligible) | University partners, operator | [Research credits](https://cloud.google.com/edu/researchers), [startup programme](https://cloud.google.com/startup) | PM | Weeks | None needed: no credits are assumed ([12 B10](./12-roadmap-team-budget.md)); credits obtained reduce [C1–C8](./12-roadmap-team-budget.md) | 10-02 |
+| AR-11 | Quota increases ([11 §3.7](./11-operations-runbook.md)) | Commons, platform | Console quota requests | DL, FL, SRE | Days | Posture-based throttling | Per 11 §3.7 (first by 10-16) |
+| AR-12 | **Google Maps Platform key** (optional, only for Photorealistic 3D Tiles) | **Tenant's own project**, never the platform | Tenant creates a browser key restricted to the Map Tiles API and the app referrer (§6.10). Price after 1,000 free root requests: US$6.00 per 1,000 (secondary source) | TA | Minutes | Self-hosted PMTiles basemap and CesiumJS with Copernicus DEM terrain (D19) | When a T3 tenant asks |
+| AR-13 | Letters of intent and draft *convenios* (INAMHI, SNGR, INOCAR/CN-ERFEN, CELEC/CENACE, MSP, MAG; CEDIA for the relay) | Operator | Templates in [13 §5](./13-governance-legal-risk.md) | PT | Weeks to months | Public endpoints and the relay ladder ([05 §4.3](./05-data-catalog.md#43-getting-around-geoblocking)) | 10-02 (P0-02) |
+| AR-14 | Domain verification for the OAuth consent screen (prerequisite of AR-09) | `<DOMAIN>` | Search Console domain property **(requirement to confirm)** | PL | 1–2 days | — | 10-02 |
 
 ### 2.2 How to file each request
 
-**A1 WeatherNext.**
+**AR-01 WeatherNext.**
 1. Sign in to the form as `wn-commons@<DOMAIN>`. Name the projects `ectwin-commons-prod` and `ectwin-commons-dev`, the use ("national El Niño decision support for Ecuador; publication of non-retrievable value-added products only") and the contact.
 2. Save the submission receipt in the programme board (P0-01).
 3. On approval: subscribe the listings in the Commons projects (§5.5). Until then the forecast cycle runs on the IFS fallback in `-dev` (M1.1 does not wait).
 4. Ask `weathernext@google.com` in the same week the questions in [03 §14](./03-architecture.md#14-open-questions): whether sponsor-funded publication of parish probabilities to signed-in users fits the Non-Retrievable Value-Added clause, and the WN3 listing id.
 
-**A3 Flood Forecasting API.**
+**AR-03 Flood Forecasting API.**
 1. File the waitlist for `ectwin-commons-prod`; mention national government partners (SNGR, INAMHI) and humanitarian use.
 2. On approval, reply with the project ID, then run the commands in §5.8 (enable the API, create a restricted key, store it in `floodforecasting-api-key`).
 3. First call: `gauges.searchGaugesByArea` with `{"regionCode": "EC", "includeNonQualityVerified": true, "includeGaugesWithoutHydroModel": true}` to measure real Ecuador coverage (verified versus `hybas_` virtual gauges); a 2023-era press report (search summary, [Primicias](https://www.primicias.ec/noticias/tecnologia/google-ecuador-mapa-inundaciones/)) mentions only four locations (Zapotal, Babahoyo, Daule, Pula), so the current count is unknown until this call (§5.11, backfill B3).
 
-**A4 Earth Engine.**
+**AR-04 Earth Engine.**
 ```bash
 for P in ectwin-commons-prod ectwin-commons-dev; do
   echo "Register: https://code.earthengine.google.com/register?project=$P"
@@ -251,26 +251,26 @@ curl -sS -H "Authorization: Bearer $(gcloud auth print-access-token)" \
   -H "x-goog-user-project: ectwin-commons-prod" \
   "https://earthengine.googleapis.com/v1/projects/ectwin-commons-prod/config" | jq -r .registrationState
 ```
-Choose noncommercial first and file the Partner application the same day; if the Partner application is refused or operational use is deemed commercial, switch to the Limited plan (budgeted in [12 §5.2](./12-roadmap-team-budget.md), line C4).
+Register `ectwin-commons-prod` for commercial use on the Limited plan, because operational government use is commercial ([13 LP-07, §3.4](./13-governance-legal-risk.md)); file the Partner application the same day and switch only if Google confirms in writing that Partner covers the use. Noncommercial tiers (Contributor, Partner) are for research and verification projects only. Limited-plan usage is budgeted in [12 §5.2](./12-roadmap-team-budget.md), line C4.
 
-**A5 TypeSafe.** Create the key in the console, store it immediately (§5.8) and never paste it into tickets. Pin `jev-1.13.0` in configuration ([08](./08-ai-decision-layer-jev.md)).
+**AR-05 TypeSafe.** Create the key in the console, store it immediately (§5.8) and never paste it into tickets. Pin `jev-1.13.0` in configuration ([08](./08-ai-decision-layer-jev.md)).
 
-**A6 CDS/EWDS.** Put the token in `~/.cdsapirc` only for local tests; jobs read it from Secret Manager `cds-api-token`:
+**AR-06 CDS/EWDS.** Put the token in `~/.cdsapirc` only for local tests; jobs read it from Secret Manager `cds-api-token`:
 ```text
 url: https://cds.climate.copernicus.eu/api
 key: <PERSONAL-ACCESS-TOKEN>
 ```
 EWDS uses the same client with `cdsapi.Client(url="https://ewds.climate.copernicus.eu/api")`. Each dataset licence is accepted once, on its web page; an unaccepted licence makes requests fail (§11, TS-24).
 
-**A7 Copernicus Marine and A8 Earthdata.** Register with a role account (`data@<DOMAIN>` or similar), store the credentials as JSON in `copernicusmarine-credentials` and `earthdata-credentials` (§5.8). Test Copernicus Marine with `copernicusmarine login` **# verify flag** and a one-day subset of the dataset id in [05 §2.3](./05-data-catalog.md#23-enso-and-ocean).
+**AR-07 Copernicus Marine and AR-08 Earthdata.** Register with a role account (`data@<DOMAIN>` or similar), store the credentials as JSON in `copernicusmarine-credentials` and `earthdata-credentials` (§5.8). Test Copernicus Marine with `copernicusmarine login` **# verify flag** and a one-day subset of the dataset id in [05 §2.3](./05-data-catalog.md#23-enso-and-ocean).
 
-**A9 OAuth verification.** Follow §4.4. Until approval, path B is limited to test users and every pilot uses path A.
+**AR-09 OAuth verification.** Follow §4.4. Until approval, path B is limited to test users and every pilot uses path A.
 
 ### 2.3 Tracking
 
 - Each item is a card on the programme board with state *no solicitado / enviado / aprobado / rechazado*, the date, the account or project used and the evidence (the same states as the tenant access assistant, FR-011).
 - PM reviews the board at the daily stand-up during Phase 0 and weekly afterwards; any item without movement after 7 business days gets a follow-up e-mail, and after 14 days an escalation through the sponsor or Google contacts.
-- **Exit gate G0 (2026-10-16)** requires A1–A8 filed and at least one WeatherNext approval or the IFS fallback running ([12 §2.1](./12-roadmap-team-budget.md)).
+- **Exit gate G0 (2026-10-16)** requires AR-01–AR-08 filed and at least one WeatherNext approval or the IFS fallback running ([12 §2.1](./12-roadmap-team-budget.md)).
 
 ---
 
@@ -381,7 +381,7 @@ for ENV in dev prod; do
   gcloud services enable $BASE $PLATFORM_EXTRA --project=ectwin-platform-$ENV
   gcloud services enable $BASE $COMMONS_EXTRA  --project=ectwin-commons-$ENV
 done
-# floodforecasting.googleapis.com is enabled in ectwin-commons-prod only after A3 approval (§5.8).
+# floodforecasting.googleapis.com is enabled in ectwin-commons-prod only after AR-03 approval (§5.8).
 ```
 
 The API names `identitytoolkit`, `firebasehosting`, `sts`, `storagetransfer`, `bigquerydatatransfer`, `workflowexecutions` (called by the forecast-cycle Scheduler job, §5.10) and `cloudidentity` (group membership changes by the onboarding service, §5.6) are **unverified in the briefs**; confirm with `gcloud services list --available --filter=<name>`. After this step Terraform takes over; it re-declares the same APIs with `disable_on_destroy = false`.
@@ -432,7 +432,7 @@ Budgets alert; they do not cap spend ([budgets](https://docs.cloud.google.com/bi
 | `ectwin-nonprod-platform` (`<BA_OPERATOR>`) | `ectwin-platform-dev`, `-stg` | US$15 | US$15 | same |
 | `ectwin-commons-prod` (`<BA_SPONSOR>`) | `ectwin-commons-prod` | US$450 (≤300 Commons + ≤150 delivery) | US$650 | same; at 100% pause Batch campaigns and backfills, never ingestion |
 | `ectwin-nonprod-commons` (`<BA_SPONSOR>`) | `ectwin-commons-dev`, `-stg` | US$15 | US$15 | same |
-| Tenant bootstrap (`<BA_OPERATOR>`) | `ectwin-tenant-sandbox-1`, `-2` | US$20 each (T1 profile) | same | Created by the tenant bootstrap itself |
+| Tenant bootstrap (`<BA_OPERATOR>`) | `ectwin-tenant-sandbox-1`, `-2` | US$80 each (T2 profile, `--tier T2 --budget-usd 80`, [04 §8.2](./04-identity-tenancy-byo-gcp.md)): the two T2 QA tenants of [12 C6](./12-roadmap-team-budget.md) | same | Created by the tenant bootstrap itself |
 
 The two non-prod budgets split the US$30 total of [09 §9.3](./09-cost-model.md) evenly between the two billing accounts (estimate).
 
@@ -507,7 +507,7 @@ Stateful resources (registry Firestore, state and backup buckets, Artifact Regis
 | Step | What | How | Depends on | Owner | Due (dev / prod) |
 |---|---|---|---|---|---|
 | 4.3 | Identity Platform (Google, email/password, TOTP) | Console enable + `identity.tf` | §3 | PL | 10-02 / 10-09 |
-| 4.4 | OAuth consent (brand) and web client | Console (Google Auth Platform) | Domain (A14), legal pages | PL, DPO | 10-02 / submit 10-05 |
+| 4.4 | OAuth consent (brand) and web client | Console (Google Auth Platform) | Domain (AR-14), legal pages | PL, DPO | 10-02 / submit 10-05 |
 | 4.5 | Registry Firestore | `firestore.tf` + rules | §3 | PL | 10-05 / 10-09 |
 | 4.6 | Artifact Registry `ectwin` | `artifact_registry.tf` (prod only) | §3 | PL | 10-02 |
 | 4.7 | Secrets | `secrets.tf` + manual versions | 4.4 | PL | 10-05 / 10-09 |
@@ -532,7 +532,7 @@ Cost: Tier 1 providers are free up to 50,000 MAU; SAML/OIDC (Tier 2, Phase 2) ha
 
 One OAuth web client per environment serves both Google sign-in and path B ([04 §4.3.1](./04-identity-tenancy-byo-gcp.md#431-oauth-consent-screen-and-verification-plan-owner-pl-with-dpo)). The consent screen cannot be fully managed by Terraform for external apps **(to confirm)**, so it is a documented console procedure:
 
-1. *Google Auth Platform → Branding*: app name "GDE-Niño", support e-mail `soporte@<DOMAIN>`, logo, home page `https://app.<DOMAIN>`, privacy policy and terms URLs (§1.3), authorised domain `<DOMAIN>`.
+1. *Google Auth Platform → Branding*: app name "GDE-Niño", support e-mail `soporte@<DOMAIN>`, logo, home page `https://app.<DOMAIN>`, privacy policy `https://app.<DOMAIN>/legal/privacidad` and terms `https://app.<DOMAIN>/legal/terminos` (§1.3), authorised domain `<DOMAIN>`.
 2. *Audience*: **External**. In `dev` and `stg` stay in **Testing** permanently with named test users; in `prod` move to **In production** after verification.
 3. *Data access*: `openid`, `email`, `profile` and `https://www.googleapis.com/auth/cloud-platform`. **Never** add `drive` (restricted scope; would require a security assessment).
 4. *Clients → Create client → Web application* `ectwin-web-<ENV>` with authorised JavaScript origin `https://app.<DOMAIN>` and the Identity Platform redirect handler (commonly `https://<auth-domain>/__/auth/handler`) **# verify flag**.
@@ -586,7 +586,7 @@ for ENV in dev stg prod; do
 done
 ```
 
-Images: `api`, `notifier`, `ingest`, `forecast`, `publish`, `aoi-pipeline`, `notify-eval`, `sync`, `decision`, `sfincs` (source-built, GPL-3.0, [03 §7.6](./03-architecture.md#76-heavy-runs-on-batch-spot-sfincs-library-example)), `titiler` (optional). Add a cleanup policy that keeps the last 20 untagged digests per image plus every digest referenced by a release tag **(policy syntax to confirm)**. Storage is free to 0.5 GB then US$0.10/GiB-month ([pricing](https://cloud.google.com/artifact-registry/pricing)).
+Images: `api`, `notifier`, `ingest`, `forecast`, `publish`, `aoi-pipeline`, `notify-eval`, `sync`, `decision`, `von-cpu` (open-weight Jev fallback, [08 §5.7](./08-ai-decision-layer-jev.md)), `agri` (M5 module, [07 §6.6](./07-impact-modules-and-triggers.md)), `sfincs` (source-built, GPL-3.0, [03 §7.6](./03-architecture.md#76-heavy-runs-on-batch-spot-sfincs-library-example)), `titiler` (optional). Add a cleanup policy that applies to every image above, including `von-cpu` and `agri`, and keeps the last 20 untagged digests per image plus every digest referenced by a release tag **(policy syntax to confirm)**. Storage is free to 0.5 GB then US$0.10/GiB-month ([pricing](https://cloud.google.com/artifact-registry/pricing)).
 
 ### 4.7 Secret Manager
 
@@ -700,7 +700,7 @@ firebase target:apply hosting api ectwin-api-prod --project $P
 
 - Connect `app.<DOMAIN>` and `api.<DOMAIN>` as custom domains in the Hosting console; certificates provision automatically after DNS validation (can take hours; see TS-09).
 - API responses must set `Cache-Control: private` (national JSON uses `private, max-age=300`, [03 §6.1](./03-architecture.md#61-conventions)) so the Hosting CDN never caches per-user content.
-- **Decision by 2026-10-09 (PL):** keep the Hosting rewrite for `api.<DOMAIN>` (no load-balancer cost; request timeout limits **to confirm**) or use a Cloud Run domain mapping. The external Application Load Balancer (≈US$18.25/month, [network pricing](https://cloud.google.com/vpc/network-pricing)) arrives only with Cloud CDN and Cloud Armor when tile egress passes ≈1.1 TiB/month (M2.1).
+- **Decision by 2026-10-09 (PL):** keep the Hosting rewrite for `api.<DOMAIN>` (no load-balancer cost; request timeout limits **to confirm**) or use a Cloud Run domain mapping. The external Application Load Balancer (≈US$18.25/month, [network pricing](https://cloud.google.com/vpc/network-pricing)) arrives only with Cloud CDN and Cloud Armor when tile egress passes ≈1.5 TiB/month (break-even ≈1,526 GiB incl. request charges, [09 §4.2.3](./09-cost-model.md); final decision at M2.1 on 2026-12-15 with the measured object size and hit ratio).
 - Deploy: `firebase deploy --only hosting:app,hosting:api --project ectwin-platform-prod` **# verify flag** (run by CI as `ectwin-ci@`).
 
 ### 4.11 CI/CD with Workload Identity Federation
@@ -838,7 +838,7 @@ jobs:
 |---|---|---|---|
 | Projects | `ectwin-platform-dev`, `ectwin-commons-dev` | `ectwin-platform-stg`, `ectwin-commons-stg` | `ectwin-platform-prod`, `ectwin-commons-prod` |
 | Domains | `app.dev.<DOMAIN>`, `api.dev.<DOMAIN>` | `app.stg.…`, `api.stg.…` | `app.<DOMAIN>`, `api.<DOMAIN>` |
-| Identity Platform | Own config; OAuth client in Testing; test users only | Same as dev | Verified OAuth client (after A9) |
+| Identity Platform | Own config; OAuth client in Testing; test users only | Same as dev | Verified OAuth client (after AR-09) |
 | Broker trusted by | `ectwin-tenant-sandbox-1` | `ectwin-tenant-sandbox-2` (after `-stg` exists; see §4.8) | Real tenants |
 | WeatherNext | Commons-dev linked datasets (same `wn-commons@` approval **(to confirm that approval covers several projects)**) | Commons-stg linked datasets | Commons-prod linked datasets |
 | Flood API | None (access is per project); tests use recorded fixtures | Same | `ectwin-commons-prod` key |
@@ -966,7 +966,7 @@ Every published partitioned table uses `require_partition_filter = TRUE` ([03 §
 
 ### 5.5 WeatherNext linked datasets in Commons
 
-Commons holds its own WeatherNext approval (A1) and subscribes as `wn-commons@<DOMAIN>`. The exchange id is verified; the WN2 listing id comes from a secondary source; the WN3 listing id is **to confirm after approval** ([03 §5.2](./03-architecture.md#52-bigquery-datasets)).
+Commons holds its own WeatherNext approval (AR-01) and subscribes as `wn-commons@<DOMAIN>`. The exchange id is verified; the WN2 listing id comes from a secondary source; the WN3 listing id is **to confirm after approval** ([03 §5.2](./03-architecture.md#52-bigquery-datasets)).
 
 ```bash
 # Once, as an org admin: let the approved account create the linked datasets in Commons and name
@@ -1074,7 +1074,7 @@ done
 # Add a version without echoing or storing the value in shell history:
 read -rs V && printf %s "$V" | gcloud secrets versions add typesafe-api-key --data-file=- --project=$P
 
-# Flood Forecasting API, only after A3 approval:
+# Flood Forecasting API, only after AR-03 approval:
 gcloud services enable floodforecasting.googleapis.com --project=$P
 gcloud services api-keys create --project=$P --display-name="ectwin-floodhub-commons" \
   --api-target=service=floodforecasting.googleapis.com                     # verify flag
@@ -1128,7 +1128,7 @@ The Flood API uses an API key only (no OAuth scopes), the key's project is the q
   identity: ectwin-ingest
   secrets: [floodforecasting-api-key]
   timeout: 900s
-  enabled_when: flood_api_approved  # created paused until A3 is approved
+  enabled_when: flood_api_approved  # created paused until AR-03 is approved
 - name: ingest-glofas
   image: ingest
   region: us-central1
@@ -1247,7 +1247,7 @@ gcloud scheduler jobs create http forecast-cycle-trigger --project=$P --location
   --oauth-service-account-email=ectwin-scheduler@$P.iam.gserviceaccount.com      # verify flag
 ```
 
-**Cost check (estimate).** Commons needs about 22–26 Scheduler jobs (the 03 §7.2 schedule plus the jobs added in [11 §0](./11-operations-runbook.md) and 13's `legal-terms-watch`): (22 − 3 free) × US$0.10 ≈ **US$1.90** to (26 − 3) × US$0.10 ≈ **US$2.30/month**. The high-frequency pollers dominate Cloud Run job time: SNGR every 10 min (4,320 runs/month), INAMHI warnings every 15 min (2,880), INAMHI stations every 5 min (8,640) and the two-region synthetic probe every 5 min (17,280) ≈ 33,100 runs × ≈30 s × 1 vCPU ≈ 993,600 vCPU-s; (993,600 − 240,000 free) × US$0.000018 ≈ **US$13.6/month**, plus a few cents of memory. If measured cost in `-stg` exceeds US$10/month, merge the fast pollers into one `ingest-fastpoll` job per region. Workflows pricing is **unverified** ([03 §14](./03-architecture.md#14-open-questions)).
+**Cost check (estimate).** Commons needs about 22–26 Scheduler jobs (the 03 §7.2 schedule plus the jobs added in [11 §0](./11-operations-runbook.md) and 13's `legal-terms-watch`): (22 − 3 free) × US$0.10 ≈ **US$1.90** to (26 − 3) × US$0.10 ≈ **US$2.30/month**. The high-frequency pollers dominate Cloud Run job time. Jobs bill at least 60 s per execution ([09 §2.1, assumption A4](./09-cost-model.md)): SNGR every 10 min (4,320 runs/month), INAMHI warnings every 15 min (2,880) and INAMHI stations every 5 min (8,640) = 15,840 runs × 60 s = 950,400 vCPU-s, 64% of the Commons job total of 1,488,600 vCPU-s ≈ **US$24.62/month** after the free tier ([09 §4.3.1](./09-cost-model.md)). The two-region `ops-synthetic-probe` every 5 min (17,280 runs) would add ≈1,036,800 vCPU-s ≈ US$19.7/month as a job; run it as a request-billed endpoint or uptime check ([09 L11](./09-cost-model.md)). Measure in `-stg`; if the pollers cost more than US$10/month, move them to request-billed endpoints (L11, saves ≈US$18/month) or merge the fast pollers into one `ingest-fastpoll` job per region (DL decides). Workflows pricing is **unverified** ([03 §14](./03-architecture.md#14-open-questions)).
 
 ### 5.11 First backfills
 
@@ -1257,11 +1257,11 @@ Backfills use the same images and `run_key` rules as live jobs, with `triggered_
 |---|---|---|---|---|---|
 | B1 | INAMHI stations, last ≈92 days (window rolls daily) | `gcloud run jobs execute ingest-inamhi-stations --region=southamerica-west1 --update-env-vars=ECTWIN_MODE=backfill-92d` **# verify flag** | ≈600–800 requests ≈ 2–2.8 days at 1 request/300 s | DL | 2026-09-30 |
 | B2 | SNGR `EVENTOS_X_LLUVIAS` and SITREP crawl | `… execute ingest-sngr-alerts --update-env-vars=ECTWIN_SOURCE=sngr_sitreps,ECTWIN_MODE=backfill` | 700+ PDFs for 2026; <5 GB | DL | 2026-10-02 |
-| B3 | Flood API status 2025-08-01 → today (`cutoffTime` floor) | `… execute ingest-floodhub-status --update-env-vars=ECTWIN_MODE=backfill,FROM=2025-08-01` | <1,000 requests; free | DL | On A3 approval |
+| B3 | Flood API status 2025-08-01 → today (`cutoffTime` floor) | `… execute ingest-floodhub-status --update-env-vars=ECTWIN_MODE=backfill,FROM=2025-08-01` | <1,000 requests; free | DL | On AR-03 approval |
 | B4 | GRRR Ecuador subset (1980-01-01 → 2023-12-23; reforecast 2016-01-01 → 2023-06-30) | Python below | ≈118 MB + ≈161 MB | DL | 2026-10-02 |
 | B5 | Inundation history 1999–2020 | Python below | 11.3 MB mainland + Galápagos tiles | DL | 2026-10-02 |
-| B6 | WN2 parish exceedance 2022-01-01 → today | `gcloud run jobs execute backfill-wn2-exceedance --region=us-central1 --tasks=57 --update-env-vars=FROM=2022-01-01,TO=2026-09-30` **# verify flag** (one task per month) | ≈2.5 TiB scanned ≈ US$16 if fully billed; split across 3 calendar months to stay in the free tier ([03 §7.5](./03-architecture.md#75-backfills)) | FL | After A1; Phase 1 |
-| B7 | WN3 statistics 2026-01-01 → today | Same job with `MODEL=WN3` | Small | FL | After A1 |
+| B6 | WN2 parish exceedance 2022-01-01 → today | `gcloud run jobs execute backfill-wn2-exceedance --region=us-central1 --tasks=57 --update-env-vars=FROM=2022-01-01,TO=2026-09-30` **# verify flag** (one task per month) | ≈2.5 TiB scanned ≈ US$16 if billed in one month ([03 §7.5](./03-architecture.md#75-backfills)); the 3-month split of 03 §7.5 still bills ≈US$6–8 on top of routine scans of ≈0.47–0.60 TiB/month ([09 §4.3.2](./09-cost-model.md)), so spread over ≈5–7 months to stay inside the free tier, or derive from `wn2_hindcast_members_ec` ([06 §3.9](./06-forecast-model-stack.md#39-wn2-as-the-el-niño-calibration-archive-2022-), [09 B5](./09-cost-model.md)) | FL | After AR-01; Phase 1 |
+| B7 | WN3 statistics 2026-01-01 → today | Same job with `MODEL=WN3` | Small | FL | After AR-01 |
 | B8 | C3S hindcasts 1993–2016 per initialisation month | `cdsapi` below | ≈US$1–5 one-off (queue time dominates) | FL | Phase 1 |
 | B9 | GloFAS reanalysis (v5.0, 1980–2025, if EWDS serves it, **to confirm**) and reforecasts (1999–2023-11) | EWDS, one year per request (per-request cost limit) | Queue time | FL | Phase 1 |
 | B10 | CELEC ORDS, CENACE SMEC, INOCAR tides, OpenDengue | Source-specific modes of `ingest` ([05 §4.7](./05-data-catalog.md#47-backfills)) | Small; CENACE ≈11 h paced | DL | 2026-10-16 |
@@ -1369,13 +1369,13 @@ flowchart TD
 
 | # | Check | How | If not |
 |---|---|---|---|
-| T-01 | The project belongs to the **organisation**, not a person (D7) | Console → *IAM & Admin → Settings* shows an organisation | Create it in the organisation, or request a T4 sponsored project (FR-010) |
-| T-02 | Billing is enabled | `gcloud billing projects describe <TENANT_PROJECT>` | Link billing; the BigQuery sandbox is not supported ([04 §4.2](./04-identity-tenancy-byo-gcp.md#42-path-a--cloud-shell-or-infrastructure-manager-default)) |
-| T-03 | You are **Owner** of the project | `gcloud projects get-iam-policy <TENANT_PROJECT>` | Ask an Owner to run it |
-| T-04 | You can create a budget, or finance will | Billing Account Costs Manager, or project Owner/Editor for a project-scoped budget | The script finishes with exit code 3 and prints console steps for finance |
-| T-05 | Org policies allow `US`, `us-central1`, `southamerica-west1` and one external principal | [README §9](../infra/tenant-bootstrap/README.md#9-domain-restricted-sharing-secure-by-default-organisations) | Send the Spanish exception request in README §9, or use path C/D |
-| T-06 | Earth Engine route decided: **commercial Limited plan** for operational use by a ministry, *GAD* or *COE*; noncommercial tiers for research | [README §7 step 2](../infra/tenant-bootstrap/README.md#step-2--earth-engine-registration-and-tier) | Decide with the DPO; operational government use in Ecuador probably needs commercial registration (search summary) |
-| T-07 | For T2 and above: file the WeatherNext form **now**, with the Google account that will subscribe | §6.8 | T1 tenants do not need it: Commons products cover them |
+| TP-01 | The project belongs to the **organisation**, not a person (D7) | Console → *IAM & Admin → Settings* shows an organisation | Create it in the organisation, or request a T4 sponsored project (FR-010) |
+| TP-02 | Billing is enabled | `gcloud billing projects describe <TENANT_PROJECT>` | Link billing; the BigQuery sandbox is not supported ([04 §4.2](./04-identity-tenancy-byo-gcp.md#42-path-a--cloud-shell-or-infrastructure-manager-default)) |
+| TP-03 | You are **Owner** of the project | `gcloud projects get-iam-policy <TENANT_PROJECT>` | Ask an Owner to run it |
+| TP-04 | You can create a budget, or finance will | Billing Account Costs Manager, or project Owner/Editor for a project-scoped budget | The script finishes with exit code 3 and prints console steps for finance |
+| TP-05 | Org policies allow `US`, `us-central1`, `southamerica-west1` and one external principal | [README §9](../infra/tenant-bootstrap/README.md#9-domain-restricted-sharing-secure-by-default-organisations) | Send the Spanish exception request in README §9, or use path C/D |
+| TP-06 | Earth Engine route decided: **commercial Limited plan** for operational use by a ministry, *GAD* or *COE*; noncommercial tiers for research | [README §7 step 2](../infra/tenant-bootstrap/README.md#step-2--earth-engine-registration-and-tier) | Decide with the DPO; operational government use in Ecuador probably needs commercial registration (search summary) |
+| TP-07 | For T2 and above: file the WeatherNext form **now**, with the Google account that will subscribe | §6.8 | T1 tenants do not need it: Commons products cover them |
 
 ### 6.2 Create the project (if needed)
 
@@ -1440,7 +1440,7 @@ If `apply` fails within ≈2 minutes of enabling APIs with `SERVICE_DISABLED`, w
 
 **A3 — Infrastructure Manager.** Commands, deployer roles and caveats (Terraform version support, deployer account size, subscriptions done by the approved human) are in [README §6.3](../infra/tenant-bootstrap/README.md#63-path-a3-infrastructure-manager); command flags are **to confirm**.
 
-**B — one-time OAuth ("Conexión en un clic").** Available to test users until the OAuth app is verified (A9; general availability target 2026-11-13, estimate). The admin consents once to `cloud-platform`; the platform obtains an access token only (no refresh token), runs the same steps with `x-goog-user-project` set to the tenant project, grants Token Creator, revokes the token and continues with preflight ([04 §4.3](./04-identity-tenancy-byo-gcp.md#43-path-b--one-time-oauth-consent)).
+**B — one-time OAuth ("Conexión en un clic").** Available to test users until the OAuth app is verified (AR-09; general availability target 2026-11-13, estimate). The admin consents once to `cloud-platform`; the platform obtains an access token only (no refresh token), runs the same steps with `x-goog-user-project` set to the tenant project, grants Token Creator, revokes the token and continues with preflight ([04 §4.3](./04-identity-tenancy-byo-gcp.md#43-path-b--one-time-oauth-consent)).
 
 **Secure-by-default organisations.** If the broker grant is refused, the script exits with code 3 ("domain-restricted sharing blocked the broker grant"). Send the exception request in [README §9](../infra/tenant-bootstrap/README.md#9-domain-restricted-sharing-secure-by-default-organisations), or choose path C (WIF, Phase 2) or D.
 
@@ -1491,12 +1491,12 @@ Exit codes: 0 no FAIL (WARN allowed unless `--strict`), 1 at least one FAIL, 2 u
 ### 6.6 Connect and preflight
 
 1. Web app → *Conectar* with the project id. The broker mints a 900-s runner token with `generateAccessToken`, reads the `ectwin-connection` label on dataset `ectwin`, and compares its hash with `connect_code_sha256`, checking the 24 h expiry and that the caller is the user who started the wizard ([04 §4.2](./04-identity-tenancy-byo-gcp.md#42-path-a--cloud-shell-or-infrastructure-manager-default) step 7, [README §3.4](../infra/tenant-bootstrap/README.md#34-proving-control-of-the-project-connection-code)).
-2. The broker applies the tenant DDL (proposal in §4.9) and runs the preflight PF-01 to PF-15 ([04 §4.7](./04-identity-tenancy-byo-gcp.md#47-preflight-checks-fr-009)); most checks have a `verify-tenant.sh` equivalent ([README §7 step 1](../infra/tenant-bootstrap/README.md#step-1--connect-in-the-web-app)). With the v0.1.0 artefacts, PF-10 (guard function `ectwin-guard`) stays amber until the guard ships (IT-M6, 2026-10-30), and PF-09 looks for topic `ectwin-budget` while the artefacts create `ectwin-budget-alerts` (naming decision due at IT-M3, [04 §5.8.4](./04-identity-tenancy-byo-gcp.md)).
+2. The broker applies the tenant DDL (proposal in §4.9) and runs the preflight PF-01 to PF-15 ([04 §4.7](./04-identity-tenancy-byo-gcp.md#47-preflight-checks-fr-009)); most checks have a `verify-tenant.sh` equivalent ([README §7 step 1](../infra/tenant-bootstrap/README.md#step-1--connect-in-the-web-app)). With the v0.1.0 artefacts, PF-10 (guard function `ectwin-guard`) stays amber until the guard ships (IT-M6, 2026-10-30). All documents use the artefact topic `ectwin-budget-alerts` (subscription `ectwin-budget-alerts-guard`); PF-09 checks that name ([04 §5.8.4](./04-identity-tenancy-byo-gcp.md)).
 3. The registry entry `tenants/{tid}` moves to `status=active`; the admin becomes Owner. From now on the preflight runs daily at 05:00 ECT, and two consecutive red results notify the Owners (FR-009).
 
 ### 6.7 Earth Engine registration and cap
 
-1. Open `https://code.earthengine.google.com/register?project=gad-portoviejo-ectwin` and choose the route decided in T-06 ([README §7 step 2](../infra/tenant-bootstrap/README.md#step-2--earth-engine-registration-and-tier)).
+1. Open `https://code.earthengine.google.com/register?project=gad-portoviejo-ectwin` and choose the route decided in TP-06 ([README §7 step 2](../infra/tenant-bootstrap/README.md#step-2--earth-engine-registration-and-tier)).
 2. Set the daily cap: *IAM & Admin → Quotas & System Limits* → `earthengine.googleapis.com/daily_eecu_usage_time` → suggested 1 EECU-h/day (T1), 5 (T2), 25 (T3) (estimates; the console unit may be seconds, **to confirm**). The cap is approximate ([EE cost controls](https://developers.google.com/earth-engine/guides/cost_controls)).
 3. Re-run `verify-tenant.sh`: VT-18 must show `REGISTERED_COMMERCIALLY` or `REGISTERED_NOT_COMMERCIALLY`; preflight PF-12 turns green.
 
@@ -1542,7 +1542,7 @@ LIMIT 50;
 - **BigQuery daily quotas** per [04 §8.2](./04-identity-tenancy-byo-gcp.md): `QueryUsagePerDay` 1 TiB for T1, T2 and T4, 2 TiB for T3 (README step 6 suggests raising T3 to 3 TiB in peak months); `QueryUsagePerUserPerDay`, which caps the runner and therefore the platform, 200 GiB (T1, T4), 500 GiB (T2), 1 TiB (T3). Both are approximate and on-demand only; set them in the console until the Cloud Quotas unit is confirmed ([README §7 step 6](../infra/tenant-bootstrap/README.md#step-6--bigquery-custom-quota)). Every platform-issued job also carries `maximumBytesBilled` (50 GiB).
 - **Budget**: created by the bootstrap at 50/90/100% plus forecast 100%; it alerts but does not cap. The budget guard pauses Scheduler jobs, never billing ([README §8](../infra/tenant-bootstrap/README.md#8-cost-guardrails-and-the-cost-of-the-bootstrap-itself)).
 - **Own TypeSafe key** (optional): `read -rs KEY && printf %s "$KEY" | gcloud secrets versions add typesafe-api-key --data-file=- --project=<TENANT_PROJECT>`.
-- **Own Maps key (A12, optional, T3 with 3D).** Create a browser key restricted to the Map Tiles API and the referrer `https://app.<DOMAIN>/*`, and store it in a secret added through `secret_ids` (for example `maps-api-key`):
+- **Own Maps key (AR-12, optional, T3 with 3D).** Create a browser key restricted to the Map Tiles API and the referrer `https://app.<DOMAIN>/*`, and store it in a secret added through `secret_ids` (for example `maps-api-key`):
   ```bash
   TP="<TENANT_PROJECT>"
   gcloud services enable tile.googleapis.com --project=$TP          # service name: verify flag
@@ -1609,7 +1609,7 @@ A T2 tenant adds the 06Z and 18Z runs (US$0.10 per extra job per month) and the 
 | ID | Criterion | Evidence |
 |---|---|---|
 | TA-01 | `verify-tenant.sh --strict` exits 0 after EE registration | `verify.json` attached to the onboarding ticket |
-| TA-02 | Preflight PF-01 to PF-08 and PF-14 green. Amber allowed only for: PF-12 on a T1 tenant that does not use Earth Engine; PF-13 on T1 (no own WeatherNext); PF-09/PF-10 until the budget-topic name and the guard are settled (IT-M3, IT-M6); PF-11 while quotas are set by hand | *Proyecto y costos* screenshot |
+| TA-02 | Preflight PF-01 to PF-09 and PF-14 green. Amber allowed only for: PF-12 on a T1 tenant that does not use Earth Engine; PF-13 on T1 (no own WeatherNext); PF-10 until the guard ships (IT-M6); PF-11 while quotas are set by hand | *Proyecto y costos* screenshot |
 | TA-03 | First AOI run `succeeded`; cost estimate recorded | `ectwin.run` row |
 | TA-04 | Two Owners with TOTP | Members page |
 | TA-05 | Journey time ≤30 min median for path A (AC-07); ≥85% without live support | Onboarding telemetry (pilot usability test by 2026-11-13) |
@@ -1651,7 +1651,7 @@ Run in `-dev` first, then `-stg`, then `-prod`. "Gate" names the milestone that 
 | ST-26 | Byte cap | Broker route with an oversized AOI | Problem response "Consulta demasiado grande"; no charge | PL | M1.4 |
 | ST-27 | Licence gating | Commercial tenant tries to subscribe `ectwin_commons_nc_v1` and export an NC layer | Refused | DL, DPO | M1.4 |
 | ST-28 | DR restore | Registry export restored into `ectwin-platform-stg`; `commons_pub` rebuilt for one week from raw | Registry ≤4 h | SRE | M1.4 |
-| ST-29 | Pen test | External test incl. threats T01–T19 of [04 §11.5](./04-identity-tenancy-byo-gcp.md#115-stride-threat-model) | No high findings open | PL, SRE | M1.4 |
+| ST-29 | Pen test | External test incl. threats T01–T20 of [04 §11.5](./04-identity-tenancy-byo-gcp.md#115-stride-threat-model) | No high findings open | PL, SRE | M1.4 |
 | ST-30 | Pilot pipelines | 3 pilot tenants, 7 days | ≥98% success | PL, SRE | M1.4 |
 
 **Go-live gate.** ST-00 to ST-30 must be green, or explicitly waived by the Steering Committee, at the G1b go/no-go decision on **Tue 2026-11-24**, together with the pilot go/no-go checklist in [12 §9](./12-roadmap-team-budget.md). The legal checklist GOV-M8 ([13 §13.2](./13-governance-legal-risk.md)) closes with the formal go-live, **M1.5 on Fri 2026-11-27** ([12 §2.2](./12-roadmap-team-budget.md)).
@@ -1664,7 +1664,7 @@ Run in `-dev` first, then `-stg`, then `-prod`. "Gate" names the milestone that 
 
 The same checklist runs three times, scaled to the event:
 
-1. **Commons day-1 archiving** (M0.2, from 2026-10-02): hours 0–12 and 24–48 below, Commons rows only.
+1. **Commons day-1 archiving** (jobs from 2026-09-30; M0.2 live 2026-10-06): hours 0–12 and 24–48 below, Commons rows only.
 2. **Production go-live.** [12 §2.2](./12-roadmap-team-budget.md) promotes the release candidate on **Wed 2026-11-25**, the last normal change window (Tue/Wed 14:00–18:00 UTC, [11 §3.6](./11-operations-runbook.md)) before the election and go-live freeze (2026-11-26 00:00 UTC → 2026-12-01 23:59 UTC), after the G1b go/no-go decision on Tue 2026-11-24. T0 is therefore **Wed 2026-11-25 at 14:00 UTC (09:00 ECT)**, so that T+48 h falls on the formal go-live M1.5, **Fri 2026-11-27**; the hypercare roster then continues at posture N1 until 2026-12-01 (exact T0 hour **to confirm with PM**). The full table applies.
 3. **Each new tenant's first 48 hours**: §8.3.
 
@@ -1687,7 +1687,7 @@ Roles: incident commander on standby (IC), SRE primary and secondary, FL for cyc
 | T+18 h 10 min (08:10 / 03:10) | 00Z cycle feeds the morning products | `parish_exceedance` partition for 00Z present | RB-01 |
 | T+21 h (11:00 / 06:00) | Canton PDFs and WhatsApp cards ready by 06:30 ECT | `bulletins/<date>/` count equals canton count | RB-20 |
 | T+22 h | Morning COE sessions: pilots confirm they received and understood the products; collect issues | Pilot feedback log | Triage in stand-up |
-| T+24 h | Review: SLOs, errors, costs vs estimate (platform ≈US$0.8–1.4/day at pilot scale: US$23–43/month ÷ 30, estimate), support tickets | Written summary to Steering Committee | Actions with owners |
+| T+24 h | Review: SLOs, errors, costs vs estimate (platform ≈US$0.2–0.8/day at the pilot: US$5–25/month ÷ 30; ≈US$0.8–1.4/day in a season month, [09 §4.2.1](./09-cost-model.md), estimate), support tickets | Written summary to Steering Committee | Actions with owners |
 | T+30 h | Verification: `verification-daily` provisional scores computed if N1+ | Rows present | Skip; weekly covers |
 | T+42 h (08:10 / 03:10, second morning) | Second morning 00Z cycle and canton PDFs clean; no P1/P2 open | — | IC decides on posture |
 | T+48 h (Fri 2026-11-27, M1.5) | Close the window: set `ectwin-api` back to the posture profile (N1: min 0, max 50; N2+: min 1, max 100); the election and go-live freeze stays in force until 2026-12-01 23:59 UTC; publish release notes in Spanish | PL sign-off | Extend the window by 24 h |
@@ -1741,7 +1741,7 @@ Roles: incident commander on standby (IC), SRE primary and secondary, FL for cyc
 | Offboard | Web app *Desconectar* (`POST /v1/tenants/{tid}:disconnect`) | Export, binding removal guided, registry row deleted (FR-015) |
 | Remove GDE-Niño resources | `terraform destroy` (Firestore is abandoned, `ectwin` dataset and bucket must be emptied first; [README §11](../infra/tenant-bootstrap/README.md#11-revocation-offboarding-and-teardown)) | Bootstrap resources removed |
 
-Before any deletion, retain audit and decision logs (`ectwin.audit_events`, `ectwin.decision_log`) per the tenant's retention policy (default 5 years **to confirm**, [13 §2.10](./13-governance-legal-risk.md)); public-sector tenants need their DPO's sign-off.
+Before any deletion, retain audit and decision logs (`ectwin.audit_events`, `ectwin.decision_log`) per the tenant's retention policy (default 5 years for public tenants, 400 days for private tenants, **to confirm**, [13 §2.10](./13-governance-legal-risk.md)); public-sector tenants need their DPO's sign-off.
 
 **Operator environments.**
 - `dev` and `stg` can be destroyed and recreated at any time: `terraform -chdir=infra/<platform|commons> destroy -var-file=envs/dev.tfvars` (stateful resources in dev do not use `prevent_destroy`).
@@ -1842,7 +1842,7 @@ Tenant-bootstrap problems are covered in [README §10](../infra/tenant-bootstrap
 | TS-04 | `gcloud run deploy … --no-invoker-iam-check` rejected | Flag unavailable in the installed SDK or blocked by org policy **(to confirm)** | Update the SDK; alternatively `--allow-unauthenticated` with a project-level policy exception |
 | TS-05 | Identity Platform settings greyed out | Project on the Spark plan or Identity Platform not enabled | Link billing (§3.2), enable Identity Platform (§4.3) |
 | TS-06 | Google sign-in "redirect_uri_mismatch" | OAuth client lacks the Identity Platform handler URI or the app origin | Add them to the web client (§4.4 step 4) |
-| TS-07 | Consent shows "Google hasn't verified this app" in prod | Verification pending | Expected until A9 completes; keep path B behind the flag |
+| TS-07 | Consent shows "Google hasn't verified this app" in prod | Verification pending | Expected until AR-09 completes; keep path B behind the flag |
 | TS-08 | GitHub Actions auth fails with `unauthorized_client` or attribute condition errors | `attribute-condition` or `environment` mismatch | Check `assertion.repository` spelling and that the job declares `environment:`; check the principal set binding |
 | TS-09 | Custom domain stuck "pending" or TLS not issued | DNS records not propagated or conflicting records | Verify the records Hosting asks for; wait (can take hours); remove old A/AAAA records |
 | TS-10 | Hosting rewrite to Cloud Run returns 404 or times out | Wrong `serviceId`/`region`, or request longer than the Hosting limit **(limit to confirm)** | Fix `firebase.json`; move long work to jobs (anything >30 s is a job by design) |
@@ -1856,7 +1856,7 @@ Tenant-bootstrap problems are covered in [README §10](../infra/tenant-bootstrap
 | TS-18 | "Cannot query over table … without a filter over column(s) …" | `require_partition_filter` | Add `WHERE DATE(init_time) = …` (intended behaviour) |
 | TS-19 | Query "exceeded limit for bytes billed" | `maximumBytesBilled` or `--maximum_bytes_billed` reached; no charge | Narrow area, period or columns |
 | TS-20 | Requester-Pays read fails with a user-project error | No billing project supplied | Add `--billing-project=<PROJECT>` **# verify flag** or `userProject` in the client |
-| TS-21 | Flood API returns 403 PERMISSION_DENIED | Missing key, API not enabled, or project not yet allow-listed | Use `?key=`; check A3 status and that the reply with the project id was sent |
+| TS-21 | Flood API returns 403 PERMISSION_DENIED | Missing key, API not enabled, or project not yet allow-listed | Use `?key=`; check AR-03 status and that the reply with the project id was sent |
 | TS-22 | Flood API `queryGaugeForecasts` 404 for a batch | One gauge in the batch is not served | Per-gauge fallback; add to `commons_internal.floodhub_not_served` (RB-04) |
 | TS-23 | Earth Engine calls fail with "not registered" | Browser registration step not done | `https://code.earthengine.google.com/register?project=<ID>` |
 | TS-24 | CDS/EWDS request fails immediately | Dataset licence not accepted on the web, or token wrong | Accept the licence on the dataset page; check `cds-api-token`; EWDS needs `url=https://ewds.climate.copernicus.eu/api` |
@@ -1871,7 +1871,7 @@ Tenant-bootstrap problems are covered in [README §10](../infra/tenant-bootstrap
 
 ## 12. Open questions
 
-- **Bootstrap contract, remaining gaps.** [04 §5.8](./04-identity-tenancy-byo-gcp.md) now describes the committed v0.1.0 artefacts (flags, `--connection-code` stored as label `ectwin-connection`, exit codes 0–3). Still open per its §5.8.4: the budget topic name (`ectwin-budget` in 04, 09 and 11 versus `ectwin-budget-alerts` in the artefacts; decide by IT-M3, 2026-10-09), the `ectwin-guard` service account and function (IT-M6, 2026-10-30), and job-level instead of project-level `run.invoker`. The artefacts now use the 04 §8.2 tier budgets (T2 80, T3 1,000) and a 7-day `scratch/` retention, as 03 §5.1 and 04 §5.8.4 require. This guide follows the artefacts.
+- **Bootstrap contract, remaining gaps.** [04 §5.8](./04-identity-tenancy-byo-gcp.md) now describes the committed v0.1.0 artefacts (flags, `--connection-code` stored as label `ectwin-connection`, exit codes 0–3). All documents use the artefact topic `ectwin-budget-alerts` (subscription `ectwin-budget-alerts-guard`); PF-09 checks that name. Still open per its §5.8.4: the `ectwin-guard` service account and function (IT-M6, 2026-10-30), and job-level instead of project-level `run.invoker`. The artefacts now use the 04 §8.2 tier budgets (T2 80, T3 1,000) and a 7-day `scratch/` retention, as 03 §5.1 and 04 §5.8.4 require. This guide follows the artefacts.
 - **Tenant table creation.** Preflight PF-05 expects `ectwin.run` to exist at connection, but the bootstrap only creates datasets. This guide proposes that `:connect` applies the tenant DDL with the runner token (§4.9); confirm, or add the DDL to the bootstrap.
 - **Notifier identity.** Running `ectwin-notifier` as `ectwin-broker@` keeps the single tenant grant; the alternative is a notifier that calls an internal broker route. Decide by M0.4.
 - **Public exposure versus domain-restricted sharing** in the operator's own organisation (public images, public tiles, public Cloud Run ingress, external tenant principals in Commons groups). The DPO must approve the §3.3 exceptions and the compensating `ops-iam-drift` control.
@@ -1880,7 +1880,7 @@ Tenant-bootstrap problems are covered in [README §10](../infra/tenant-bootstrap
 - **WeatherNext approval scope**: whether one approval of `wn-commons@` covers `-dev`, `-stg` and `-prod` Commons projects, and the WN3 listing id.
 - **Unconfirmed commands and values**: every `# verify flag` item (ST-00), the API service names in §3.4, Firebase CLI commands, Scheduler availability in `southamerica-west1`, `run.invoker` coverage of `run.jobs.run`, billing-account project-link limits, Hosting custom-domain and timeout limits, Artifact Registry cleanup-policy syntax.
 - **Registration URLs** for Copernicus Marine and NASA Earthdata are not in the research briefs; DL records the official URLs in the access tracker on day 1.
-- **Commons Cloud Run job cost** from high-frequency pollers (≈US$13.6/month, estimate) should be measured in `-stg`; consolidate pollers if it exceeds US$10/month.
+- **Commons Cloud Run job cost** from high-frequency pollers (all Commons jobs ≈US$24.62/month, pollers 64%; request-billed polling saves ≈US$18/month, [09 L11](./09-cost-model.md); estimate) should be measured in `-stg`; move or consolidate the pollers if they exceed US$10/month (DL decides).
 - **CI platform**: GitHub Actions is assumed; Cloud Build is the fallback. GitHub Action versions and the container-scanning tool are to be chosen by SRE.
 - **Go-live hour**: the first-48-hours plan puts T0 at Wed 2026-11-25 14:00 UTC, the release-candidate promotion of [12 §2.2](./12-roadmap-team-budget.md), so that T+48 h is the formal go-live M1.5 on Fri 2026-11-27; PM to confirm the hour with pilots and the Steering Committee.
 - **Test organisation for path C1.** Domain-restricted sharing cannot be rehearsed inside the operator's own organisation (§3.3); AC-09 (2026-11-27) needs a separate secure-by-default organisation or a pilot tenant willing to test the exception note.
