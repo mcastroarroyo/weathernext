@@ -48,7 +48,7 @@ This runbook explains how *Gemelo Digital Ecuador – El Niño* (GDE-Niño) is r
 | `verification-daily`, `verification-monthly` | Cloud Run jobs | Event-mode provisional scores; monthly final scores |
 | `exposure-refresh` | Cloud Run job | Monthly source check and quarterly `exposure_parish` version |
 | `wn-schema-check` | Cloud Run job | Daily schema-drift check of the WeatherNext linked tables |
-| `ops-synthetic-probe` | Cloud Run job, `us-central1` and `southamerica-west1` | End-to-end probes of the app, broker and source hosts every 5 min |
+| `ops-synthetic-probe` | Request-billed Cloud Run service endpoint called by Cloud Scheduler (or a Cloud Monitoring uptime check), `us-central1` and `southamerica-west1`; not a job ([09 §4.3.1](./09-cost-model.md), L11) | End-to-end probes of the app, broker and source hosts every 5 min |
 | `ops-iam-drift` | Cloud Run job | Daily IAM, key and public-access drift scan of platform and Commons |
 | `commons_ops.pipeline_runs`, `commons_ops.source_health`, `commons_ops.dq_results`, `commons_ops.product_freshness_policy`, `commons_ops.posture_log` | BigQuery tables | Operational telemetry (DDL in §4.3 and §7.2) |
 | `commons_pub.product_withdrawals` | BigQuery table | Withdrawn `init_time`/product pairs the API must hide (kill switch) |
@@ -592,7 +592,7 @@ ORDER BY is_stale DESC, age_min DESC;
 | OPS-A15 | Commons bytes billed today >50 GiB (estimate), or a job hit `maximumBytesBilled` | daily / instant | P3 | RB-14 |
 | OPS-A16 | Batch task preempted >2 times, or queued >30 min in N2+ | per job | P3 | RB-15 |
 | OPS-A17 | Budget 50/90/100% actual + 100% forecast on the [09 §9.3](./09-cost-model.md) amounts (`ectwin-platform-prod` US$45 N0/N1, US$100 N2/N3; `ectwin-commons-prod` incl. Block D US$450 = ≤300 Commons proper ([NFR-017](./02-users-requirements-ux.md)) + ≤150 delivery, US$650 N2/N3), or daily cost >2× 7-day baseline | budget / daily | P3; P2 at 100% | RB-18 |
-| OPS-A18 | Security: user-managed SA key created; IAM change outside Terraform; public access outside the static prefixes of `ectwin-commons-prod-public` and `ectwin-platform-prod-web` (§11.1); token mint for a tenant not `active` | instant | P1/P2 page | §11 |
+| OPS-A18 | Security: user-managed SA key created; IAM change outside Terraform; any `allUsers`/`allAuthenticatedUsers` grant other than `ectwin-platform-prod-web` (app shell, if used), the Artifact Registry repo `ectwin` (D20) and the `-bulk` Requester Pays prefixes if that policy is confirmed (§11.1); token mint for a tenant not `active` | instant | P1/P2 page | §11 |
 | OPS-A19 | DR copy object count mismatch for yesterday's `ingest_date` | daily | P3 | §10 |
 | OPS-A20 | Source `final_host` changed, TLS fails or certificate expires within 21 days | per probe | P3 | RB-07 |
 | OPS-A21 | SLO fast burn (14.4× budget rate over 1 h and 5 min) / slow burn (6× over 6 h and 30 min) | multiwindow | page / ticket | per SLO |
@@ -991,7 +991,7 @@ For the tenant admin:
 - **Trigger.** A tenant, COE or journalist says the platform "warned" of an event that did not happen (or missed one). This matters: the 2023-24 over-forecast cost credibility ([01 §3.5](./01-context-el-nino-ecuador.md)).
 
 1. Acknowledge within 1 business day (4 h in N2+) using the first lines of T-06.
-2. Assemble the evidence: `init_time`, `method_version`, `prob_exceed`, `risk_level`, `confidence`, the official band at that time, the notifications sent, and observations (INAMHI stations, SNGR events, user observation reports FR-075).
+2. Assemble the evidence: `init_time`, `method_version`, `prob_exceed`, `risk_level`, `confidence`, the official band at that time, the notifications sent, and observations (INAMHI stations, SNGR events, and FR-075 reports shared by opted-in tenants in `commons_internal.shared_observations`, [03 §4.6](./03-architecture.md); reports from other tenants only if that tenant provides them).
 3. Classify: (a) a probabilistic forecast that did not verify, which is expected at the stated probability; (b) a data or pipeline error → open an incident and possibly T-03; (c) a communication failure (read as an alert, colour confusion, missing "no es alerta oficial") → UX fix; (d) systematic miscalibration → FL review of thresholds with LI.
 4. Reply with T-06 within 5 business days; add the case to the public verification notes; never edit or delete the historical product.
 5. If the complaint is public (media), COM coordinates with LS before any statement.
@@ -1224,7 +1224,7 @@ Protection levels, RPO and RTO are defined in [03 §11.4](./03-architecture.md) 
 | Asset | Procedure | Frequency | Check |
 |---|---|---|---|
 | Commons raw archive | `raw-dr-copy` to `ectwin-commons-prod-archive-scl` | Daily 05:00 UTC | OPS-A19 compares object counts per source for yesterday's `ingest_date` |
-| Platform registry (Firestore) | `gcloud firestore export gs://ectwin-platform-prod-backup/firestore/$(date -u +%Y%m%d) --project=$P` (dedicated backup bucket, **proposal**) | Daily | Export operation succeeded; size within ±20% of the previous day |
+| Platform registry (Firestore) | `gcloud firestore export gs://ectwin-platform-prod-backup/registry/$(date -u +%Y%m%d) --project=$P` (bucket in [03 §5.1](./03-architecture.md)) | Daily | Export operation succeeded; size within ±20% of the previous day |
 | `commons_pub` tables | `bq cp --snapshot --no_clobber --expiration=2592000 ectwin-commons-prod:commons_pub.parish_exceedance ectwin-commons-prod:commons_ops.snap_parish_exceedance_$(date -u +%Y%m%d)` (snapshot pricing **to confirm**) | Weekly (Sunday) | Snapshot listed |
 | Terraform state | Versioned bucket | Every apply | — |
 | Secrets | Secret Manager versions; providers can re-issue | On rotation | — |
@@ -1264,7 +1264,7 @@ Protection levels, RPO and RTO are defined in [03 §11.4](./03-architecture.md) 
 |---|---|---|---|
 | No service-account keys | `ops-iam-drift`: `gcloud iam service-accounts keys list --managed-by=user` on every SA in platform and Commons | Daily + org policy | OPS-A18 (P1) |
 | IAM drift | Nightly `terraform plan` in CI for `infra/platform` and `infra/commons`; any diff opens a ticket | Daily | OPS-A18 |
-| Public access | Only static prefixes of `ectwin-commons-prod-public` and `ectwin-platform-prod-web` may be public | Daily | OPS-A18 |
+| Public access | Only the app shell (`ectwin-platform-prod-web` if used) and the image repository `ectwin` may be public; Commons buckets, including `-public`, are signed-URL only (FR-001) | Daily | OPS-A18 |
 | Broker token mints | Structured `token_mint` logs; alert when a mint targets a runner whose tenant is not `active` | Real time | OPS-A18 |
 | Cross-tenant isolation | Automated tests on every release (NFR-012) | Every release | Release blocked |
 | Vulnerabilities | Container and dependency scanning in CI **(scanning service and price to confirm)**; patch critical in 7 days, high in 30 days | Continuous | Ticket |
