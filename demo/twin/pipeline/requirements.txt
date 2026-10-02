@@ -1,0 +1,4 @@
+ecmwf-opendata
+eccodes
+numpy
+requests
