@@ -564,12 +564,12 @@ document.getElementById('src').onclick = e => { const b = e.target.closest('butt
 document.getElementById('scn').innerHTML = SCEN.map(s => `<button data-id="${s.id}">${s.name}</button>`).join('');
 document.getElementById('thr').innerHTML = THR.map(v => `<button data-v="${v}">${v} mm</button>`).join('');
 document.getElementById('views').innerHTML = [['riesgo', 'Riesgo'], ['mit', 'Vías · MIT'], ['ecu911', 'ECU 911']].map(([v, n]) => `<button role="tab" data-v="${v}">${n}</button>`).join('')
-  + `<button class="pill" id="go-otavalo">Piloto: Otavalo</button>`;
+  + `<button class="pill" id="go-pilot">Piloto: Guayaquil</button>`;
 document.getElementById('legend').innerHTML = LEVELS.map(l => `<div><span class="sw" style="background:${lvlVar(l.n)}"></span>${l.n} · ${l.name}</div>`).join('');
 document.getElementById('scn').onclick = e => { const b = e.target.closest('button'); if (!b) return; st.scn = b.dataset.id; compute(); render(); };
 document.getElementById('thr').onclick = e => { const b = e.target.closest('button'); if (!b) return; st.thr = +b.dataset.v; compute(); render(); };
 document.getElementById('views').onclick = e => { const b = e.target.closest('button'); if (!b) return;
-  if (b.id === 'go-otavalo') { const c = [...U.canton.values()].find(c => norm(c.name) === 'otavalo'); if (c) goTo('canton', c.code); return; }
+  if (b.id === 'go-pilot') { const c = [...U.canton.values()].find(c => norm(c.name) === 'guayaquil'); if (c) goTo('canton', c.code); return; }
   st.view = b.dataset.v; render(); };
 const dayEl = document.getElementById('day');
 dayEl.value = st.day;
@@ -581,5 +581,10 @@ playBtn.onclick = () => {
   timer = setInterval(() => { if (st.day >= 15) { clearInterval(timer); timer = null; playBtn.textContent = '▶ Ver 15 días'; return; } st.day++; dayEl.value = st.day; render(); }, 700);
 };
 
-compute(); render();
+compute();
+// deep links: #EC09 (province), #EC0901 (canton), #EC090150 (parish); prefix "mit-" opens the roads view, e.g. #mit-EC0901
+(function () { const m = (location.hash || '').match(/^#(mit-)?(EC\d{2}(?:\d{2}(?:\d{2,4})?)?)$/); if (!m) return;
+  if (m[1]) st.view = 'mit'; const code = m[2];
+  if (U.parroquia.has(code)) goTo('parroquia', code); else if (U.canton.has(code)) goTo('canton', code); else if (U.provincia.has(code)) goTo('provincia', code); })();
+render();
 </script>
