@@ -582,9 +582,10 @@ playBtn.onclick = () => {
 };
 
 compute();
-// deep links: #EC09 (province), #EC0901 (canton), #EC090150 (parish); prefix "mit-" opens the roads view, e.g. #mit-EC0901
-(function () { const m = (location.hash || '').match(/^#(mit-)?(EC\d{2}(?:\d{2}(?:\d{2,4})?)?)$/); if (!m) return;
-  if (m[1]) st.view = 'mit'; const code = m[2];
+// deep links: #EC09 (province), #EC0901 (canton), #EC090150 (parish); prefixes "esc-" (El Niño scenario) and "mit-" (roads view), e.g. #esc-mit-EC0901
+(function () { const m = (location.hash || '').match(/^#(esc-)?(mit-)?(EC\d{2}(?:\d{2}(?:\d{2,4})?)?)$/); if (!m) return;
+  if (m[1]) { st.mode = 'demo'; st.thr = 50; st.day = 7; dayEl.value = 7; compute(); }   // "esc-": El Niño scenario
+  if (m[2]) st.view = 'mit'; const code = m[3];
   if (U.parroquia.has(code)) goTo('parroquia', code); else if (U.canton.has(code)) goTo('canton', code); else if (U.provincia.has(code)) goTo('provincia', code); })();
 render();
 </script>
