@@ -13,3 +13,5 @@ preview.html
 deploy/index.html
 deploy/data/
 data/web/parroquias_export.json
+deploy/verificacion/
+deploy/verificacion.html

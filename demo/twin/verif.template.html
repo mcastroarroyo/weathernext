@@ -1,0 +1,173 @@
+<title>Verificación · Gemelo Digital Ecuador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<!--__CSS__-->
+<style>
+/* Layout: verification desk — controls rail | outcome map | scores panel */
+:root { --hit: #1f8a70; --miss: #c2453a; --fa: #e09b3d; --cn: #e3e8e6; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --hit: #4cc3a0; --miss: #ef7a6b; --fa: #e8b05a; --cn: #22302e; } }
+:root[data-theme="dark"] { --hit: #4cc3a0; --miss: #ef7a6b; --fa: #e8b05a; --cn: #22302e; }
+.navlinks { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.navlinks a { color: var(--accent); }
+.days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.days button { font: 600 12px/1.15 var(--f-body); border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); border-radius: 5px; padding: 6px 4px; cursor: pointer; }
+.days button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+select { font: 14px var(--f-body); padding: 6px; border-radius: 5px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); width: 100%; }
+table.byday { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+table.byday th { text-align: left; font: 600 11px var(--f-body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.byday td { padding: 5px 6px; border-bottom: 1px solid var(--line); font-family: var(--f-data); }
+table.byday tr { cursor: pointer; } table.byday tr.on td { background: var(--surface-2); font-weight: 600; }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="label">Gemelo digital · verificación diaria</div>
+      <h1>¿Acertó el pronóstico? <span>· lluvia por parroquia</span></h1>
+    </div>
+    <div class="navlinks"><a href="/">← Volver al gemelo</a></div>
+  </header>
+
+  <div class="official" role="note">
+    <span class="label" style="padding-top:2px">Método</span>
+    <div><b>Pronóstico ECMWF ENS (50 escenarios) frente a lluvia observada por CHIRPS v3 preliminar</b> (satélite + estaciones, ~5 km). Un evento «se pronosticó» si la probabilidad fue ≥ 50 %. Las ventanas del pronóstico van de 12Z a 12Z y se comparan con la mitad de dos días UTC de CHIRPS. Con las estaciones del INAMHI esta comparación será más precisa.</div>
+  </div>
+
+  <div class="grid">
+    <aside class="rail card" aria-label="Controles">
+      <div class="ctl"><span class="label">Pronóstico emitido</span><select id="run"></select></div>
+      <div class="ctl"><span class="label">Día verificado</span><div class="days" id="days"></div></div>
+      <div class="ctl"><span class="label">Umbral de lluvia en 24 h</span><div class="seg" id="thr" style="grid-template-columns:repeat(3,1fr)"></div></div>
+      <div class="ctl"><span class="label">Nivel</span><div class="seg" id="lvl"></div></div>
+      <div class="ctl"><span class="label">Mapa</span><div class="seg" id="mode" style="grid-template-columns:1fr"></div></div>
+      <div class="ctl"><span class="label">Leyenda</span><div class="legend" id="legend"></div></div>
+    </aside>
+
+    <section class="card mapcard" aria-label="Mapa de verificación">
+      <svg id="map" viewBox="0 0 760 620" role="img" aria-label="Resultado del pronóstico por área"></svg>
+      <div class="tip" id="tip"></div>
+      <div class="mapfoot"><span id="mapnote"></span><span>Límites INEC 2024 · CHIRPS v3 (CHC, UCSB)</span></div>
+    </section>
+
+    <aside class="panel" aria-label="Puntajes">
+      <div class="card"><div class="kpis" id="kpis"></div></div>
+      <div class="card" id="rel"></div>
+      <div class="card" id="byday"></div>
+      <div class="card" id="misses"></div>
+    </aside>
+  </div>
+
+  <footer>
+    <div><b>Cómo leer:</b> <i>Acierto</i> = se pronosticó (≥ 50 %) y llovió sobre el umbral; <i>Fallo</i> = llovió sobre el umbral sin pronóstico; <i>Falsa alarma</i> = se pronosticó y no llovió. BSS &gt; 0 significa mejor que la frecuencia observada del periodo; POD = parte de los eventos detectados; FAR = parte de las alarmas que no ocurrieron.</div>
+    <div>Pronóstico experimental de apoyo a la decisión; no es información oficial. CHIRPS preliminar también tiene error, en especial en la Sierra.</div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+const TOPO = /*__TOPO__*/;
+const NAMES = /*__NAMES__*/;
+const fmt = new Intl.NumberFormat('es-EC'), fmt1 = new Intl.NumberFormat('es-EC', { maximumFractionDigits: 1 }), fmt2 = new Intl.NumberFormat('es-EC', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const parr = TOPO.objects.parroquias.geometries;
+const FEAT = { parroquia: new Map(), canton: new Map() };
+for (const g of parr) FEAT.parroquia.set(g.properties.code, { name: g.properties.name, parent: NAMES[g.properties.canton], f: topojson.feature(TOPO, g) });
+for (const [code, gs] of d3.group(parr, g => g.properties.canton)) FEAT.canton.set(code, { name: NAMES[code], parent: NAMES[gs[0].properties.prov], f: topojson.merge(TOPO, gs) });
+const GAL = 'EC20';
+const mainland = { type: 'FeatureCollection', features: parr.filter(g => g.properties.prov !== GAL).map(g => topojson.feature(TOPO, g)) };
+const W = 760, H = 620, proj = d3.geoIdentity().reflectY(true).fitExtent([[20, 20], [W - 20, H - 20]], mainland), path = d3.geoPath(proj);
+const svg = d3.select('#map'), gA = svg.append('g'), tip = document.getElementById('tip');
+const OUT = { hit: ['Acierto', 'var(--hit)'], miss: ['Fallo', 'var(--miss)'], fa: ['Falsa alarma', 'var(--fa)'], cn: ['Sin evento, bien', 'var(--cn)'] };
+const RAIN = d3.scaleThreshold([1, 5, 10, 20, 30, 50], ['#f3f6f8', '#d2e4f1', '#9ec8e4', '#5aa2d1', '#2b75b3', '#174f8c', '#0b2f5c']);
+const DIFF = d3.scaleThreshold([-20, -10, -3, 3, 10, 20], ['#2b6cb0', '#6ea3d6', '#bcd7ee', '#eceeed', '#f2c09a', '#e07b4a', '#b23b1b']);
+const st = { run: null, lead: 1, thr: 20, lvl: 'parroquia', mode: 'outcome', data: null };
+let RUNS = [];
+
+function outcome(r) { const yes = r['p' + st.thr] >= .5, ev = r.obs > st.thr; return yes && ev ? 'hit' : !yes && ev ? 'miss' : yes ? 'fa' : 'cn'; }
+function rowsFor(lead) { return st.data.levels[st.lvl].areas.filter(r => r.lead === lead); }
+function score(rows) {
+  const p = rows.map(r => r['p' + st.thr]), o = rows.map(r => r.obs > st.thr ? 1 : 0), n = rows.length, base = d3.mean(o);
+  const bs = d3.mean(p.map((v, i) => (v - o[i]) ** 2)), ref = base * (1 - base);
+  const c = { hit: 0, miss: 0, fa: 0, cn: 0 }; rows.forEach(r => c[outcome(r)]++);
+  return { n, base, bs, bss: ref > 0 ? 1 - bs / ref : null, ...c, pod: c.hit + c.miss ? c.hit / (c.hit + c.miss) : null, far: c.hit + c.fa ? c.fa / (c.hit + c.fa) : null,
+    bias: d3.mean(rows, r => r.med - r.obs), obs: d3.mean(rows, r => r.obs), med: d3.mean(rows, r => r.med) };
+}
+const pct = v => v == null ? '—' : Math.round(v * 100) + ' %';
+const esDate = (d, o) => d.toLocaleDateString('es-EC', { timeZone: 'UTC', ...o });
+const validOf = L => esDate(new Date(Date.parse(st.data.init + ':00Z') + L * 864e5), { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '');
+
+function draw() {
+  const rows = new Map(rowsFor(st.lead).map(r => [r.code, r]));
+  const data = [...FEAT[st.lvl]].filter(([c]) => rows.has(c) && !(st.lvl === 'parroquia' ? c.startsWith(GAL) : c.startsWith(GAL)));
+  const fill = r => st.mode === 'outcome' ? OUT[outcome(r)][1] : st.mode === 'obs' ? RAIN(r.obs) : DIFF(r.med - r.obs);
+  gA.selectAll('path').data(data, d => d[0]).join('path').attr('d', d => path(d[1].f)).attr('stroke', 'var(--surface)').attr('stroke-width', .4)
+    .style('fill', d => fill(rows.get(d[0]))).style('cursor', 'default')
+    .on('mousemove', (e, d) => { const r = rows.get(d[0]); showTip(e, `<b>${d[1].name}</b> · ${d[1].parent || ''}<br>P(&gt;${st.thr} mm): ${pct(r['p' + st.thr])} · observado ${fmt1.format(r.obs)} mm<br>Pronóstico mediano ${fmt1.format(r.med)} mm · <b>${OUT[outcome(r)][0]}</b>`); })
+    .on('mouseleave', () => tip.style.opacity = 0);
+  document.getElementById('mapnote').textContent = { outcome: `Resultado para más de ${st.thr} mm · ${validOf(st.lead)}`, obs: `Lluvia observada (CHIRPS) · ${validOf(st.lead)}`, diff: `Pronóstico mediano − observado (mm) · ${validOf(st.lead)}` }[st.mode];
+  const leg = st.mode === 'outcome' ? Object.values(OUT).map(([n, c]) => [c, n])
+    : st.mode === 'obs' ? RAIN.range().map((c, i) => [c, i === 0 ? '< 1 mm' : i === RAIN.range().length - 1 ? '≥ 50 mm' : `${RAIN.domain()[i - 1]}–${RAIN.domain()[i]} mm`])
+    : DIFF.range().map((c, i) => [c, i === 0 ? 'pronóstico 20+ mm menos' : i === DIFF.range().length - 1 ? 'pronóstico 20+ mm más' : i === 3 ? '± 3 mm' : `${DIFF.domain()[i - 1]} a ${DIFF.domain()[i]} mm`]);
+  document.getElementById('legend').innerHTML = leg.map(([c, n]) => `<div><span class="sw" style="background:${c}"></span>${n}</div>`).join('');
+}
+function showTip(e, html) { const r = document.querySelector('.mapcard').getBoundingClientRect(); tip.innerHTML = html; tip.style.left = Math.min(e.clientX - r.left + 12, r.width - 270) + 'px'; tip.style.top = (e.clientY - r.top + 12) + 'px'; tip.style.opacity = 1; }
+
+function panels() {
+  const s = score(rowsFor(st.lead));
+  document.getElementById('kpis').innerHTML = [
+    ['Aciertos', fmt.format(s.hit), `de ${fmt.format(s.hit + s.miss)} eventos > ${st.thr} mm`], ['Fallos', fmt.format(s.miss), 'llovió sin pronóstico'],
+    ['Falsas alarmas', fmt.format(s.fa), 'pronosticado y no llovió'], ['Detección (POD)', pct(s.pod), `FAR ${pct(s.far)}`],
+    ['Habilidad (BSS)', s.bss == null ? '—' : fmt2.format(s.bss), s.bss > 0 ? 'mejor que la frecuencia del periodo' : 'aún no supera la referencia'],
+    ['Sesgo de lluvia', (s.bias >= 0 ? '+' : '') + fmt1.format(s.bias) + ' mm', `pronóstico ${fmt1.format(s.med)} vs observado ${fmt1.format(s.obs)}`]]
+    .map(([l, v, x]) => `<div class="kpi"><span class="label">${l}</span><span class="v">${v}</span><span class="s">${x}</span></div>`).join('');
+  // reliability across all verified days of this run
+  const all = st.data.levels[st.lvl].areas, bins = [[0, .1], [.1, .3], [.3, .5], [.5, .7], [.7, 1.01]];
+  const rel = bins.map(([a, b]) => { const r = all.filter(x => x['p' + st.thr] >= a && x['p' + st.thr] < b); return { a, b, n: r.length, p: d3.mean(r, x => x['p' + st.thr]), o: d3.mean(r, x => x.obs > st.thr ? 1 : 0) }; }).filter(x => x.n);
+  const w = 340, h = 210, m = { l: 36, r: 10, t: 10, b: 30 }, x = d3.scaleLinear([0, 1], [m.l, w - m.r]), y = d3.scaleLinear([0, 1], [h - m.b, m.t]);
+  let g = `<svg class="chart" viewBox="0 0 ${w} ${h}">`;
+  for (const t of [0, .25, .5, .75, 1]) g += `<line x1="${m.l}" x2="${w - m.r}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${m.l - 5}" y="${y(t) + 3}" text-anchor="end">${t * 100}%</text><text x="${x(t)}" y="${h - 12}" text-anchor="middle">${t * 100}%</text>`;
+  g += `<line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--muted)" stroke-dasharray="4 3"/>`;
+  g += `<path d="${d3.line().x(d => x(d.p)).y(d => y(d.o))(rel)}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  for (const d of rel) g += `<circle cx="${x(d.p)}" cy="${y(d.o)}" r="${3 + Math.sqrt(d.n) / 6}" fill="var(--accent)" fill-opacity=".75" stroke="var(--surface)"><title>${d.n} pronósticos · dijo ${pct(d.p)} · ocurrió ${pct(d.o)}</title></circle>`;
+  g += `<text x="${w / 2}" y="${h - 1}" text-anchor="middle">probabilidad pronosticada</text></svg>`;
+  document.getElementById('rel').innerHTML = `<div class="row"><h3 style="font-size:18px">Confiabilidad · &gt; ${st.thr} mm</h3><span class="note">todos los días de esta corrida</span></div>
+    <p class="note" style="margin:4px 0 6px">Si el pronóstico está calibrado, los puntos caen sobre la diagonal: un «60 %» ocurre 6 de cada 10 veces. Debajo de la diagonal = exceso de confianza.</p>${g}`;
+  // by day
+  const leads = [...new Set(st.data.levels[st.lvl].areas.map(r => r.lead))].sort((a, b) => a - b);
+  document.getElementById('byday').innerHTML = `<div class="row"><h3 style="font-size:18px">Día por día</h3><span class="note">&gt; ${st.thr} mm · ${st.lvl === 'parroquia' ? 'parroquias' : 'cantones'}</span></div>
+    <table class="byday"><tr><th>Día</th><th>Fecha</th><th>POD</th><th>FAR</th><th>BSS</th><th>Sesgo</th></tr>${leads.map(L => { const s = score(rowsFor(L));
+      return `<tr data-l="${L}" class="${L === st.lead ? 'on' : ''}"><td>d${L}</td><td>${validOf(L)}</td><td>${pct(s.pod)}</td><td>${pct(s.far)}</td><td>${s.bss == null ? '—' : fmt2.format(s.bss)}</td><td>${(s.bias >= 0 ? '+' : '') + fmt1.format(s.bias)}</td></tr>`; }).join('')}</table>`;
+  document.querySelectorAll('#byday tr[data-l]').forEach(tr => tr.onclick = () => { st.lead = +tr.dataset.l; render(); });
+  const miss = rowsFor(st.lead).filter(r => outcome(r) === 'miss').sort((a, b) => b.obs - a.obs).slice(0, 8), fa = rowsFor(st.lead).filter(r => outcome(r) === 'fa').sort((a, b) => b['p' + st.thr] - a['p' + st.thr]).slice(0, 5);
+  const nm = r => { const f = FEAT[st.lvl].get(r.code); return f ? `${f.name} <span class="note">· ${f.parent || ''}</span>` : r.code; };
+  document.getElementById('misses').innerHTML = `<h3 style="font-size:18px">Lo que no vio el pronóstico</h3>
+    ${miss.length ? `<ul class="list" style="margin-top:8px">${miss.map(r => `<li><span>${nm(r)}</span><span class="num">${fmt1.format(r.obs)} mm · P ${pct(r['p' + st.thr])}</span></li>`).join('')}</ul>` : '<p class="note">Sin fallos este día.</p>'}
+    <div class="label" style="margin-top:12px">Falsas alarmas más confiadas</div>
+    ${fa.length ? `<ul class="list" style="margin-top:6px">${fa.map(r => `<li><span>${nm(r)}</span><span class="num">P ${pct(r['p' + st.thr])} · ${fmt1.format(r.obs)} mm</span></li>`).join('')}</ul>` : '<p class="note">Ninguna.</p>'}`;
+}
+
+function controls() {
+  document.getElementById('run').innerHTML = RUNS.map(r => `<option value="${r.init}" ${r.init === st.run ? 'selected' : ''}>${esDate(new Date(Date.parse(r.init + ':00Z')), { day: '2-digit', month: 'short', year: 'numeric' })} · ${r.init.slice(11, 16)} UTC · ${r.leads.length} días</option>`).join('');
+  const leads = st.data ? [...new Set(st.data.levels[st.lvl].areas.map(r => r.lead))].sort((a, b) => a - b) : [];
+  document.getElementById('days').innerHTML = leads.map(L => `<button data-l="${L}" aria-pressed="${L === st.lead}">d${L}<br><span class="note">${validOf(L).replace(/^\S+\s/, '')}</span></button>`).join('');
+  document.getElementById('thr').innerHTML = [20, 30, 50].map(t => `<button data-v="${t}" aria-pressed="${t === st.thr}">${t} mm</button>`).join('');
+  document.getElementById('lvl').innerHTML = [['parroquia', 'Parroquias'], ['canton', 'Cantones']].map(([v, n]) => `<button data-v="${v}" aria-pressed="${v === st.lvl}">${n}</button>`).join('');
+  document.getElementById('mode').innerHTML = [['outcome', 'Aciertos y fallos'], ['obs', 'Lluvia observada'], ['diff', 'Error del pronóstico']].map(([v, n]) => `<button data-v="${v}" aria-pressed="${v === st.mode}">${n}</button>`).join('');
+}
+function render() { controls(); if (!st.data) return; draw(); panels(); }
+document.getElementById('days').onclick = e => { const b = e.target.closest('button'); if (b) { st.lead = +b.dataset.l; render(); } };
+document.getElementById('thr').onclick = e => { const b = e.target.closest('button'); if (b) { st.thr = +b.dataset.v; render(); } };
+document.getElementById('lvl').onclick = e => { const b = e.target.closest('button'); if (b) { st.lvl = b.dataset.v; render(); } };
+document.getElementById('mode').onclick = e => { const b = e.target.closest('button'); if (b) { st.mode = b.dataset.v; render(); } };
+document.getElementById('run').onchange = e => load(e.target.value);
+
+async function load(init) {
+  st.run = init; const r = await fetch(`verificacion/data/${init.replace(':', '')}.json`); st.data = await r.json(); st.lead = Math.min(st.lead, st.data.leads.at(-1)); render();
+}
+fetch('verificacion/data/index.json').then(r => r.json()).then(ix => {
+  RUNS = ix.runs; if (!RUNS.length) { document.querySelector('.mapcard').innerHTML = '<div class="empty">Aún no hay días observados para verificar.</div>'; return; }
+  load(RUNS[0].init);
+});
+</script>

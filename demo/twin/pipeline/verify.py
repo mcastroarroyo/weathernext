@@ -68,31 +68,44 @@ def scores(p, o_mm, med, thr):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--project', required=True); ap.add_argument('--init'); ap.add_argument('--bq', action='store_true'); a = ap.parse_args()
-    init = a.init or bq(a.project, 'SELECT FORMAT_TIMESTAMP("%FT%R", MIN(init_time)) AS t FROM ectwin_commons.area_exceedance')[0]['t']
+    inits = [a.init] if a.init else [r['t'] for r in bq(a.project, 'SELECT DISTINCT FORMAT_TIMESTAMP("%FT%R", init_time) AS t FROM ectwin_commons.area_exceedance ORDER BY t')]
+    runs = []
+    for init in inits:
+        r = verify_run(a.project, init)
+        if r: runs.append(r)
+    # one file for the verification page: every verified run, newest first
+    (OUT / 'verification.json').write_text(json.dumps({'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'runs': runs[::-1]}, ensure_ascii=False, separators=(',', ':')))
+    print('wrote', OUT / 'verification.json', f'({len(runs)} runs)')
+
+
+def verify_run(project, init):
     t0 = dt.datetime.fromisoformat(init)
     # observed days available
     days, d = [], t0.date()
-    while True:
+    while d <= t0.date() + dt.timedelta(days=15):
         try: chirps_day(d); days.append(d); d += dt.timedelta(days=1)
         except Exception: break
+    if len(days) < 2: print(f'forecast {init}Z: no observed days yet'); return None
     leads = [L for L in range(1, 16) if t0.date() + dt.timedelta(days=L) in days]
+    if not leads: print(f'forecast {init}Z: no observed days yet'); return None
     print(f'forecast {init}Z · CHIRPS days {days[0]}–{days[-1]} · verifiable leads {leads}')
     obs = {L: .5 * chirps_day(t0.date() + dt.timedelta(days=L - 1)) + .5 * chirps_day(t0.date() + dt.timedelta(days=L)) for L in leads}
     shape = next(iter(obs.values())).shape
-    rows = bq(a.project, f'SELECT level, dpa_code, name, lead_day, threshold_mm, probability, median_mm FROM ectwin_commons.area_exceedance '
+    rows = bq(project, f'SELECT level, dpa_code, name, lead_day, threshold_mm, probability, median_mm FROM ectwin_commons.area_exceedance '
                          f'WHERE init_time = TIMESTAMP("{init}:00+00") AND level IN ("canton","parroquia") AND lead_day <= {max(leads)} AND threshold_mm IN (20,30,50)')
     fc = {}
     for r in rows: fc[(r['level'], r['dpa_code'], int(r['lead_day']), int(r['threshold_mm']))] = (float(r['probability']), float(r['median_mm']), r['name'])
     result = {'init': init, 'observed': 'CHIRPS v3 preliminary daily (0.05°), 12Z windows approximated from two UTC days', 'leads': leads, 'levels': {}}
     for level, gfile in (('canton', 'cantones.json'), ('parroquia', 'parroquias.json')):
         masks = area_masks(gfile, shape)
-        P = {t: [] for t in THRS}; O, M, worst = [], [], []
+        P = {t: [] for t in THRS}; O, M, worst, per_area = [], [], [], []
         for code, m in masks.items():
             for L in leads:
                 if (level, code, L, 20) not in fc: continue
                 o = float(np.nanmean(obs[L][m])); med = fc[(level, code, L, 20)][1]; O.append(o); M.append(med)
                 for t in THRS: P[t].append(fc[(level, code, L, t)][0])
                 p50 = fc[(level, code, L, 50)][0]
+                per_area.append({'code': code, 'lead': L, 'obs': round(o, 1), 'med': med, **{f'p{t}': fc[(level, code, L, t)][0] for t in THRS}})
                 if o > 50 and p50 < .2: worst.append({'name': fc[(level, code, L, 20)][2], 'lead': L, 'obs_mm': round(o, 1), 'p_gt50': p50, 'median_mm': med})
         O, M = np.array(O), np.array(M)
         result['levels'][level] = {
@@ -100,9 +113,14 @@ def main():
             'amount': {'obs_mean_mm': round(float(O.mean()), 2), 'fc_median_mean_mm': round(float(M.mean()), 2), 'bias_mm': round(float((M - O).mean()), 2),
                        'mae_mm': round(float(np.abs(M - O).mean()), 2), 'corr': round(float(np.corrcoef(M, O)[0, 1]), 3)},
             'by_threshold': [scores(np.array(P[t]), O, M, t) for t in THRS],
-            'big_misses': sorted(worst, key=lambda w: -w['obs_mm'])[:10]}
-    path = OUT / f'verification_{init[:10]}.json'; path.write_text(json.dumps(result, ensure_ascii=False, indent=1))
-    print(json.dumps(result, ensure_ascii=False, indent=1)[:6000]); print('wrote', path)
+            'big_misses': sorted(worst, key=lambda w: -w['obs_mm'])[:10],
+            'by_lead': [dict(lead=L, valid=str(t0.date() + dt.timedelta(days=L)), **{k: v for k, v in scores(np.array([r['p20'] for r in per_area if r['lead'] == L]), np.array([r['obs'] for r in per_area if r['lead'] == L]), None, 20).items() if k != 'reliability'},
+                             obs_mean_mm=round(float(np.mean([r['obs'] for r in per_area if r['lead'] == L])), 2), fc_median_mean_mm=round(float(np.mean([r['med'] for r in per_area if r['lead'] == L])), 2)) for L in leads],
+            'areas': per_area}
+    for lv, v in result['levels'].items():
+        s20 = v['by_threshold'][0]
+        print(f"  {lv}: n={v['n_forecasts']} bias {v['amount']['bias_mm']} mm · corr {v['amount']['corr']} · >20 mm BSS {s20['bss']} POD {s20['pod']} FAR {s20['far']}")
+    return result
 
 
 if __name__ == '__main__':

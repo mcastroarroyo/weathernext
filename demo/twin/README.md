@@ -24,8 +24,21 @@ Probability is counted, not guessed: for each area and day, `P(rain > threshold)
 | `data/annotate_roads.py` | Tags each road section with the parish/canton/province at its midpoint |
 | `data/web/ecuador.topo.json` | Committed web boundaries (parishes; cantons and provinces are merged in the browser) |
 | `export_gis.py` | ArcGIS-ready exports into `deploy/data/` (WGS84): 0.25° grid, parishes, Flood Hub points and GEOGloWS stations as GeoJSON, zipped Shapefile (.prj + UTF-8 .cpg) and CSV, plus `manifest.json`; served with CORS so ArcGIS Online can *Add layer from URL*. MIT data is never exported |
-| `deploy/` | nginx container for Cloud Run |
+| `verif.template.html` | Day-by-day verification page (`/verificacion`): hits / misses / false alarms per parish or canton, observed rain, forecast error, reliability, scores per day; one data file per verified run |
+| `deploy/app.py` | Flask server for Cloud Run: **Google sign-in for any Google account** (Google Identity Services ID token, CSRF double-submit), access log to BigQuery (`ectwin_ops.access_events`: login, logout, page views, 1-minute heartbeats, downloads, denied admin attempts), `/admin` dashboard limited to `ADMIN_EMAILS`, public `/privacidad`, `/terminos` and `/data/*` (open GIS exports with CORS). Env: `OAUTH_CLIENT_ID`, `SESSION_SECRET` (Secret Manager), `ADMIN_EMAILS`, `EVENTS_TABLE` |
 | `refresh.sh` | One command: pipeline → BigQuery → page → Cloud Run |
+
+## Sign-in setup
+
+The OAuth client lives in a **separate project with an External consent screen** (so any Google account can sign in without changing other apps' consent screens): Google Auth Platform › Branding (home page `/login`, privacy `/privacidad`, terms `/terminos`, the Cloud Run domain as authorized domain) › Audience *In production* › Clients › *Web application* with the Cloud Run URL as JavaScript origin and `<url>/auth` as redirect URI. Only the public client ID is used; no client secret is needed. Deploy once with:
+
+```bash
+gcloud run deploy <service> --source deploy --region <region> --project "$GCP_PROJECT_ID" \
+  --service-account <runner-sa> --set-env-vars OAUTH_CLIENT_ID=<client-id>,ADMIN_EMAILS=<admin@domain>,EVENTS_TABLE=$GCP_PROJECT_ID.ectwin_ops.access_events \
+  --set-secrets SESSION_SECRET=twin-session-secret:latest
+```
+
+Later deploys (`refresh.sh`) keep these settings.
 
 ## MIT data (not in this repo)
 

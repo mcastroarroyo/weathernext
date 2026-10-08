@@ -33,3 +33,16 @@ full = head + page + '\n</body>\n</html>\n'
 (HERE / 'preview.html').write_text(full)
 (HERE / 'deploy' / 'index.html').write_text(full)
 print('page built:', 'real forecast' if real != 'null' else 'demo only', '+ MIT roads' if roads != 'null' else '(no MIT roads)', f'({len(full) // 1024} KB)')
+
+# ---- verification page (/verificacion) and one data file per verified run
+vpath = HERE / 'pipeline' / 'out' / 'verification.json'
+vdir = HERE / 'deploy' / 'verificacion' / 'data'; vdir.mkdir(parents=True, exist_ok=True)
+for old in vdir.glob('*.json'): old.unlink()
+runs = json.loads(vpath.read_text())['runs'] if vpath.exists() else []
+for r in runs: (vdir / (r['init'].replace(':', '') + '.json')).write_text(json.dumps(r, ensure_ascii=False, separators=(',', ':')))
+(vdir / 'index.json').write_text(json.dumps({'runs': [{'init': r['init'], 'leads': r['leads']} for r in runs]}))
+twin_css = (HERE / 'twin.template.html').read_text()
+twin_css = twin_css[twin_css.index('<style>'):twin_css.index('</style>') + 8]
+vpage = (HERE / 'verif.template.html').read_text().replace('<!--__CSS__-->', twin_css).replace('/*__TOPO__*/', topo).replace('/*__NAMES__*/', json.dumps(names, ensure_ascii=False))
+(HERE / 'deploy' / 'verificacion.html').write_text(head + vpage + '\n</body>\n</html>\n')
+print(f'verification page built: {len(runs)} runs')

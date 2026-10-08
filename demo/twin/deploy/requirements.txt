@@ -1,0 +1,5 @@
+flask==3.1.*
+gunicorn==23.*
+google-auth==2.*
+requests==2.*
+google-cloud-bigquery==3.*
