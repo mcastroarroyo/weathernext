@@ -33,7 +33,7 @@ table.byday tr { cursor: pointer; } table.byday tr.on td { background: var(--sur
 
   <div class="official" role="note">
     <span class="label" style="padding-top:2px">Método</span>
-    <div><b>Tres conjuntos de pronóstico — ECMWF IFS ENS, ECMWF AIFS ENS (inteligencia artificial) y NOAA GEFS — frente a lluvia observada por CHIRPS v3 preliminar</b> (satélite + estaciones, ~5 km). La versión <i>calibrada</i> corrige el sesgo aprendido solo con días ya observados antes de emitir cada pronóstico; está en evaluación y aún no cambia el gemelo. Un evento «se pronosticó» si la probabilidad fue ≥ 50 %. Las ventanas del pronóstico van de 12Z a 12Z y se comparan con la mitad de dos días UTC de CHIRPS. Con las estaciones del INAMHI esta comparación será más precisa.</div>
+    <div><b>Tres conjuntos de pronóstico — ECMWF IFS ENS, ECMWF AIFS ENS (inteligencia artificial) y NOAA GEFS — frente a lluvia observada por CHIRPS v3 preliminar</b> (satélite + estaciones, ~5 km). La versión <i>calibrada</i> corrige el sesgo aprendido solo con días ya observados antes de emitir cada pronóstico; está en evaluación y aún no cambia el gemelo. Un evento «se pronosticó» si la probabilidad fue ≥ 50 % (≥ 30 % en la versión calibrada). Las ventanas del pronóstico van de 12Z a 12Z y se comparan con la mitad de dos días UTC de CHIRPS. Con las estaciones del INAMHI esta comparación será más precisa.</div>
   </div>
 
   <div class="grid">
@@ -64,7 +64,7 @@ table.byday tr { cursor: pointer; } table.byday tr.on td { background: var(--sur
   </div>
 
   <footer>
-    <div><b>Cómo leer:</b> <i>Acierto</i> = se pronosticó (≥ 50 %) y llovió sobre el umbral; <i>Fallo</i> = llovió sobre el umbral sin pronóstico; <i>Falsa alarma</i> = se pronosticó y no llovió. BSS &gt; 0 significa mejor que la frecuencia observada del periodo; POD = parte de los eventos detectados; FAR = parte de las alarmas que no ocurrieron.</div>
+    <div><b>Cómo leer:</b> <i>Acierto</i> = se pronosticó (≥ 50 %, o ≥ 30 % calibrado) y llovió sobre el umbral; <i>Fallo</i> = llovió sobre el umbral sin pronóstico; <i>Falsa alarma</i> = se pronosticó y no llovió. BSS &gt; 0 significa mejor que la frecuencia observada del periodo; POD = parte de los eventos detectados; FAR = parte de las alarmas que no ocurrieron.</div>
     <div>Pronóstico experimental de apoyo a la decisión; no es información oficial. CHIRPS preliminar también tiene error, en especial en la Sierra.</div>
   </footer>
 </div>
@@ -91,9 +91,10 @@ const SRC = { ecmwf_ifs_ens: 'ECMWF IFS ENS · 50', ecmwf_aifs_ens: 'ECMWF AIFS 
 const cache = new Map();
 const P = (r, cal = st.cal) => r[(cal && r['cp' + st.thr] != null ? 'cp' : 'p') + st.thr];
 const MED = (r, cal = st.cal) => cal && r.cmed != null ? r.cmed : r.med;
-let RUNS = [];
+let RUNS = [], GATE = {};
 
-function outcome(r, cal) { const yes = P(r, cal) >= .5, ev = r.obs > st.thr; return yes && ev ? 'hit' : !yes && ev ? 'miss' : yes ? 'fa' : 'cn'; }
+const CUT = cal => (cal ?? st.cal) ? .3 : .5;   // alert cut-off: 50 % raw, 30 % calibrated
+function outcome(r, cal) { const yes = P(r, cal) >= CUT(cal), ev = r.obs > st.thr; return yes && ev ? 'hit' : !yes && ev ? 'miss' : yes ? 'fa' : 'cn'; }
 function rowsFor(lead, data = st.data) { return data.levels[st.lvl].areas.filter(r => r.lead === lead); }
 function score(rows, cal = st.cal) {
   const p = rows.map(r => P(r, cal)), o = rows.map(r => r.obs > st.thr ? 1 : 0), n = rows.length, base = d3.mean(o);
@@ -178,7 +179,13 @@ async function compare() {
     return `<tr class="${r.source === st.src ? 'on' : ''}"><td>${SRC[r.source] || r.source}</td><td>${v(a.bss, bss)}${b ? ` → <b>${v(b.bss, bss)}</b>` : ''}</td><td>${pct(a.pod)}${b ? ` → <b>${pct(b.pod)}</b>` : ''}</td><td>${pct(a.far)}${b ? ` → <b>${pct(b.far)}</b>` : ''}</td><td>${bias(a.bias)}${b ? ` → <b>${bias(b.bias)}</b>` : ''}</td></tr>`; };
   document.getElementById('cmp').innerHTML = `<div class="row"><h3 style="font-size:18px">Comparación de modelos</h3><span class="note">d${st.lead} · &gt; ${st.thr} mm</span></div>
     <table class="byday"><tr><th>Modelo</th><th>BSS</th><th>POD</th><th>FAR</th><th>Sesgo mm</th></tr>${runs.map((r, i) => row(r, ds[i])).join('')}</table>
-    <p class="note" style="margin-top:6px">Crudo → <b>calibrado</b> cuando ya hay evidencia previa. Con más semanas de datos, estos puntajes definirán el peso de cada modelo en el riesgo combinado.</p>`;
+    <p class="note" style="margin-top:6px">Crudo (alerta ≥ 50 %) → <b>calibrado</b> (alerta ≥ 30 %) cuando ya hay evidencia previa. Con más semanas de datos, estos puntajes definirán el peso de cada modelo en el riesgo combinado.</p>
+    <div class="label" style="margin-top:12px">Regla de aprobación de la calibración</div>
+    <p class="note" style="margin:4px 0 6px">Todos los pronósticos calibrados ya observados: debe mejorar la habilidad (BSS) sin bajar la detección (POD), con al menos 30 eventos. Aun cumpliendo, se activa solo con aprobación del administrador.</p>
+    <table class="byday"><tr><th>Modelo</th><th>Estado</th><th>Evidencia</th></tr>${runs.map(r => { const g = GATE[r.source];
+      if (!g) return `<tr><td>${SRC[r.source] || r.source}</td><td class="note" colspan="2">sin datos</td></tr>`;
+      const t = (g.thresholds || []).map(x => `&gt;${x.threshold_mm}: ${x.events} ev. · BSS ${x.bss_raw == null ? '—' : fmt2.format(x.bss_raw)}→${x.bss_cal == null ? '—' : fmt2.format(x.bss_cal)} · POD ${pct(x.pod_raw)}→${pct(x.pod_cal)}`).join('<br>');
+      return `<tr><td>${SRC[r.source] || r.source}</td><td style="white-space:normal;font-family:var(--f-body)"><b style="color:${g.passes ? 'var(--hit)' : 'var(--muted)'}">${g.passes ? 'Lista para aprobar' : 'En evaluación'}</b><br><span class="note">${g.reason || ''}</span></td><td class="note" style="white-space:normal">${g.n_pairs} pares · ${g.runs} corridas${t ? '<br>' + t : ''}</td></tr>`; }).join('')}</table>`;
 }
 document.getElementById('days').onclick = e => { const b = e.target.closest('button'); if (b) { st.lead = +b.dataset.l; render(); } };
 document.getElementById('thr').onclick = e => { const b = e.target.closest('button'); if (b) { st.thr = +b.dataset.v; render(); } };
@@ -194,7 +201,7 @@ async function load(init, src) {
   st.run = init; st.src = r.source; st.data = await get(r.file); st.lead = Math.min(st.lead, st.data.leads.at(-1)); render();
 }
 fetch('verificacion/data/index.json').then(r => r.json()).then(ix => {
-  RUNS = ix.runs; if (!RUNS.length) { document.querySelector('.mapcard').innerHTML = '<div class="empty">Aún no hay días observados para verificar.</div>'; return; }
+  RUNS = ix.runs; GATE = ix.gate || {}; if (!RUNS.length) { document.querySelector('.mapcard').innerHTML = '<div class="empty">Aún no hay días observados para verificar.</div>'; return; }
   load(RUNS[0].init, st.src);
 });
 </script>

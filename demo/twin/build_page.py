@@ -44,7 +44,7 @@ for r in runs:
     src = r.get('source', 'ecmwf_ifs_ens'); fname = f"{src}_{r['init'].replace(':', '')}.json"
     (vdir / fname).write_text(json.dumps(r, ensure_ascii=False, separators=(',', ':')))
     index.append({'init': r['init'], 'source': src, 'leads': r['leads'], 'file': fname, 'calibrated': bool(r['levels']['canton'].get('calibrated', {}).get('active'))})
-(vdir / 'index.json').write_text(json.dumps({'runs': index}))
+(vdir / 'index.json').write_text(json.dumps({'runs': index, 'gate': json.loads(vpath.read_text()).get('gate', {}) if vpath.exists() else {}}, ensure_ascii=False))
 twin_css = (HERE / 'twin.template.html').read_text()
 twin_css = twin_css[twin_css.index('<style>'):twin_css.index('</style>') + 8]
 vpage = (HERE / 'verif.template.html').read_text().replace('<!--__CSS__-->', twin_css).replace('/*__TOPO__*/', topo).replace('/*__NAMES__*/', json.dumps(names, ensure_ascii=False))

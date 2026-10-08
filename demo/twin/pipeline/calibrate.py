@@ -12,6 +12,8 @@ THRS = (20, 30, 50)
 REGION = {**{p: 'costa' for p in ('07', '08', '09', '12', '13', '23', '24')},
           **{p: 'amazonia' for p in ('14', '15', '16', '19', '21', '22')}, '20': 'galapagos'}
 MIN_PAIRS, MIN_EVENTS, PRIOR = 300, 15, 20.0     # evidence needed per group; strength of the pull towards "no change"
+CUT = 0.30                                        # alert cut-off for calibrated probabilities (raw forecasts use 0.50)
+GATE_EVENTS = 30                                  # observed events needed before the approval rule can pass
 
 
 def region(code): return REGION.get(code[2:4], 'sierra')

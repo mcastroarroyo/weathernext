@@ -54,14 +54,14 @@ def bq(project, sql):
     return [dict(r) for r in bigquery.Client(project=project).query(sql).result()]
 
 
-def scores(p, o_mm, med, thr):
+def scores(p, o_mm, med, thr, cut=.5):
     o = (o_mm > thr).astype(float); n = len(o); base = o.mean()
     bs = float(np.mean((p - o) ** 2)); bs_ref = float(base * (1 - base))
     rel = []
     for lo, hi in zip(BINS[:-1], BINS[1:]):
         k = (p >= lo) & (p < hi)
         if k.any(): rel.append({'bin': f'{lo:.1f}–{min(hi, 1):.1f}', 'n': int(k.sum()), 'p_mean': round(float(p[k].mean()), 3), 'obs_freq': round(float(o[k].mean()), 3)})
-    yes = p >= .5
+    yes = p >= cut                                     # alert cut-off: 50 % raw, 30 % calibrated
     hits, misses, fa = int((yes & (o == 1)).sum()), int((~yes & (o == 1)).sum()), int((yes & (o == 0)).sum())
     return {'threshold_mm': thr, 'n': n, 'observed_rate': round(float(base), 3), 'mean_forecast_p': round(float(p.mean()), 3),
             'brier': round(bs, 4), 'brier_ref': round(bs_ref, 4), 'bss': round(1 - bs / bs_ref, 3) if bs_ref > 0 else None,
@@ -78,8 +78,8 @@ def main():
     done = {}
     if a.reuse and pathlib.Path(a.reuse).exists():
         done = {(r['init'], r.get('source', 'ecmwf_ifs_ens')): r for r in json.loads(pathlib.Path(a.reuse).read_text())['runs']
-                if len(r['leads']) == 15 and 'calibrated' in r['levels']['canton']}
-    runs, models = [], {}
+                if len(r['leads']) == 15 and r['levels']['canton'].get('calibrated', {}).get('cut') == calibrate.CUT}
+    runs, models, gates = [], {}, {}
     for source in sorted({s for _, s in todo}):
         mine = []
         for init, _ in [x for x in todo if x[1] == source]:
@@ -91,11 +91,36 @@ def main():
         runs += mine
         today = dt.datetime.now(dt.timezone.utc).date()
         models[source] = calibrate.fit(train_pairs(mine, today - dt.timedelta(days=2)))
+        gates[source] = gate(mine)
     runs.sort(key=lambda r: (r['init'], r['source']))
     # one file for the verification page: every verified run, newest first, and the calibration that would apply today
     (OUT / 'verification.json').write_text(json.dumps({'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'runs': runs[::-1],
-                                                       'calibration': models}, ensure_ascii=False, separators=(',', ':')))
+                                                       'calibration': models, 'gate': gates}, ensure_ascii=False, separators=(',', ':')))
     print('wrote', OUT / 'verification.json', f'({len(runs)} runs)')
+
+
+def gate(runs):
+    """Approval rule for switching the twin to calibrated probabilities, on out-of-sample canton pairs only:
+    calibrated (alert at 30 %) must beat raw (alert at 50 %) in Brier skill, must not lower detection (POD),
+    and the evidence must include at least GATE_EVENTS observed events, at each threshold that has enough events.
+    Passing makes it eligible; switching it on still needs the administrator's approval."""
+    rows = [x for r in runs if r['levels']['canton'].get('calibrated', {}).get('active') for x in r['levels']['canton']['areas']]
+    out = {'n_pairs': len(rows), 'runs': sum(1 for r in runs if r['levels']['canton'].get('calibrated', {}).get('active')), 'cut': calibrate.CUT, 'thresholds': []}
+    if not rows: return out | {'passes': False, 'reason': 'Aún no hay pronósticos calibrados con días observados'}
+    O = np.array([x['obs'] for x in rows]); M = np.array([x['med'] for x in rows])
+    for t in (20, 30):
+        raw = scores(np.array([x[f'p{t}'] for x in rows]), O, M, t, .5)
+        cal = scores(np.array([x[f'cp{t}'] for x in rows]), O, M, t, calibrate.CUT)
+        ev = raw['hits'] + raw['misses']
+        out['thresholds'].append({'threshold_mm': t, 'events': ev, 'enough': ev >= calibrate.GATE_EVENTS,
+                                  'bss_raw': raw['bss'], 'bss_cal': cal['bss'], 'pod_raw': raw['pod'], 'pod_cal': cal['pod'], 'far_raw': raw['far'], 'far_cal': cal['far'],
+                                  'ok': ev >= calibrate.GATE_EVENTS and (cal['bss'] or -9) > (raw['bss'] or -9) and (cal['pod'] or 0) >= (raw['pod'] or 0)})
+    judged = [g for g in out['thresholds'] if g['enough']]
+    out['passes'] = bool(judged) and all(g['ok'] for g in judged)
+    out['reason'] = ('Cumple: mejora la habilidad sin perder detección' if out['passes'] else
+                     f'Faltan eventos observados (mínimo {calibrate.GATE_EVENTS})' if not judged else
+                     'No cumple: ' + '; '.join(f">{g['threshold_mm']} mm " + ('baja la detección' if (g['pod_cal'] or 0) < (g['pod_raw'] or 0) else 'no mejora la habilidad') for g in judged if not g['ok']))
+    return out
 
 
 def train_pairs(runs, until):
@@ -117,7 +142,7 @@ def calibrate_run(result, earlier):
         O = np.array([x['obs'] for x in v['areas']]); M = np.array([x['cmed'] for x in v['areas']])
         v['calibrated'] = {'n_train': len(pairs), 'groups': len(model), 'active': bool(model),
                            'amount': {'bias_mm': round(float((M - O).mean()), 2), 'mae_mm': round(float(np.abs(M - O).mean()), 2)},
-                           'by_threshold': [{k: w for k, w in scores(P[t], O, M, t).items() if k != 'reliability'} for t in THRS]}
+                           'cut': calibrate.CUT, 'by_threshold': [{k: w for k, w in scores(P[t], O, M, t, calibrate.CUT).items() if k != 'reliability'} for t in THRS]}
 
 
 def verify_run(project, init, source='ecmwf_ifs_ens'):
