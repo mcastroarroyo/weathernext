@@ -1,0 +1,14 @@
+# Weekly dependency and base-image updates as pull requests (security updates arrive as soon as an advisory is published).
+version: 2
+updates:
+  - package-ecosystem: pip
+    directories: ["/demo/twin/deploy", "/demo/twin/pipeline", "/pipelines"]
+    schedule: {interval: weekly, day: monday}
+    groups: {python: {patterns: ["*"], update-types: [minor, patch]}}
+    open-pull-requests-limit: 5
+  - package-ecosystem: docker
+    directories: ["/demo/twin/deploy", "/demo/twin/job"]
+    schedule: {interval: weekly, day: monday}
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: {interval: monthly}

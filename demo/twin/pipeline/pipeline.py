@@ -243,6 +243,29 @@ def rivers():
 
 
 # ---------------- outputs ----------------
+def write_area_rows(path, init, areas, source):
+    with open(path, 'w') as f:
+        for level, rows in areas.items():
+            for c in rows:
+                for d in range(DAYS):
+                    for t in THRESHOLDS:
+                        f.write(json.dumps({'init_time': init.isoformat(), 'source': source, 'level': level, 'dpa_code': c['code'], 'name': c['name'],
+                                            'parent_code': c['parent'], 'lead_day': d + 1, 'valid_date': (init + dt.timedelta(days=d)).date().isoformat(),
+                                            'threshold_mm': t, 'probability': c['p'][str(t)][d], 'median_mm': c['med'][d], 'p90_mm': c['p90'][d]}, ensure_ascii=False) + '\n')
+
+
+def extra_sources(init, names):
+    """Other ensembles on the same init, for verification only: area rows -> out/area_exceedance_<source>.ndjson."""
+    import sources
+    for name in names:
+        try:
+            _, lat, lon, steps, tp = sources.SOURCES[name](init, DATA / name)
+            areas, _ = area_rain(lat, lon, steps, tp)
+            write_area_rows(OUT / f'area_exceedance_{name}.ndjson', init, areas, name)
+        except Exception as e:                       # an extra source must never cost the day's main run
+            print(f'{name} skipped: {type(e).__name__}: {e}')
+
+
 def write_outputs(init, areas, gauges, grid=None, flood=None):
     OUT.mkdir(exist_ok=True)
     doc = {'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'init': init.isoformat(),
@@ -252,14 +275,7 @@ def write_outputs(init, areas, gauges, grid=None, flood=None):
            'thresholds': THRESHOLDS, 'days': DAYS, 'areas': areas, 'gauges': gauges, 'grid': grid, 'floodhub': flood,
            'source_floodhub': 'Google Flood Forecasting API, latest flood status (CC BY 4.0, Google Flood Hub)' if flood else None}
     (OUT / 'forecast.json').write_text(json.dumps(doc, ensure_ascii=False, separators=(',', ':')))
-    with open(OUT / 'area_exceedance.ndjson', 'w') as f:
-        for level, rows in areas.items():
-            for c in rows:
-                for d in range(DAYS):
-                    for t in THRESHOLDS:
-                        f.write(json.dumps({'init_time': init.isoformat(), 'source': 'ecmwf_ifs_ens', 'level': level, 'dpa_code': c['code'], 'name': c['name'],
-                                            'parent_code': c['parent'], 'lead_day': d + 1, 'valid_date': (init + dt.timedelta(days=d)).date().isoformat(),
-                                            'threshold_mm': t, 'probability': c['p'][str(t)][d], 'median_mm': c['med'][d], 'p90_mm': c['p90'][d]}, ensure_ascii=False) + '\n')
+    write_area_rows(OUT / 'area_exceedance.ndjson', init, areas, 'ecmwf_ifs_ens')
     with open(OUT / 'river_forecast.ndjson', 'w') as f:
         for g in gauges:
             for d in range(DAYS):
@@ -284,23 +300,27 @@ def bq_load(project, init):
         'floodhub_status': 'fetched_at:TIMESTAMP,gauge_id:STRING,lat:FLOAT,lon:FLOAT,quality_verified:BOOLEAN,has_model:BOOLEAN,severity:STRING,trend:STRING,issued_time:TIMESTAMP,forecast_start:TIMESTAMP,forecast_end:TIMESTAMP',
         'river_forecast': 'init_time:TIMESTAMP,source:STRING,river:STRING,site:STRING,river_id:INTEGER,lead_day:INTEGER,q_median:FLOAT,q_p10:FLOAT,q_p90:FLOAT,rp2:FLOAT,rp5:FLOAT,rp20:FLOAT,p_rp2:FLOAT,p_rp5:FLOAT,p_rp20:FLOAT'}
     river_init = next((json.loads(l)['init_time'] for l in open(OUT / 'river_forecast.ndjson')), None)
-    for table, schema in schemas.items():
-        if (OUT / f'{table}.ndjson').stat().st_size == 0: continue
-        key = {'area_exceedance': init.isoformat(), 'river_forecast': river_init}.get(table)
-        if key:
-            n = list(client.query(f'SELECT COUNT(*) n FROM ectwin_commons.{table} WHERE init_time = TIMESTAMP(@t)',
-                                  job_config=bigquery.QueryJobConfig(query_parameters=[bigquery.ScalarQueryParameter('t', 'STRING', key)])).result())[0].n
-            if n: print(f'{table}: run {key} already loaded ({n} rows), skipped'); continue
+    files = [(t, OUT / f'{t}.ndjson') for t in schemas] + [('area_exceedance', f) for f in sorted(OUT.glob('area_exceedance_*.ndjson'))]
+    for table, path in files:
+        if not path.exists() or path.stat().st_size == 0: continue
+        first = json.loads(open(path).readline())
+        if table in ('area_exceedance', 'river_forecast'):
+            key = init.isoformat() if table == 'area_exceedance' else river_init
+            n = list(client.query(f'SELECT COUNT(*) n FROM ectwin_commons.{table} WHERE init_time = TIMESTAMP(@t) AND source = @s',
+                                  job_config=bigquery.QueryJobConfig(query_parameters=[bigquery.ScalarQueryParameter('t', 'STRING', key),
+                                                                                       bigquery.ScalarQueryParameter('s', 'STRING', first['source'])])).result())[0].n
+            if n: print(f'{table} {first["source"]}: run {key} already loaded ({n} rows), skipped'); continue
         cfg = bigquery.LoadJobConfig(source_format='NEWLINE_DELIMITED_JSON', write_disposition='WRITE_APPEND',
-                                     schema=[bigquery.SchemaField(c.split(':')[0], c.split(':')[1]) for c in schema.split(',')])
-        with open(OUT / f'{table}.ndjson', 'rb') as f: client.load_table_from_file(f, f'{project}.ectwin_commons.{table}', job_config=cfg).result()
-        print('loaded', f'ectwin_commons.{table}')
+                                     schema=[bigquery.SchemaField(c.split(':')[0], c.split(':')[1]) for c in schemas[table].split(',')])
+        with open(path, 'rb') as f: client.load_table_from_file(f, f'{project}.ectwin_commons.{table}', job_config=cfg).result()
+        print('loaded', f'ectwin_commons.{table}', '' if table != 'area_exceedance' else first['source'])
 
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--skip-download', action='store_true')
     ap.add_argument('--bq', metavar='PROJECT')
+    ap.add_argument('--sources', default='ecmwf_aifs_ens,noaa_gefs', help='extra ensembles to verify (comma list, empty for none)')
     ap.add_argument('--crop', action='store_true', help='keep only the Ecuador window of each GRIB step (Cloud Run Job)')
     a = ap.parse_args()
     if not a.skip_download: download_ens(crop=a.crop)
@@ -313,4 +333,6 @@ if __name__ == '__main__':
         print('Flood Hub skipped:', e); flood = None
     gauges = rivers()
     write_outputs(init, areas, gauges, grid, flood)
+    for f in OUT.glob('area_exceedance_*.ndjson'): f.unlink()
+    extra_sources(init, [x for x in a.sources.split(',') if x])
     if a.bq: bq_load(a.bq, init)

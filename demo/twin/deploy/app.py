@@ -2,10 +2,12 @@
 
 Env: OAUTH_CLIENT_ID (web client, External consent screen), SESSION_SECRET, ADMIN_EMAILS (comma list),
      EVENTS_TABLE (project.dataset.table for access events; optional),
+     REPORTS_TABLE (security reports from /seguridad; defaults to security_reports next to EVENTS_TABLE),
      TWIN_BUCKET (optional: pages and data published daily by the Cloud Run Job under gs://TWIN_BUCKET/twin/; local files otherwise).
-Public: /login, /auth, /healthz and /data/* (open GIS exports, CORS for ArcGIS). Everything else needs a session.
+Public: /login, /auth, /healthz, /data/* (open GIS exports, CORS for ArcGIS), /seguridad and /.well-known/security.txt.
+Everything else needs a session.
 """
-import datetime as dt, html, json, mimetypes, os, re, threading, time, uuid
+import datetime as dt, html, json, mimetypes, os, re, secrets, threading, time, uuid
 from flask import Flask, Response, abort, jsonify, redirect, request, session
 from google.auth.transport import requests as greq
 from google.oauth2 import id_token
@@ -15,6 +17,8 @@ CLIENT_ID = os.environ.get('OAUTH_CLIENT_ID', '')
 ADMINS = {e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()}
 TABLE = os.environ.get('EVENTS_TABLE', '')
 BUCKET = os.environ.get('TWIN_BUCKET', '')
+REPORTS = os.environ.get('REPORTS_TABLE') or (TABLE.rsplit('.', 1)[0] + '.security_reports' if TABLE else '')
+SECURITY_CONTACT = 'miguel@wursta.com'
 mimetypes.add_type('application/geo+json', '.geojson')
 
 app = Flask(__name__)
@@ -90,7 +94,7 @@ def log(event, page=None, detail=None, user=None):
 
 
 # ---------------- gate ----------------
-PUBLIC = ('/login', '/auth', '/healthz', '/data/', '/favicon.ico', '/privacidad', '/terminos')
+PUBLIC = ('/login', '/auth', '/healthz', '/data/', '/favicon.ico', '/privacidad', '/terminos', '/seguridad', '/.well-known/security.txt', '/security.txt')
 
 
 @app.before_request
@@ -135,7 +139,7 @@ h1{font:800 28px/1.1 Archivo,"Arial Narrow",sans-serif;font-stretch:85%;margin:0
 <script src="https://accounts.google.com/gsi/client" async></script>
 <div id="g_id_onload" data-client_id="__CLIENT__" data-login_uri="__LOGIN_URI__" data-ux_mode="redirect" data-auto_prompt="false" data-state="__NEXT__"></div>
 <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline" data-text="signin_with" data-shape="rectangular" data-locale="es"></div>
-<p class="note"><a href="/privacidad">Aviso de privacidad</a> · <a href="/terminos">Condiciones de uso</a></p>
+<p class="note"><a href="/privacidad">Aviso de privacidad</a> · <a href="/terminos">Condiciones de uso</a> · <a href="/seguridad">Seguridad</a></p>
 <p class="note">Registramos su correo, nombre, fecha y hora de acceso y su uso de la aplicación (páginas, tiempo de sesión, dispositivo y dirección IP) para control de acceso y seguridad. Herramienta experimental de apoyo a la decisión: no es información oficial y no reemplaza los avisos de la SNGR ni del INAMHI.</p>
 </main></body></html>'''
 
@@ -159,7 +163,7 @@ h1{font-size:26px;margin:0 0 4px}h2{font-size:17px;margin:22px 0 6px}.note{color
 PRIV = """<p>Este aviso explica qué datos personales trata el <b>Gemelo Digital Ecuador – El Niño</b> (GDE-Niño), herramienta experimental de apoyo a la decisión operada por Wursta.</p>
 <h2>Qué datos recogemos</h2><p>Al iniciar sesión con Google recibimos su <b>nombre, correo electrónico y foto de perfil</b> (alcances openid, email y profile). No accedemos a su correo, archivos ni contactos. Durante el uso registramos la fecha y hora de ingreso y salida, las páginas visitadas, el tiempo con la página activa, las descargas de datos, la dirección IP y el tipo de navegador y dispositivo.</p>
 <h2>Para qué los usamos</h2><p>Para controlar el acceso, proteger el servicio, entender cómo se usa y mejorarlo. No vendemos ni compartimos sus datos con terceros con fines comerciales y no los usamos para publicidad.</p>
-<h2>Dónde se guardan y por cuánto tiempo</h2><p>En Google Cloud (BigQuery, región de Estados Unidos), con acceso restringido al administrador del servicio. Se conservan mientras dure el piloto y como máximo 12 meses, salvo que la ley exija otro plazo.</p>
+<h2>Dónde se guardan y por cuánto tiempo</h2><p>En Google Cloud (BigQuery, región de Estados Unidos), con acceso restringido al administrador del servicio. Se conservan mientras dure el piloto y como máximo 12 meses, salvo que la ley exija otro plazo. Si envía un reporte de seguridad, guardamos su contenido, el contacto que decida dejar y su dirección IP, solo para atenderlo.</p>
 <h2>Encargados</h2><p>Google Cloud (infraestructura e inicio de sesión). El desarrollo y mantenimiento de la aplicación se realiza con asistencia de inteligencia artificial (Claude Code, de Anthropic), sin enviarle los registros de acceso.</p>
 <h2>Sus derechos</h2><p>Puede solicitar acceso, rectificación, eliminación u oposición al tratamiento de sus datos, conforme a la Ley Orgánica de Protección de Datos Personales del Ecuador, escribiendo a <b>miguel@wursta.com</b>. También puede revocar el acceso desde su cuenta de Google en myaccount.google.com/permissions.</p>"""
 
@@ -177,6 +181,61 @@ def privacidad(): return Response(DOC.replace('__T__', 'Aviso de privacidad').re
 
 @app.get('/terminos')
 def terminos(): return Response(DOC.replace('__T__', 'Condiciones de uso').replace('__B__', TERMS), mimetype='text/html')
+
+
+# ---------------- security: policy, reports, security.txt ----------------
+SEC = """<p>Si encuentra una vulnerabilidad, un problema de privacidad o un error que pueda afectar a los usuarios o a los datos, repórtelo aquí. Respondemos en un plazo de <b>5 días hábiles</b> y le informamos cuando esté corregido.</p>
+<h2>Cómo reportar</h2><p>Use el formulario o escriba a <b>__CONTACT__</b>. Incluya los pasos para reproducirlo y su posible impacto. No incluya datos personales de terceros.</p>
+<h2>Investigación de buena fe</h2><p>Agradecemos la investigación responsable. Le pedimos no acceder ni modificar datos de otros usuarios, no degradar el servicio (sin pruebas de carga ni denegación de servicio), no usar ingeniería social y darnos un plazo razonable antes de publicar.</p>
+<h2>Actualizaciones de seguridad</h2><p>Las dependencias se revisan automáticamente cada semana y el sitio se escanea de forma pasiva. Las correcciones se aplican sin interrumpir el servicio; los cambios relevantes se informan en esta página.</p>"""
+FORM = """<h2>Formulario de reporte</h2><form method="post" action="/seguridad" style="display:grid;gap:10px">
+<input type="hidden" name="t" value="__TOKEN__"><input name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+<label>Tipo<br><select name="kind" style="width:100%;padding:8px"><option value="vulnerabilidad">Vulnerabilidad de seguridad</option><option value="privacidad">Privacidad o datos personales</option><option value="datos">Error en los datos o pronósticos</option><option value="otro">Otro</option></select></label>
+<label>Descripción (pasos, impacto)<br><textarea name="detail" required maxlength="5000" rows="7" style="width:100%;padding:8px;box-sizing:border-box"></textarea></label>
+<label>Página o URL afectada (opcional)<br><input name="where" maxlength="300" style="width:100%;padding:8px;box-sizing:border-box"></label>
+<label>Contacto para responderle (opcional)<br><input name="contact" type="email" maxlength="200" value="__EMAIL__" style="width:100%;padding:8px;box-sizing:border-box"></label>
+<button style="padding:10px;font-weight:600;cursor:pointer">Enviar reporte</button></form>"""
+_recent = {}
+
+
+@app.get('/seguridad')
+def seguridad():
+    tok = secrets.token_urlsafe(16)
+    body = SEC.replace('__CONTACT__', SECURITY_CONTACT) + FORM.replace('__TOKEN__', tok).replace('__EMAIL__', html.escape(session.get('email', '')))
+    resp = Response(DOC.replace('__T__', 'Seguridad y reporte de vulnerabilidades').replace('__B__', body), mimetype='text/html')
+    resp.set_cookie('sec_t', tok, secure=True, httponly=True, samesite='Strict', max_age=3600)
+    return resp
+
+
+@app.post('/seguridad')
+def seguridad_report():
+    f, ip = request.form, client_info()['ip']
+    if f.get('website') or not f.get('t') or f.get('t') != request.cookies.get('sec_t'): abort(400)     # bot field or cross-site post
+    now = time.time(); hits = [t for t in _recent.get(ip, []) if now - t < 3600]
+    if len(hits) >= 5: return Response('Demasiados reportes desde esta dirección; intente más tarde.', 429)
+    _recent[ip] = hits + [now]
+    rid = uuid.uuid4().hex[:8].upper()
+    row = {'ts': dt.datetime.now(dt.timezone.utc).isoformat(), 'report_id': rid, 'kind': (f.get('kind') or 'otro')[:20],
+           'detail': (f.get('detail') or '')[:5000], 'location': (f.get('where') or '')[:300] or None, 'contact': (f.get('contact') or '')[:200] or None,
+           'email': session.get('email'), 'ip': ip, 'user_agent': client_info()['user_agent'], 'status': 'nuevo'}
+    if not row['detail'].strip(): abort(400)
+    app.logger.warning('SECURITY_REPORT %s kind=%s', rid, row['kind'])          # Cloud Monitoring alert -> admin e-mail
+    try:
+        if REPORTS and bq(): bq().insert_rows_json(REPORTS, [row])
+    except Exception as e:
+        app.logger.error('security report %s not stored: %s', rid, e)
+    log('security_report', page='seguridad', detail={'id': rid, 'kind': row['kind']}, user=session if session.get('email') else {})
+    msg = f'<p><b>Gracias. Recibimos su reporte.</b> Código de seguimiento: <b>{rid}</b>. Le responderemos en un plazo de 5 días hábiles si dejó un contacto.</p><p><a href="/">Volver</a></p>'
+    return Response(DOC.replace('__T__', 'Reporte recibido').replace('__B__', msg), mimetype='text/html')
+
+
+@app.get('/.well-known/security.txt')
+@app.get('/security.txt')
+def security_txt():
+    root = request.url_root.replace('http://', 'https://')
+    exp = (dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=180)).strftime('%Y-%m-%dT00:00:00Z')
+    return Response(f'Contact: mailto:{SECURITY_CONTACT}\nContact: {root}seguridad\nExpires: {exp}\nPreferred-Languages: es, en\n'
+                    f'Policy: {root}seguridad\nCanonical: {root}.well-known/security.txt\n', mimetype='text/plain')
 
 
 @app.post('/auth')
@@ -281,6 +340,8 @@ def admin():
       WHERE ts > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 30 DAY) GROUP BY 1 ORDER BY 1''')
     doms = q(f'SELECT domain, COUNT(DISTINCT email) users FROM {T} WHERE domain IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10')
     recent = q(f'SELECT ts, event, email, page, device, browser, ip, detail FROM {T} WHERE event != "heartbeat" ORDER BY ts DESC LIMIT 60')
+    try: reports = q(f'SELECT ts, report_id, kind, location, contact, email, ip, detail FROM `{REPORTS}` ORDER BY ts DESC LIMIT 20') if REPORTS else []
+    except Exception: reports = []
 
     mx = max([r['users'] for r in daily] or [1])
     bars = ''.join(f'<div title="{esc(r["d"])}: {r["users"]} usuarios, {r["logins"]} ingresos" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px">'
@@ -314,6 +375,7 @@ ul{{list-style:none;margin:0;padding:0;display:grid;gap:4px}}li{{display:flex;ju
 <div class="card"><h2>Organizaciones</h2><ul>{dm or '<li class="note">Aún sin datos.</li>'}</ul></div></div>
 <div class="card"><h2>Usuarios</h2><div class="scroll"><table><tr><th>Usuario</th><th>Dominio</th><th>Primer ingreso</th><th>Último ingreso</th><th>Última actividad</th><th>Sesiones</th><th>Tiempo activo</th><th>Última sesión</th><th>Vistas gemelo · verif.</th><th>Descargas</th><th>Dispositivo · IP</th></tr>{rows}</table></div>
 <p class="note">Horas en hora de Ecuador (UTC−5). Tiempo activo = minutos con la página visible.</p></div>
+<div class="card"><h2>Reportes de seguridad</h2>{'<div class="scroll"><table><tr><th>Fecha</th><th>Código</th><th>Tipo</th><th>Lugar</th><th>Contacto</th><th>IP</th><th>Descripción</th></tr>' + ''.join(f'<tr><td>{esc(r["ts"])}</td><td><b>{esc(r["report_id"])}</b></td><td>{esc(r["kind"])}</td><td>{esc(r["location"])}</td><td>{esc(r["contact"] or r["email"])}</td><td>{esc(r["ip"])}</td><td class="note" style="max-width:480px;white-space:pre-wrap">{esc(r["detail"])}</td></tr>' for r in reports) + '</table></div>' if reports else '<p class="note">Sin reportes. Formulario público en <a href="/seguridad">/seguridad</a>.</p>'}</div>
 <div class="card"><h2>Actividad reciente</h2><div class="scroll"><table><tr><th>Fecha</th><th>Evento</th><th>Usuario</th><th>Página</th><th>Dispositivo</th><th>IP</th><th>Detalle</th></tr>{ev}</table></div></div>
 </div></body></html>'''
     return Response(page, mimetype='text/html')

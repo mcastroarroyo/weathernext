@@ -6,11 +6,14 @@ Forecast windows run 12Z->12Z from the 12Z run; CHIRPS days are UTC calendar day
 for lead d is approximated as 0.5 * CHIRPS(init day + d - 1) + 0.5 * CHIRPS(init day + d).
 Scores per level (canton, parroquia) and threshold: Brier score and skill vs the sample base rate, reliability,
 hits / misses / false alarms at P >= 0.5, and bias / MAE / correlation of the forecast median vs observed rain.
+Every source in area_exceedance is verified (ECMWF IFS ENS, AIFS ENS, NOAA GEFS). Each run also gets a shadow calibration
+(calibrate.py) fitted only on pairs observed before it was issued, so its scores are out of sample.
 """
 import argparse, datetime as dt, functools, json, pathlib
 import numpy as np, rasterio
 from rasterio.windows import from_bounds
 from pipeline import inside, GEO, OUT, LAT_N, LAT_S, LON_W, LON_E
+import calibrate
 
 CHIRPS = 'https://data.chc.ucsb.edu/products/CHIRPS/v3.0/daily/prelim/sat/{y}/chirps-v3.0.prelim.{y}.{m:02d}.{d:02d}.tif'
 CACHE = pathlib.Path(__file__).parent / 'data' / 'chirps'
@@ -70,37 +73,71 @@ def scores(p, o_mm, med, thr):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--project', required=True); ap.add_argument('--init')
     ap.add_argument('--reuse', help='previous verification.json: runs already verified for all 15 days are copied, not recomputed'); a = ap.parse_args()
-    inits = [a.init] if a.init else [r['t'] for r in bq(a.project, 'SELECT DISTINCT FORMAT_TIMESTAMP("%FT%R", init_time) AS t FROM ectwin_commons.area_exceedance ORDER BY t')]
+    where = f'WHERE init_time = TIMESTAMP("{a.init}:00+00")' if a.init else ''
+    todo = [(r['t'], r['source']) for r in bq(a.project, f'SELECT DISTINCT FORMAT_TIMESTAMP("%FT%R", init_time) AS t, source FROM ectwin_commons.area_exceedance {where} ORDER BY t')]
     done = {}
     if a.reuse and pathlib.Path(a.reuse).exists():
-        done = {r['init']: r for r in json.loads(pathlib.Path(a.reuse).read_text())['runs'] if len(r['leads']) == 15}
-    runs = []
-    for init in inits:
-        r = done.get(init) or verify_run(a.project, init)
-        if r: runs.append(r)
-    # one file for the verification page: every verified run, newest first
-    (OUT / 'verification.json').write_text(json.dumps({'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'runs': runs[::-1]}, ensure_ascii=False, separators=(',', ':')))
+        done = {(r['init'], r.get('source', 'ecmwf_ifs_ens')): r for r in json.loads(pathlib.Path(a.reuse).read_text())['runs']
+                if len(r['leads']) == 15 and 'calibrated' in r['levels']['canton']}
+    runs, models = [], {}
+    for source in sorted({s for _, s in todo}):
+        mine = []
+        for init, _ in [x for x in todo if x[1] == source]:
+            r = done.get((init, source))
+            if not r:
+                r = verify_run(a.project, init, source)
+                if r: calibrate_run(r, mine)
+            if r: mine.append(r)
+        runs += mine
+        today = dt.datetime.now(dt.timezone.utc).date()
+        models[source] = calibrate.fit(train_pairs(mine, today - dt.timedelta(days=2)))
+    runs.sort(key=lambda r: (r['init'], r['source']))
+    # one file for the verification page: every verified run, newest first, and the calibration that would apply today
+    (OUT / 'verification.json').write_text(json.dumps({'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'runs': runs[::-1],
+                                                       'calibration': models}, ensure_ascii=False, separators=(',', ':')))
     print('wrote', OUT / 'verification.json', f'({len(runs)} runs)')
 
 
-def verify_run(project, init):
+def train_pairs(runs, until):
+    """Canton pairs whose valid day was already observed by `until` (CHIRPS arrives ~2 days late)."""
+    out = []
+    for r in runs:
+        d0 = dt.date.fromisoformat(r['init'][:10])
+        out += [x for x in r['levels']['canton']['areas'] if d0 + dt.timedelta(days=x['lead']) <= until]
+    return out
+
+
+def calibrate_run(result, earlier):
+    """Shadow calibration of one run from earlier runs only, and its scores next to the raw ones."""
+    pairs = train_pairs(earlier, dt.date.fromisoformat(result['init'][:10]) - dt.timedelta(days=2))
+    model = calibrate.fit(pairs)
+    for lv, v in result['levels'].items():
+        for x in v['areas']: x.update(calibrate.apply(model, x))
+        P = {t: np.array([x[f'cp{t}'] for x in v['areas']]) for t in THRS}
+        O = np.array([x['obs'] for x in v['areas']]); M = np.array([x['cmed'] for x in v['areas']])
+        v['calibrated'] = {'n_train': len(pairs), 'groups': len(model), 'active': bool(model),
+                           'amount': {'bias_mm': round(float((M - O).mean()), 2), 'mae_mm': round(float(np.abs(M - O).mean()), 2)},
+                           'by_threshold': [{k: w for k, w in scores(P[t], O, M, t).items() if k != 'reliability'} for t in THRS]}
+
+
+def verify_run(project, init, source='ecmwf_ifs_ens'):
     t0 = dt.datetime.fromisoformat(init)
     # observed days available
     days, d = [], t0.date()
     while d <= t0.date() + dt.timedelta(days=15):
         try: chirps_day(d); days.append(d); d += dt.timedelta(days=1)
         except Exception: break
-    if len(days) < 2: print(f'forecast {init}Z: no observed days yet'); return None
+    if len(days) < 2: print(f'{source} {init}Z: no observed days yet'); return None
     leads = [L for L in range(1, 16) if t0.date() + dt.timedelta(days=L) in days]
-    if not leads: print(f'forecast {init}Z: no observed days yet'); return None
-    print(f'forecast {init}Z · CHIRPS days {days[0]}–{days[-1]} · verifiable leads {leads}')
+    if not leads: print(f'{source} {init}Z: no observed days yet'); return None
+    print(f'{source} {init}Z · CHIRPS days {days[0]}–{days[-1]} · verifiable leads {leads}')
     obs = {L: .5 * chirps_day(t0.date() + dt.timedelta(days=L - 1)) + .5 * chirps_day(t0.date() + dt.timedelta(days=L)) for L in leads}
     shape = tuple(next(iter(obs.values())).shape)
     rows = bq(project, f'SELECT level, dpa_code, name, lead_day, threshold_mm, probability, median_mm FROM ectwin_commons.area_exceedance '
-                         f'WHERE init_time = TIMESTAMP("{init}:00+00") AND level IN ("canton","parroquia") AND lead_day <= {max(leads)} AND threshold_mm IN (20,30,50)')
+                         f'WHERE init_time = TIMESTAMP("{init}:00+00") AND source = "{source}" AND level IN ("canton","parroquia") AND lead_day <= {max(leads)} AND threshold_mm IN (20,30,50)')
     fc = {}
     for r in rows: fc[(r['level'], r['dpa_code'], int(r['lead_day']), int(r['threshold_mm']))] = (float(r['probability']), float(r['median_mm']), r['name'])
-    result = {'init': init, 'observed': 'CHIRPS v3 preliminary daily (0.05°), 12Z windows approximated from two UTC days', 'leads': leads, 'levels': {}}
+    result = {'init': init, 'source': source, 'observed': 'CHIRPS v3 preliminary daily (0.05°), 12Z windows approximated from two UTC days', 'leads': leads, 'levels': {}}
     for level, gfile in (('canton', 'cantones.json'), ('parroquia', 'parroquias.json')):
         masks = area_masks(gfile, shape)
         P = {t: [] for t in THRS}; O, M, worst, per_area = [], [], [], []

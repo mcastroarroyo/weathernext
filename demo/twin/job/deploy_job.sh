@@ -14,7 +14,7 @@ RUNNER="${RUNNER:-ectwin-runner@$P.iam.gserviceaccount.com}"; BUCKET="${BUCKET:-
 STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
 mkdir -p "$STAGE/pipeline" "$STAGE/data/geo" "$STAGE/data/web" "$STAGE/deploy"
 cp job/Dockerfile daily.py build_page.py export_gis.py twin.template.html verif.template.html "$STAGE/"
-cp pipeline/pipeline.py pipeline/verify.py pipeline/requirements.txt "$STAGE/pipeline/"
+cp pipeline/pipeline.py pipeline/verify.py pipeline/sources.py pipeline/calibrate.py pipeline/requirements.txt "$STAGE/pipeline/"
 cp data/geo/provincias.json data/geo/cantones.json data/geo/parroquias.json "$STAGE/data/geo/"
 cp data/web/*.json "$STAGE/data/web/"
 

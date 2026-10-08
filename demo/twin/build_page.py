@@ -39,8 +39,12 @@ vpath = HERE / 'pipeline' / 'out' / 'verification.json'
 vdir = HERE / 'deploy' / 'verificacion' / 'data'; vdir.mkdir(parents=True, exist_ok=True)
 for old in vdir.glob('*.json'): old.unlink()
 runs = json.loads(vpath.read_text())['runs'] if vpath.exists() else []
-for r in runs: (vdir / (r['init'].replace(':', '') + '.json')).write_text(json.dumps(r, ensure_ascii=False, separators=(',', ':')))
-(vdir / 'index.json').write_text(json.dumps({'runs': [{'init': r['init'], 'leads': r['leads']} for r in runs]}))
+index = []
+for r in runs:
+    src = r.get('source', 'ecmwf_ifs_ens'); fname = f"{src}_{r['init'].replace(':', '')}.json"
+    (vdir / fname).write_text(json.dumps(r, ensure_ascii=False, separators=(',', ':')))
+    index.append({'init': r['init'], 'source': src, 'leads': r['leads'], 'file': fname, 'calibrated': bool(r['levels']['canton'].get('calibrated', {}).get('active'))})
+(vdir / 'index.json').write_text(json.dumps({'runs': index}))
 twin_css = (HERE / 'twin.template.html').read_text()
 twin_css = twin_css[twin_css.index('<style>'):twin_css.index('</style>') + 8]
 vpage = (HERE / 'verif.template.html').read_text().replace('<!--__CSS__-->', twin_css).replace('/*__TOPO__*/', topo).replace('/*__NAMES__*/', json.dumps(names, ensure_ascii=False))
