@@ -9,6 +9,7 @@
   --accent: #0a6c87; --accent-ink: #ffffff; --warm: #c2453a; --land-off: #e3e8e6;
   --r1: #ece7d8; --r2: #e5b26c; --r3: #c65a43; --r4: #6c1d48;
   --gauge: #0a6c87; --road: #2b3a39; --official: #f4efe2; --official-line: #b9a77a;
+  --b0: #eef4f9; --b1: #c4dbee; --b2: #7fb1d8; --b3: #3a7fb8; --b4: #0c4a8a; --fh0: #8a9896;
   --f-display: "Archivo", "Arial Narrow", system-ui, sans-serif;
   --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
   --f-data: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -18,12 +19,14 @@
   --bg: #0d1514; --surface: #142120; --surface-2: #1a2928; --ink: #e4eeec; --muted: #93a8a5; --line: #2a3b39;
   --accent: #4fb3cf; --accent-ink: #062530; --warm: #ef7a6b; --land-off: #1f2e2c;
   --r1: #2c3533; --r2: #b8853f; --r3: #d06a4f; --r4: #e7a1c6;
-  --gauge: #6cc6df; --road: #d7e2e0; --official: #262418; --official-line: #7a6d48; color-scheme: dark; } }
+  --gauge: #6cc6df; --road: #d7e2e0; --official: #262418; --official-line: #7a6d48;
+  --b0: #1c2a33; --b1: #23465e; --b2: #2f6a93; --b3: #4f95c8; --b4: #9cc9ec; --fh0: #6f8280; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #0d1514; --surface: #142120; --surface-2: #1a2928; --ink: #e4eeec; --muted: #93a8a5; --line: #2a3b39;
   --accent: #4fb3cf; --accent-ink: #062530; --warm: #ef7a6b; --land-off: #1f2e2c;
   --r1: #2c3533; --r2: #b8853f; --r3: #d06a4f; --r4: #e7a1c6;
-  --gauge: #6cc6df; --road: #d7e2e0; --official: #262418; --official-line: #7a6d48; color-scheme: dark; }
+  --gauge: #6cc6df; --road: #d7e2e0; --official: #262418; --official-line: #7a6d48;
+  --b0: #1c2a33; --b1: #23465e; --b2: #2f6a93; --b3: #4f95c8; --b4: #9cc9ec; --fh0: #6f8280; color-scheme: dark; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -85,6 +88,22 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 #map text { font: 600 10.5px var(--f-body); fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; pointer-events: none; }
 #map .inset rect { fill: none; stroke: var(--line); }
 .mapfoot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; padding: 8px 12px 10px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
+.layers { display: grid; gap: 5px; font-size: 13px; }
+.layers label { display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.layers label.off { color: var(--muted); cursor: default; }
+.layers input { accent-color: var(--accent); margin: 0; }
+.layers .tag { font: 600 10px/1 var(--f-body); color: var(--warm); border: 1px solid var(--warm); border-radius: 999px; padding: 2px 6px; margin-left: auto; white-space: nowrap; }
+.layers .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.ramp { display: flex; height: 8px; border-radius: 3px; overflow: hidden; } .ramp span { flex: 1; }
+.rampx { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.storybtn { font: 600 13px/1.15 var(--f-body); border: 1px solid var(--accent); background: var(--surface); color: var(--accent); border-radius: 5px; padding: 8px 6px; cursor: pointer; }
+.caption { position: absolute; left: 50%; top: 108px; transform: translateX(-50%); background: var(--ink); color: var(--surface); font: 600 14px/1.3 var(--f-body); padding: 8px 14px; border-radius: 6px; max-width: 90%; text-align: center; box-shadow: 0 4px 14px rgb(0 0 0 / .18); }
+.caption small { display: block; font-weight: 400; font-size: 12px; opacity: .8; }
+#map rect.cell { stroke: var(--surface); stroke-width: .4; pointer-events: none; }
+#map circle.fh { stroke: var(--surface); stroke-width: .6; }
+#map circle.fh.ver { stroke: var(--ink); stroke-width: 1.4; }
+.gis a { color: var(--accent); }
+.gis code { font: 11.5px var(--f-data); background: var(--surface-2); padding: 1px 4px; border-radius: 3px; word-break: break-all; }
 .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--surface); font-size: 12.5px; padding: 6px 8px; border-radius: 4px; max-width: 260px; opacity: 0; transition: opacity .12s; }
 
 .panel { display: grid; gap: 12px; }
@@ -161,6 +180,11 @@ details.legal p { margin: 8px 0 0; max-width: 110ch; }
         <div class="legend" id="legend"></div>
         <div class="note">Probabilidad de superar el umbral × vulnerabilidad del área. Una provincia toma el nivel de su cantón más afectado. Se dice «nivel de riesgo», nunca «alerta».</div>
       </div>
+      <div class="ctl">
+        <span class="label">Capas</span>
+        <button class="storybtn" id="story">▶ Capa por capa</button>
+        <div class="layers" id="layers"></div>
+      </div>
       <div class="ctl" id="anactl">
         <span class="label">Análogos históricos</span>
         <div class="analogs" id="analogs"></div>
@@ -172,6 +196,7 @@ details.legal p { margin: 8px 0 0; max-width: 110ch; }
       <nav class="crumbs" id="crumbs" aria-label="Nivel territorial"></nav>
       <svg id="map" viewBox="0 0 760 620" role="img" aria-label="Mapa coloreado por nivel de riesgo"></svg>
       <div class="tip" id="tip"></div>
+      <div class="caption" id="caption" hidden></div>
       <div class="mapfoot"><span id="mapnote"></span><span id="mapsrc"></span></div>
     </section>
 
@@ -179,6 +204,7 @@ details.legal p { margin: 8px 0 0; max-width: 110ch; }
       <div class="card"><div class="kpis" id="kpis"></div></div>
       <div class="card" id="detail"></div>
       <div class="card brief" id="brief"></div>
+      <div class="card gis" id="gis" hidden></div>
     </aside>
   </div>
 
@@ -188,7 +214,7 @@ details.legal p { margin: 8px 0 0; max-width: 110ch; }
       <p><b>Herramienta experimental de apoyo a la decisión.</b> Los pronósticos, probabilidades, niveles de riesgo e indicadores de esta página se generan automáticamente a partir de modelos y datos de terceros. No constituyen alertas, avisos ni información oficial y no reemplazan los comunicados de la Secretaría Nacional de Gestión de Riesgos (SNGR), del INAMHI ni de ninguna otra autoridad competente. Ante una emergencia, siga siempre las instrucciones oficiales y llame al ECU 911.</p>
       <p><b>Sin garantía.</b> La información se ofrece «tal cual», puede contener errores, omisiones o retrasos y puede no reflejar las condiciones reales. Wursta y sus socios no garantizan su exactitud, integridad ni disponibilidad, y no se responsabilizan por decisiones, acciones u omisiones basadas en ella. Toda decisión que afecte a personas o bienes debe ser validada por personal técnico competente de la institución responsable.</p>
       <p><b>Desarrollo asistido por inteligencia artificial.</b> Esta aplicación fue construida y es mantenida con asistencia de inteligencia artificial (Claude Code, de Anthropic) dentro de un entorno controlado en Google Cloud, bajo supervisión humana. El código, los cálculos y los textos pueden contener errores propios de herramientas automatizadas.</p>
-      <p><b>Fuentes y licencias.</b> Lluvia: ECMWF Open Data (CC BY 4.0). Caudales: GEOGloWS (CC BY 4.0). Límites territoriales: INEC 2024 vía OCHA COD-AB (CC BY-IGO). Red Vial Estatal: Ministerio de Infraestructura y Tecnología (MIT), agosto 2026, usada con fines de demostración. Vulnerabilidad, población por área, reparto parroquial y llamadas del ECU 911 son estimaciones de demostración.</p>
+      <p><b>Fuentes y licencias.</b> Lluvia: ECMWF Open Data (CC BY 4.0). Caudales: GEOGloWS (CC BY 4.0). Estado de crecidas: Google Flood Hub (CC BY 4.0). Límites territoriales: INEC 2024 vía OCHA COD-AB (CC BY-IGO). Red Vial Estatal: Ministerio de Infraestructura y Tecnología (MIT), agosto 2026, usada con fines de demostración. Vulnerabilidad, población por área, reparto parroquial y llamadas del ECU 911 son estimaciones de demostración.</p>
     </details>
     <div><b>Cómo se construye en producción:</b> WeatherNext 3 y 2 (0–15 días), GloFAS y la API de Google Flood Forecasting (caudales), C3S/NMME (estacional), CHIRPS y estaciones del INAMHI (verificación). Cada institución guarda su trabajo en su propio proyecto de Google Cloud.</div>
   </footer>
@@ -257,6 +283,7 @@ for (const pr of U.provincia.values()) { const cs = children.provincia.get(pr.co
 const GALAP = [...U.provincia.values()].find(p => norm(p.name) === 'galapagos');
 
 // ---------- forecast cells ----------
+const LY = { fill: 'riesgo', malla: false, floodhub: true, geoglows: true, vias: false };   // map layers
 const st = { mode: REAL ? 'real' : 'demo', scn: 'muy', day: REAL ? 3 : 7, thr: REAL ? 20 : 50, view: 'riesgo', prov: null, canton: null, parr: null, gauge: null };
 const S = () => SCEN.find(s => s.id === st.scn);
 const sf = () => st.mode === 'real' ? 1 : S().f;
@@ -330,7 +357,13 @@ const svg = d3.select('#map'), W = 760, H = 620;
 const gInset = svg.append('g').attr('class', 'inset');
 gInset.append('rect').attr('x', 10).attr('y', 455).attr('width', 170).attr('height', 155).attr('rx', 4);
 gInset.append('text').attr('x', 18).attr('y', 470).text('Galápagos');
-const gUnits = svg.append('g'), gProv = svg.append('g'), gRoads = svg.append('g'), gGauges = svg.append('g'), gLabels = svg.append('g');
+const gUnits = svg.append('g'), gGrid = svg.append('g'), gProv = svg.append('g'), gRoads = svg.append('g'), gFlood = svg.append('g'), gGauges = svg.append('g'), gLabels = svg.append('g');
+const RAMP = ['var(--b0)', 'var(--b1)', 'var(--b2)', 'var(--b3)', 'var(--b4)'];
+const rampOf = p => RAMP[p < .1 ? 0 : p < .3 ? 1 : p < .5 ? 2 : p < .7 ? 3 : 4];
+const unitFill = u => LY.fill === 'riesgo' ? lvlVar(cell(u).level) : LY.fill === 'lluvia' ? rampOf(cell(u).p) : 'var(--land-off)';
+const FH = REAL && REAL.floodhub ? REAL.floodhub : [];
+const FHCOL = { NO_FLOODING: 'var(--fh0)', ABOVE_NORMAL: 'var(--r2)', SEVERE: 'var(--r3)', EXTREME: 'var(--r4)' };
+const FHTXT = { NO_FLOODING: 'sin crecida', ABOVE_NORMAL: 'sobre lo normal', SEVERE: 'severa', EXTREME: 'extrema', UNKNOWN: 'sin dato' };
 const tip = document.getElementById('tip');
 let proj, path;
 const mainland = { type: 'FeatureCollection', features: [...U.provincia.values()].filter(p => p !== GALAP).map(p => ({ type: 'Feature', properties: {}, geometry: p.feature })) };
@@ -357,7 +390,7 @@ function drawMap() {
   const ctx = dep === 2 ? children.provincia.get(st.prov).filter(c => c.code !== st.canton) : [];
   const data = [...ctx.map(c => ({ u: c, ctx: true })), ...units.filter(u => !(dep === 0 && u.parent === GALAP.code)).map(u => ({ u, ctx: false }))];
   gUnits.selectAll('path').data(data, o => o.u.code).join('path').attr('class', 'unit')
-    .attr('d', o => path(o.u.feature)).style('fill', o => lvlVar(cell(o.u).level))
+    .attr('d', o => path(o.u.feature)).style('fill', o => unitFill(o.u))
     .classed('dim', o => o.ctx || !inFocus(o.u)).classed('sel', o => o.u.code === sel)
     .on('click', (e, o) => onUnitClick(o))
     .on('mousemove', (e, o) => { const c = cell(o.u); showTip(e, `<b>${o.u.name}</b> · ${o.u.level === 'parroquia' ? 'parroquia' : NAMES[o.u.parent] || ''}<br>P(&gt;${st.thr} mm): ${Math.round(c.p * 100)} % · nivel ${c.level}`); })
@@ -369,10 +402,23 @@ function drawMap() {
   // Galápagos inset only at national depth
   gInset.attr('display', dep === 0 ? null : 'none');
   gInset.selectAll('path').data(dep === 0 ? children.provincia.get(GALAP.code) : [], c => c.code).join('path').attr('class', 'unit')
-    .attr('d', c => pathInset(c.feature)).style('fill', c => lvlVar(cell(c).level)).classed('sel', c => c.code === sel)
+    .attr('d', c => pathInset(c.feature)).style('fill', c => unitFill(c)).classed('sel', c => c.code === sel)
     .on('click', (e, c) => onUnitClick({ u: c, ctx: false }));
+  // ECMWF native 0.25° grid (the ArcGIS export), real forecast only
+  const G25 = st.mode === 'real' && LY.malla && REAL && REAL.grid ? REAL.grid : null, hs = G25 ? G25.step_deg / 2 : 0;
+  gGrid.selectAll('rect').data(G25 ? G25.cells : [], c => c.lat + ',' + c.lon).join('rect').attr('class', 'cell')
+    .attr('x', c => proj([c.lon - hs, c.lat + hs])[0]).attr('y', c => proj([c.lon - hs, c.lat + hs])[1])
+    .attr('width', c => proj([c.lon + hs, c.lat])[0] - proj([c.lon - hs, c.lat])[0]).attr('height', c => proj([c.lon, c.lat - hs])[1] - proj([c.lon, c.lat + hs])[1])
+    .style('fill', c => rampOf(c.p[String(st.thr)][d - 1])).style('opacity', .62);
+  // Google Flood Hub gauges (latest real status)
+  const fh = LY.floodhub ? FH : [];
+  gFlood.selectAll('circle').data(fh, g => g.id).join('circle').attr('class', g => 'fh' + (g.verified ? ' ver' : ''))
+    .attr('cx', g => proj([g.lon, g.lat])[0]).attr('cy', g => proj([g.lon, g.lat])[1]).attr('r', g => (g.verified ? 4.5 : 2.4) * (dep ? 1.3 : 1))
+    .style('fill', g => FHCOL[g.severity] || 'var(--fh0)')
+    .on('mousemove', (e, g) => showTip(e, `<b>Flood Hub</b> · ${g.verified ? 'punto verificado' : 'punto modelado'}<br>Estado: ${FHTXT[g.severity] || g.severity}${g.trend ? ' · tendencia ' + g.trend.toLowerCase().replace('_', ' ') : ''}<br><span style="opacity:.8">${g.id}</span>`))
+    .on('mouseleave', hideTip);
   // MIT roads
-  const rd = st.view === 'mit' ? ROADS : [];
+  const rd = st.view === 'mit' || LY.vias ? ROADS : [];
   gRoads.selectAll('path.casing').data(rd, r => r.id).join('path').attr('class', 'casing').attr('d', r => path(r.f))
     .style('stroke-width', r => roadLevel(r) >= 3 ? 7 : 4).style('opacity', r => inArea(r) ? 1 : .35);
   gRoads.selectAll('path.road').data(rd, r => r.id).join('path').attr('class', 'road').attr('d', r => path(r.f))
@@ -382,7 +428,7 @@ function drawMap() {
     .on('mouseleave', hideTip);
   gRoads.selectAll('path.road').filter(r => roadLevel(r) >= 3).raise();
   // gauges
-  const gd = st.view === 'riesgo' ? GAUGES : [];
+  const gd = LY.geoglows && st.view !== 'mit' ? GAUGES : [];
   const gs = gGauges.selectAll('g.gauge').data(gd, g => g.name).join(e => { const g = e.append('g').attr('class', 'gauge'); g.append('circle').attr('r', 5.5); return g; });
   gs.attr('transform', g => `translate(${proj([g.lon, g.lat])})`).classed('hot', g => gaugeFlow(g, d).med > Q(g)[1])
     .on('click', (e, g) => { st.gauge = g.name; render(); })
@@ -554,9 +600,59 @@ function render() {
   const dep = depth();
   document.getElementById('mapnote').textContent = st.view === 'mit' ? 'Rojo = tramo en parroquia de nivel 3–4 · pase el cursor por una vía'
     : ['Toque una provincia para entrar', 'Toque un cantón para ver sus parroquias', 'Toque una parroquia para ver su detalle'][dep];
-  document.getElementById('mapsrc').textContent = 'Límites INEC 2024 (CC BY-IGO)' + (st.view === 'mit' ? ' · Red Vial Estatal MIT' : '');
-  renderCrumbs(); drawMap(); renderKPIs(); renderDetail(); renderBrief();
+  document.getElementById('mapsrc').textContent = 'Límites INEC 2024 (CC BY-IGO)' + (LY.floodhub && FH.length ? ' · Google Flood Hub (CC BY 4.0)' : '') + (st.view === 'mit' || LY.vias ? ' · Red Vial Estatal MIT' : '');
+  renderCrumbs(); renderLayers(); drawMap(); renderKPIs(); renderDetail(); renderBrief();
 }
+
+// ---------- layers ----------
+function renderLayers() {
+  const real = st.mode === 'real', nfh = FH.length, nver = FH.filter(g => g.verified).length;
+  const fills = [['riesgo', 'Nivel de riesgo (combinado)'], ['lluvia', `Lluvia: P(&gt;${st.thr} mm) · ECMWF`], ['ninguno', 'Solo límites INEC 2024']];
+  const ov = [
+    ['malla', 'Malla ECMWF 0,25° · exportable a ArcGIS', real && REAL && REAL.grid, real ? '' : 'solo con pronóstico real', 'var(--b3)'],
+    ['floodhub', `Google Flood Hub · ${fmt.format(nfh)} puntos de río (${nver} verificados)`, nfh > 0, '', 'var(--fh0)'],
+    ['geoglows', 'GEOGloWS · caudales en 9 estaciones', true, '', 'var(--gauge)'],
+    ['vias', 'Red Vial Estatal · MIT', ROADS.length > 0, ROADS.length ? '' : 'no disponible', 'var(--warm)']];
+  document.getElementById('layers').innerHTML =
+    fills.map(([v, n]) => `<label><input type="radio" name="fill" value="${v}" ${LY.fill === v ? 'checked' : ''}>${n}</label>`).join('')
+    + (LY.fill === 'lluvia' ? `<div class="ramp">${RAMP.map(c => `<span style="background:${c}"></span>`).join('')}</div><div class="rampx"><span>0 %</span><span>30</span><span>50</span><span>70</span><span>100 %</span></div>` : '')
+    + ov.map(([k, n, ok, why, col]) => `<label class="${ok ? '' : 'off'}"><input type="checkbox" data-k="${k}" ${LY[k] && ok ? 'checked' : ''} ${ok ? '' : 'disabled'}><span class="dot" style="background:${col}"></span>${n}${why ? ` <span class="tag" style="color:var(--muted);border-color:var(--line)">${why}</span>` : ''}</label>`).join('')
+    + `<label class="off"><input type="checkbox" disabled><span class="dot" style="background:var(--official-line)"></span>Datos oficiales INAMHI · INOCAR · SNGR<span class="tag">Solicitud de acceso</span></label>`;
+  document.querySelectorAll('#layers input[name=fill]').forEach(i => i.onchange = () => { LY.fill = i.value; render(); });
+  document.querySelectorAll('#layers input[data-k]').forEach(i => i.onchange = () => { LY[i.dataset.k] = i.checked; render(); });
+}
+const STORY = [
+  ['Límites oficiales INEC 2024', '24 provincias · 221 cantones · 1.042 parroquias', { fill: 'ninguno', malla: false, floodhub: false, geoglows: false, vias: false }],
+  ['Capa oficial: INAMHI · INOCAR · SNGR', 'Estaciones, radares, mareógrafos y avisos: pendiente de acceso (carta de intención enviada)', {}],
+  ['Pronóstico de lluvia por parroquia', 'ECMWF ENS, 50 escenarios (respaldo de WeatherNext)', { fill: 'lluvia' }],
+  ['Malla nativa 0,25° del modelo', 'Exportable a ArcGIS como GeoJSON, Shapefile y CSV', { malla: true }],
+  ['Google Flood Hub', 'Estado de crecida en los puntos de río de Ecuador', { malla: false, floodhub: true }],
+  ['GEOGloWS', 'Caudal frente a crecidas de 2, 5 y 20 años', { geoglows: true }],
+  ['Red Vial Estatal · MIT', 'Tramos que cruzan parroquias en nivel 3–4', { vias: true }],
+  ['Nivel de riesgo combinado', 'Probabilidad × vulnerabilidad, por parroquia', { fill: 'riesgo' }]];
+let storyTimer = null;
+function stopStory() { clearInterval(storyTimer); storyTimer = null; document.getElementById('caption').hidden = true; document.getElementById('story').textContent = '▶ Capa por capa'; }
+document.getElementById('story').onclick = () => {
+  if (storyTimer) { stopStory(); return; }
+  let k = 0; const cap = document.getElementById('caption'); document.getElementById('story').textContent = '❚❚ Detener';
+  const step = () => {
+    if (k >= STORY.length) { stopStory(); return; }
+    const [t, sub, ly] = STORY[k]; Object.assign(LY, ly);
+    if (st.mode !== 'real' && (ly.malla)) LY.malla = false;
+    cap.innerHTML = `${k + 1}/${STORY.length} · ${t}<small>${sub}</small>`; cap.hidden = false; render(); k++;
+  };
+  step(); storyTimer = setInterval(step, 3200);
+};
+// GIS downloads: shown only where the exports are served next to the page (Cloud Run)
+fetch('data/manifest.json').then(r => r.ok ? r.json() : null).then(m => {
+  if (!m) return; const el = document.getElementById('gis'), base = new URL('data/', location.href).href;
+  const names = { ecmwf_malla_025: 'Malla ECMWF 0,25°', parroquias_lluvia: 'Parroquias con probabilidad', floodhub_puntos: 'Flood Hub · puntos de río', geoglows_estaciones: 'GEOGloWS · estaciones' };
+  el.innerHTML = `<div class="row"><h3 style="font-size:18px">Datos SIG · ArcGIS</h3><span class="note">WGS84 · EPSG:4326</span></div>
+    <p class="note" style="margin:6px 0">ArcGIS Online: <b>Agregar capa › Desde URL › GeoJSON</b> y pegue la URL. ArcGIS Pro o QGIS: descargue el Shapefile (.zip) o el CSV.</p>
+    <ul class="list">${Object.keys(m.layers).map(k => `<li><span><b>${names[k] || k}</b><br><code>${base}${k}.geojson</code></span><span class="num"><a href="${base}${k}_shp.zip">SHP</a> · <a href="${base}${k}.csv">CSV</a></span></li>`).join('')}</ul>
+    <p class="note" style="margin-top:6px">Atributos: pXX_dNN = probabilidad de lluvia &gt; XX mm el día NN; med_dNN = mediana (mm). Corrida ${new Date(m.init).toLocaleString('es-EC', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC. <a href="${base}LEEME_ArcGIS.txt">Instrucciones</a></p>`;
+  el.hidden = false;
+}).catch(() => {});
 
 // ---------- controls ----------
 document.getElementById('src').innerHTML = (REAL ? [['real', 'Pronóstico real'], ['demo', 'Escenario El Niño']] : [['demo', 'Escenario El Niño']]).map(([v, n]) => `<button data-v="${v}">${n}</button>`).join('');

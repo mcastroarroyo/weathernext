@@ -11,3 +11,5 @@ pipeline/out/
 gemelo-ecuador.html
 preview.html
 deploy/index.html
+deploy/data/
+data/web/parroquias_export.json

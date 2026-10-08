@@ -2,7 +2,8 @@
 
 ECMWF IFS ENS open data (50 perturbed members, CC BY 4.0) -> daily rain per province, canton and parish (INEC 2024) -> exceedance probabilities.
 GEOGloWS v2 (52 members, CC BY 4.0) -> daily river flow at demo gauges -> P(Q >= 2/5/20-year flood).
-Writes out/forecast.json (for the demo) and NDJSON rows, and optionally loads them into BigQuery.
+Google Flood Forecasting API (key from FLOOD_API_KEY or Secret Manager floodforecasting-api-key) -> latest status of every Ecuador gauge.
+Also keeps the native 0.25° grid (ArcGIS-ready export). Writes out/forecast.json (for the demo) and NDJSON rows, and optionally loads them into BigQuery.
 
 Usage: .venv/bin/python pipeline.py [--skip-download] [--bq PROJECT]
 """
@@ -25,21 +26,38 @@ GEOGLOWS = 'https://geoglows.ecmwf.int/api/v2'
 
 
 # ---------------- ECMWF ENS ----------------
-def download_ens():
+def download_ens(retries=4):
+    """One file per forecast step, with a socket timeout and retries; completed steps are kept and resumed."""
+    import socket, time
+    socket.setdefaulttimeout(90)                       # a stalled transfer raises instead of hanging forever
     DATA.mkdir(exist_ok=True)
     c = Client(source='google', model='ifs')
-    steps = list(range(0, 24 * DAYS + 1, 24))
     run = c.latest(type='pf', stream='enfo', param='tp', step=24 * DAYS)   # latest 00/12Z run that reaches 360 h
     print('ECMWF ENS run', run)
-    c.retrieve(date=run, type='pf', stream='enfo', param='tp', step=steps, number=list(range(1, 51)), target=str(DATA / 'ens_pf.grib2'))
+    marker = DATA / 'run.txt'
+    if not marker.exists() or marker.read_text() != str(run):     # new run: drop the previous run's steps
+        for f in DATA.glob('ens_pf*.grib2'): f.unlink()
+        marker.write_text(str(run))
+    for step in range(0, 24 * DAYS + 1, 24):
+        target = DATA / f'ens_pf_{step:03d}.grib2'
+        if target.exists() and target.stat().st_size > 1_000_000: continue
+        for attempt in range(1, retries + 1):
+            try:
+                c.retrieve(date=run, type='pf', stream='enfo', param='tp', step=step, number=list(range(1, 51)), target=str(target) + '.part')
+                (DATA / f'ens_pf_{step:03d}.grib2.part').rename(target); break
+            except Exception as e:                          # timeout or HTTP error: retry this step only
+                print(f'step {step}: attempt {attempt} failed ({type(e).__name__}); retrying')
+                time.sleep(5 * attempt)
+        else:
+            raise SystemExit(f'ECMWF step {step} failed after {retries} attempts')
     return run
 
 
 def read_ens():
     """Return init datetime, lat, lon and tp[member, step_index, lat, lon] (metres) cut to Ecuador."""
     fields, init = {}, None
-    for name in ('ens_pf.grib2',):
-        with open(DATA / name, 'rb') as f:
+    for path in sorted(DATA.glob('ens_pf_*.grib2')):
+        with open(path, 'rb') as f:
             while (gid := eccodes.codes_grib_new_from_file(f)) is not None:
                 try:
                     ni, nj = eccodes.codes_get(gid, 'Ni'), eccodes.codes_get(gid, 'Nj')
@@ -107,11 +125,11 @@ def area_rain(lat, lon, steps, tp):
     s = {st: k for k, st in enumerate(steps)}
     daily = np.stack([tp[:, s[24 * d]] - tp[:, s[24 * (d - 1)]] for d in range(1, DAYS + 1)], axis=1) * 1000  # mm
     daily = np.clip(daily, 0, None).reshape(daily.shape[0], DAYS, -1)      # [member, day, cell]
-    out = {}
+    out = {}; used = np.zeros(len(lat) * len(lon), bool)
     for level, fname in LEVELS:
         gj = json.load(open(GEO / fname)); rows = []
         for f in gj['features']:
-            w, n = area_weights(f['geometry'], lat, lon)
+            w, n = area_weights(f['geometry'], lat, lon); used |= w > 0
             series = daily @ w                                   # area-weighted rain per member and day
             pr = f['properties']
             rows.append({'code': pr['code'], 'name': pr['name'], 'parent': pr.get('canton') or pr.get('prov'), 'samples': n,
@@ -120,7 +138,57 @@ def area_rain(lat, lon, steps, tp):
                          'p90': np.round(np.percentile(series, 90, axis=0), 1).tolist()})
         out[level] = rows
         print(f'{level}: {len(rows)} areas')
-    return out
+    return out, used.reshape(len(lat), len(lon))
+
+
+def grid_rain(lat, lon, steps, tp, areas_used):
+    """The native 0.25° ECMWF cells over Ecuador (ArcGIS-ready grid): P(rain > t) per day, median and p90."""
+    s = {st: k for k, st in enumerate(steps)}
+    daily = np.clip(np.stack([tp[:, s[24 * d]] - tp[:, s[24 * (d - 1)]] for d in range(1, DAYS + 1)], axis=1) * 1000, 0, None)
+    cells = []
+    for i, j in zip(*np.nonzero(areas_used)):
+        v = daily[:, :, i, j]
+        cells.append({'lat': round(float(lat[i]), 3), 'lon': round(float(lon[j]), 3),
+                      'p': {str(t): np.round((v > t).mean(axis=0), 2).tolist() for t in THRESHOLDS},
+                      'med': np.round(np.median(v, axis=0), 1).tolist(), 'p90': np.round(np.percentile(v, 90, axis=0), 1).tolist()})
+    print(f'grid: {len(cells)} cells of 0.25°')
+    return {'step_deg': round(float(abs(lat[1] - lat[0])), 4), 'cells': cells}
+
+
+# ---------------- Google Flood Forecasting API ----------------
+FLOOD_API = 'https://floodforecasting.googleapis.com/v1/'
+
+
+def flood_api_key(project):
+    import os
+    if os.environ.get('FLOOD_API_KEY'): return os.environ['FLOOD_API_KEY']
+    if not project: return None
+    r = subprocess.run(['gcloud', 'secrets', 'versions', 'access', 'latest', '--secret=floodforecasting-api-key', f'--project={project}'], capture_output=True, text=True)
+    return r.stdout.strip() or None
+
+
+def floodhub(key):
+    """All Ecuador gauges and their latest flood status (CC BY 4.0, attribution: Google Flood Hub)."""
+    def post(path, field, body):
+        out, tok = [], None
+        while True:
+            b = dict(body, pageSize=1000, **({'pageToken': tok} if tok else {}))
+            d = requests.post(FLOOD_API + path, params={'key': key}, json=b, timeout=90).json()
+            if 'error' in d: raise SystemExit(f'Flood API {path}: {d["error"].get("message")}')
+            out += d.get(field, []); tok = d.get('nextPageToken')
+            if not tok: return out
+    gauges = post('gauges:searchGaugesByArea', 'gauges', {'regionCode': 'EC', 'includeNonQualityVerified': True, 'includeGaugesWithoutHydroModel': True})
+    status = {s['gaugeId']: s for s in post('floodStatus:searchLatestFloodStatusByArea', 'floodStatuses', {'regionCode': 'EC', 'includeNonQualityVerified': True})}
+    rows = []
+    for g in gauges:
+        st = status.get(g['gaugeId'], {})
+        rows.append({'id': g['gaugeId'], 'lat': round(g['location']['latitude'], 4), 'lon': round(g['location']['longitude'], 4),
+                     'verified': bool(g.get('qualityVerified')), 'model': bool(g.get('hasModel')), 'river': g.get('river') or '', 'site': g.get('siteName') or '',
+                     'severity': st.get('severity', 'UNKNOWN'), 'trend': st.get('forecastTrend', ''), 'issued': st.get('issuedTime', ''),
+                     'from': st.get('forecastTimeRange', {}).get('start', ''), 'to': st.get('forecastTimeRange', {}).get('end', '')})
+    from collections import Counter
+    print(f'Flood Hub: {len(rows)} gauges ({sum(r["verified"] for r in rows)} verified) · ' + ', '.join(f'{k} {v}' for k, v in Counter(r['severity'] for r in rows).items()))
+    return rows
 
 
 # ---------------- GEOGloWS ----------------
@@ -164,13 +232,14 @@ def rivers():
 
 
 # ---------------- outputs ----------------
-def write_outputs(init, areas, gauges):
+def write_outputs(init, areas, gauges, grid=None, flood=None):
     OUT.mkdir(exist_ok=True)
     doc = {'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'init': init.isoformat(),
            'source_rain': 'ECMWF IFS ENS open data, 50 members, 0.25° (CC BY 4.0); area-weighted bilinear average',
            'source_rivers': 'GEOGloWS v2, 52 members; return periods: Gumbel on 1940–2025 daily simulation (CC BY 4.0)',
            'source_areas': 'INEC 2024 DPA boundaries via OCHA COD-AB (CC BY-IGO)',
-           'thresholds': THRESHOLDS, 'days': DAYS, 'areas': areas, 'gauges': gauges}
+           'thresholds': THRESHOLDS, 'days': DAYS, 'areas': areas, 'gauges': gauges, 'grid': grid, 'floodhub': flood,
+           'source_floodhub': 'Google Flood Forecasting API, latest flood status (CC BY 4.0, Google Flood Hub)' if flood else None}
     (OUT / 'forecast.json').write_text(json.dumps(doc, ensure_ascii=False, separators=(',', ':')))
     with open(OUT / 'area_exceedance.ndjson', 'w') as f:
         for level, rows in areas.items():
@@ -187,14 +256,21 @@ def write_outputs(init, areas, gauges):
                                     'lead_day': d + 1, 'q_median': g['med'][d], 'q_p10': g['lo'][d], 'q_p90': g['hi'][d],
                                     'rp2': g['rp']['2'], 'rp5': g['rp']['5'], 'rp20': g['rp']['20'],
                                     'p_rp2': g['p']['2'][d], 'p_rp5': g['p']['5'][d], 'p_rp20': g['p']['20'][d]}, ensure_ascii=False) + '\n')
+    with open(OUT / 'floodhub_status.ndjson', 'w') as f:
+        for r in flood or []:
+            f.write(json.dumps({'fetched_at': doc['generated'], 'gauge_id': r['id'], 'lat': r['lat'], 'lon': r['lon'], 'quality_verified': r['verified'],
+                                'has_model': r['model'], 'severity': r['severity'], 'trend': r['trend'], 'issued_time': r['issued'] or None,
+                                'forecast_start': r['from'] or None, 'forecast_end': r['to'] or None}) + '\n')
     print('wrote', OUT / 'forecast.json')
 
 
 def bq_load(project):
     schemas = {
         'area_exceedance': 'init_time:TIMESTAMP,source:STRING,level:STRING,dpa_code:STRING,name:STRING,parent_code:STRING,lead_day:INTEGER,valid_date:DATE,threshold_mm:INTEGER,probability:FLOAT,median_mm:FLOAT,p90_mm:FLOAT',
+        'floodhub_status': 'fetched_at:TIMESTAMP,gauge_id:STRING,lat:FLOAT,lon:FLOAT,quality_verified:BOOLEAN,has_model:BOOLEAN,severity:STRING,trend:STRING,issued_time:TIMESTAMP,forecast_start:TIMESTAMP,forecast_end:TIMESTAMP',
         'river_forecast': 'init_time:TIMESTAMP,source:STRING,river:STRING,site:STRING,river_id:INTEGER,lead_day:INTEGER,q_median:FLOAT,q_p10:FLOAT,q_p90:FLOAT,rp2:FLOAT,rp5:FLOAT,rp20:FLOAT,p_rp2:FLOAT,p_rp5:FLOAT,p_rp20:FLOAT'}
     for table, schema in schemas.items():
+        if (OUT / f'{table}.ndjson').stat().st_size == 0: continue
         subprocess.run(['bq', f'--project_id={project}', 'load', '--source_format=NEWLINE_DELIMITED_JSON',
                         f'ectwin_commons.{table}', str(OUT / f'{table}.ndjson'), schema], check=True)
         print('loaded', f'{project}:ectwin_commons.{table}')
@@ -207,7 +283,10 @@ if __name__ == '__main__':
     a = ap.parse_args()
     if not a.skip_download: download_ens()
     init, lat, lon, steps, tp = read_ens()
-    areas = area_rain(lat, lon, steps, tp)
+    areas, used = area_rain(lat, lon, steps, tp)
+    grid = grid_rain(lat, lon, steps, tp, used)
+    key = flood_api_key(a.bq)
+    flood = floodhub(key) if key else None
     gauges = rivers()
-    write_outputs(init, areas, gauges)
+    write_outputs(init, areas, gauges, grid, flood)
     if a.bq: bq_load(a.bq)

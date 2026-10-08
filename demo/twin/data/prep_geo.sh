@@ -28,6 +28,7 @@ ls -la geo
 # web copies: one TopoJSON of parishes (cantons/provinces are merged in the browser) + the road network
 mkdir -p web
 $MS geo/parroquias.json -simplify 1.5% keep-shapes -clean -rename-layers parroquias -o web/ecuador.topo.json format=topojson quantization=20000
+$MS geo/parroquias.json -simplify 6% keep-shapes -clean -o web/parroquias_export.json format=geojson precision=0.0001   # GIS export geometry
 if [ -f geo/red_vial_mit.json ]; then
   $MS geo/red_vial_mit.json -simplify 20% -rename-layers vias -o web/red_vial_mit.topo.json format=topojson quantization=20000
 fi
