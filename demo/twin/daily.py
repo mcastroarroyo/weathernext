@@ -19,6 +19,10 @@ def run(*args):
 
 def main():
     bucket = storage.Client(project=PROJECT).bucket(BUCKET)
+    # previous forecast: fallback for river gauges if the GEOGloWS API is down
+    old = sorted(bucket.list_blobs(prefix=PREFIX + 'archive/'), key=lambda b: b.name)
+    OUT.mkdir(parents=True, exist_ok=True)
+    if old: old[-1].download_to_filename(OUT / 'prev_forecast.json')
     run('pipeline/pipeline.py', '--crop', '--bq', PROJECT)
 
     # verification: runs already verified for all 15 days are reused from yesterday's file

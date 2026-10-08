@@ -209,9 +209,29 @@ def gumbel(annual_max, T):
     return mu + k * sd
 
 
-def rivers():
-    out = []
+def rivers(prev=None):
+    """GEOGloWS per gauge; a gauge whose API calls fail keeps its previous forecast (marked stale) instead of stopping the run."""
+    out, old = [], {g['name']: g for g in (prev or [])}
     for name, site, lon, lat in GAUGES:
+        try:
+            out.append(river(name, site, lon, lat))
+        except Exception as e:
+            print(f'GEOGloWS {name} failed ({type(e).__name__}: {e})' + ('; keeping previous forecast' if name in old else '; skipped'))
+            if name in old: out.append(old[name] | {'stale': True})
+    return out
+
+
+def river(name, site, lon, lat):
+    for attempt in range(3):
+        try: return _river(name, site, lon, lat)
+        except Exception:
+            if attempt == 2: raise
+            import time; time.sleep(20 * (attempt + 1))
+
+
+def _river(name, site, lon, lat):
+    out = []
+    if True:
         rid = requests.get(f'{GEOGLOWS}/getriverid', params={'lat': lat, 'lon': lon}, timeout=60).json()['river_id']
         ens = requests.get(f'{GEOGLOWS}/forecastensemble/{rid}', params={'format': 'json'}, timeout=120).json()
         retro = requests.get(f'{GEOGLOWS}/retrospectivedaily/{rid}', params={'format': 'json'}, timeout=180).json()
@@ -239,7 +259,7 @@ def rivers():
                     'lo': [None if np.isnan(x) else round(float(x), 1) for x in lo],
                     'hi': [None if np.isnan(x) else round(float(x), 1) for x in hi], 'p': p})
         print(f'GEOGloWS {name}: river {rid}, Q2/Q5/Q20 = {rp[2]}/{rp[5]}/{rp[20]} m3/s, peak median {np.nanmax(med):.0f}')
-    return out
+        return out[-1]
 
 
 # ---------------- outputs ----------------
@@ -277,7 +297,7 @@ def write_outputs(init, areas, gauges, grid=None, flood=None):
     (OUT / 'forecast.json').write_text(json.dumps(doc, ensure_ascii=False, separators=(',', ':')))
     write_area_rows(OUT / 'area_exceedance.ndjson', init, areas, 'ecmwf_ifs_ens')
     with open(OUT / 'river_forecast.ndjson', 'w') as f:
-        for g in gauges:
+        for g in [g for g in gauges if not g.get('stale')]:          # stale copies are already in BigQuery
             for d in range(DAYS):
                 f.write(json.dumps({'init_time': g['start'], 'source': 'geoglows_v2', 'river': g['name'], 'site': g['site'], 'river_id': g['river_id'],
                                     'lead_day': d + 1, 'q_median': g['med'][d], 'q_p10': g['lo'][d], 'q_p90': g['hi'][d],
@@ -331,7 +351,8 @@ if __name__ == '__main__':
     try: flood = floodhub(key) if key else None
     except BaseException as e:                         # Flood Hub is an extra layer: never lose the day's run for it
         print('Flood Hub skipped:', e); flood = None
-    gauges = rivers()
+    prev = OUT / 'prev_forecast.json'
+    gauges = rivers(json.loads(prev.read_text()).get('gauges') if prev.exists() else None)
     write_outputs(init, areas, gauges, grid, flood)
     for f in OUT.glob('area_exceedance_*.ndjson'): f.unlink()
     extra_sources(init, [x for x in a.sources.split(',') if x])
