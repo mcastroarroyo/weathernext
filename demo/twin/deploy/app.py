@@ -1,11 +1,12 @@
 """GDE-Niño twin server: Google sign-in gate, access log in BigQuery and an admin page.
 
 Env: OAUTH_CLIENT_ID (web client, External consent screen), SESSION_SECRET, ADMIN_EMAILS (comma list),
-     EVENTS_TABLE (project.dataset.table for access events; optional).
+     EVENTS_TABLE (project.dataset.table for access events; optional),
+     TWIN_BUCKET (optional: pages and data published daily by the Cloud Run Job under gs://TWIN_BUCKET/twin/; local files otherwise).
 Public: /login, /auth, /healthz and /data/* (open GIS exports, CORS for ArcGIS). Everything else needs a session.
 """
-import datetime as dt, html, json, mimetypes, os, re, uuid
-from flask import Flask, Response, abort, jsonify, redirect, request, send_from_directory, session
+import datetime as dt, html, json, mimetypes, os, re, threading, time, uuid
+from flask import Flask, Response, abort, jsonify, redirect, request, session
 from google.auth.transport import requests as greq
 from google.oauth2 import id_token
 
@@ -13,6 +14,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 CLIENT_ID = os.environ.get('OAUTH_CLIENT_ID', '')
 ADMINS = {e.strip().lower() for e in os.environ.get('ADMIN_EMAILS', '').split(',') if e.strip()}
 TABLE = os.environ.get('EVENTS_TABLE', '')
+BUCKET = os.environ.get('TWIN_BUCKET', '')
 mimetypes.add_type('application/geo+json', '.geojson')
 
 app = Flask(__name__)
@@ -28,6 +30,41 @@ def bq():
         from google.cloud import bigquery
         _bq = bigquery.Client()
     return _bq
+
+
+# ---------------- published files (Cloud Storage, cached) ----------------
+TTL = 300                                          # seconds: a new daily run shows up within 5 minutes
+_files, _lock, _gcs = {}, threading.Lock(), None
+
+
+def asset(rel):
+    """Bytes of a published file: gs://TWIN_BUCKET/twin/<rel> when configured, else the copy baked into the image."""
+    global _gcs
+    if '..' in rel or rel.startswith('/'): return None
+    hit = _files.get(rel)
+    if hit and hit[0] > time.time(): return hit[1]
+    data = None
+    if BUCKET:
+        try:
+            if _gcs is None:
+                from google.cloud import storage
+                _gcs = storage.Client().bucket(BUCKET)
+            data = _gcs.blob('twin/' + rel).download_as_bytes()
+        except Exception as e:
+            if hit: data = hit[1]                   # keep serving the last good copy
+            elif 'NotFound' not in type(e).__name__: app.logger.warning('gcs %s: %s', rel, e)
+    if data is None:
+        path = os.path.join(ROOT, rel)
+        if os.path.isfile(path): data = open(path, 'rb').read()
+    if data is not None:
+        with _lock: _files[rel] = (time.time() + TTL, data)
+    return data
+
+
+def send_asset(rel):
+    data = asset(rel)
+    if data is None: abort(404)
+    return Response(data, mimetype=mimetypes.guess_type(rel)[0] or 'application/octet-stream')
 
 
 # ---------------- access log ----------------
@@ -180,7 +217,7 @@ def userbar():
 
 def serve_page(fname, page):
     log('page_view', page=page)
-    body = open(os.path.join(ROOT, fname), encoding='utf-8').read().replace('</body>', userbar() + '</body>', 1)
+    body = (asset(fname) or b'').decode('utf-8').replace('</body>', userbar() + '</body>', 1)
     return Response(body, mimetype='text/html')
 
 
@@ -193,13 +230,13 @@ def verificacion(): return serve_page('verificacion.html', 'verificacion')
 
 
 @app.get('/verificacion/data/<path:f>')
-def verif_data(f): return send_from_directory(os.path.join(ROOT, 'verificacion', 'data'), f)
+def verif_data(f): return send_asset('verificacion/data/' + f)
 
 
 @app.get('/data/<path:f>')
 def gis_data(f):
     if not f.endswith(('manifest.json',)): log('download', page='datos-sig', detail={'file': f})
-    return send_from_directory(os.path.join(ROOT, 'data'), f)
+    return send_asset('data/' + f)
 
 
 @app.post('/api/ping')

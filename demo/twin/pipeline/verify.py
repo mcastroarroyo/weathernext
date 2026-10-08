@@ -1,13 +1,13 @@
 """Verify stored ECMWF ENS area forecasts against CHIRPS v3 preliminary daily rain.
 
-  .venv/bin/python verify.py --project <PROJECT> [--init 2026-10-01T12:00] [--bq]
+  .venv/bin/python verify.py --project <PROJECT> [--init 2026-10-01T12:00] [--reuse previous/verification.json]
 
 Forecast windows run 12Z->12Z from the 12Z run; CHIRPS days are UTC calendar days, so the observed window
 for lead d is approximated as 0.5 * CHIRPS(init day + d - 1) + 0.5 * CHIRPS(init day + d).
 Scores per level (canton, parroquia) and threshold: Brier score and skill vs the sample base rate, reliability,
 hits / misses / false alarms at P >= 0.5, and bias / MAE / correlation of the forecast median vs observed rain.
 """
-import argparse, datetime as dt, json, pathlib, subprocess
+import argparse, datetime as dt, functools, json, pathlib
 import numpy as np, rasterio
 from rasterio.windows import from_bounds
 from pipeline import inside, GEO, OUT, LAT_N, LAT_S, LON_W, LON_E
@@ -30,6 +30,7 @@ def chirps_day(day):
     return a
 
 
+@functools.lru_cache(maxsize=4)                        # same masks for every run
 def area_masks(level_file, shape):
     tr = np.load(CACHE / 'transform.npy')            # a, b, c, d, e, f of the Ecuador window
     lon = tr[2] + (np.arange(shape[1]) + .5) * tr[0]; lat = tr[5] + (np.arange(shape[0]) + .5) * tr[4]
@@ -46,8 +47,8 @@ def area_masks(level_file, shape):
 
 
 def bq(project, sql):
-    r = subprocess.run(['bq', f'--project_id={project}', 'query', '--use_legacy_sql=false', '--format=json', '--max_rows=1000000', sql], capture_output=True, text=True, check=True)
-    return json.loads(r.stdout or '[]')
+    from google.cloud import bigquery
+    return [dict(r) for r in bigquery.Client(project=project).query(sql).result()]
 
 
 def scores(p, o_mm, med, thr):
@@ -67,11 +68,15 @@ def scores(p, o_mm, med, thr):
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('--project', required=True); ap.add_argument('--init'); ap.add_argument('--bq', action='store_true'); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument('--project', required=True); ap.add_argument('--init')
+    ap.add_argument('--reuse', help='previous verification.json: runs already verified for all 15 days are copied, not recomputed'); a = ap.parse_args()
     inits = [a.init] if a.init else [r['t'] for r in bq(a.project, 'SELECT DISTINCT FORMAT_TIMESTAMP("%FT%R", init_time) AS t FROM ectwin_commons.area_exceedance ORDER BY t')]
+    done = {}
+    if a.reuse and pathlib.Path(a.reuse).exists():
+        done = {r['init']: r for r in json.loads(pathlib.Path(a.reuse).read_text())['runs'] if len(r['leads']) == 15}
     runs = []
     for init in inits:
-        r = verify_run(a.project, init)
+        r = done.get(init) or verify_run(a.project, init)
         if r: runs.append(r)
     # one file for the verification page: every verified run, newest first
     (OUT / 'verification.json').write_text(json.dumps({'generated': dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds'), 'runs': runs[::-1]}, ensure_ascii=False, separators=(',', ':')))
@@ -90,7 +95,7 @@ def verify_run(project, init):
     if not leads: print(f'forecast {init}Z: no observed days yet'); return None
     print(f'forecast {init}Z · CHIRPS days {days[0]}–{days[-1]} · verifiable leads {leads}')
     obs = {L: .5 * chirps_day(t0.date() + dt.timedelta(days=L - 1)) + .5 * chirps_day(t0.date() + dt.timedelta(days=L)) for L in leads}
-    shape = next(iter(obs.values())).shape
+    shape = tuple(next(iter(obs.values())).shape)
     rows = bq(project, f'SELECT level, dpa_code, name, lead_day, threshold_mm, probability, median_mm FROM ectwin_commons.area_exceedance '
                          f'WHERE init_time = TIMESTAMP("{init}:00+00") AND level IN ("canton","parroquia") AND lead_day <= {max(leads)} AND threshold_mm IN (20,30,50)')
     fc = {}

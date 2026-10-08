@@ -5,7 +5,7 @@ GEOGloWS v2 (52 members, CC BY 4.0) -> daily river flow at demo gauges -> P(Q >=
 Google Flood Forecasting API (key from FLOOD_API_KEY or Secret Manager floodforecasting-api-key) -> latest status of every Ecuador gauge.
 Also keeps the native 0.25° grid (ArcGIS-ready export). Writes out/forecast.json (for the demo) and NDJSON rows, and optionally loads them into BigQuery.
 
-Usage: .venv/bin/python pipeline.py [--skip-download] [--bq PROJECT]
+Usage: .venv/bin/python pipeline.py [--skip-download] [--crop] [--bq PROJECT]
 """
 import argparse, datetime as dt, json, math, pathlib, subprocess, sys
 import numpy as np, requests, eccodes
@@ -26,8 +26,9 @@ GEOGLOWS = 'https://geoglows.ecmwf.int/api/v2'
 
 
 # ---------------- ECMWF ENS ----------------
-def download_ens(retries=4):
-    """One file per forecast step, with a socket timeout and retries; completed steps are kept and resumed."""
+def download_ens(retries=4, crop=False):
+    """One file per forecast step, with a socket timeout and retries; completed steps are kept and resumed.
+    crop=True keeps only the Ecuador window of each step (ens_XXX.npz, ~0.5 MB) and deletes the 42 MB global GRIB."""
     import socket, time
     socket.setdefaulttimeout(90)                       # a stalled transfer raises instead of hanging forever
     DATA.mkdir(exist_ok=True)
@@ -36,15 +37,17 @@ def download_ens(retries=4):
     print('ECMWF ENS run', run)
     marker = DATA / 'run.txt'
     if not marker.exists() or marker.read_text() != str(run):     # new run: drop the previous run's steps
-        for f in DATA.glob('ens_pf*.grib2'): f.unlink()
+        for f in [*DATA.glob('ens_pf*.grib2'), *DATA.glob('ens_*.npz')]: f.unlink()
         marker.write_text(str(run))
     for step in range(0, 24 * DAYS + 1, 24):
         target = DATA / f'ens_pf_{step:03d}.grib2'
-        if target.exists() and target.stat().st_size > 1_000_000: continue
+        if (DATA / f'ens_{step:03d}.npz').exists() or (target.exists() and target.stat().st_size > 1_000_000): continue
         for attempt in range(1, retries + 1):
             try:
                 c.retrieve(date=run, type='pf', stream='enfo', param='tp', step=step, number=list(range(1, 51)), target=str(target) + '.part')
-                (DATA / f'ens_pf_{step:03d}.grib2.part').rename(target); break
+                (DATA / f'ens_pf_{step:03d}.grib2.part').rename(target)
+                if crop: crop_step(target)
+                break
             except Exception as e:                          # timeout or HTTP error: retry this step only
                 print(f'step {step}: attempt {attempt} failed ({type(e).__name__}); retrying')
                 time.sleep(5 * attempt)
@@ -53,35 +56,43 @@ def download_ens(retries=4):
     return run
 
 
+def crop_step(path):
+    """Cut every member of one GRIB step file to the Ecuador window and save it as ens_XXX.npz (then delete the GRIB)."""
+    fields, init, lat, lon = {}, None, None, None
+    with open(path, 'rb') as f:
+        while (gid := eccodes.codes_grib_new_from_file(f)) is not None:
+            try:
+                ni, nj = eccodes.codes_get(gid, 'Ni'), eccodes.codes_get(gid, 'Nj')
+                lat0, lon0 = eccodes.codes_get(gid, 'latitudeOfFirstGridPointInDegrees'), eccodes.codes_get(gid, 'longitudeOfFirstGridPointInDegrees')
+                dlat, dlon = eccodes.codes_get(gid, 'jDirectionIncrementInDegrees'), eccodes.codes_get(gid, 'iDirectionIncrementInDegrees')
+                num = eccodes.codes_get(gid, 'number') if eccodes.codes_get(gid, 'dataType') == 'pf' else 0
+                step = int(eccodes.codes_get(gid, 'endStep'))
+                if init is None:
+                    d, t = eccodes.codes_get(gid, 'dataDate'), eccodes.codes_get(gid, 'dataTime')
+                    init = dt.datetime.strptime(f'{d}{t:04d}', '%Y%m%d%H%M').replace(tzinfo=dt.timezone.utc)
+                v = eccodes.codes_get_values(gid).reshape(nj, ni)
+                lats = lat0 - np.arange(nj) * dlat
+                lons = (lon0 + np.arange(ni) * dlon + 180) % 360 - 180
+                rows = np.where((lats <= LAT_N) & (lats >= LAT_S))[0]
+                cols = np.where((lons >= LON_W) & (lons <= LON_E))[0]
+                fields[num] = v[np.ix_(rows, cols)].astype('float32')
+                lat, lon = lats[rows], lons[cols]
+            finally:
+                eccodes.codes_release(gid)
+    members = sorted(fields)
+    np.savez(DATA / f'ens_{step:03d}.npz', tp=np.stack([fields[m] for m in members]), members=members, lat=lat, lon=lon, step=step, init=init.isoformat())
+    path.unlink()
+
+
 def read_ens():
-    """Return init datetime, lat, lon and tp[member, step_index, lat, lon] (metres) cut to Ecuador."""
-    fields, init = {}, None
-    for path in sorted(DATA.glob('ens_pf_*.grib2')):
-        with open(path, 'rb') as f:
-            while (gid := eccodes.codes_grib_new_from_file(f)) is not None:
-                try:
-                    ni, nj = eccodes.codes_get(gid, 'Ni'), eccodes.codes_get(gid, 'Nj')
-                    lat0, lon0 = eccodes.codes_get(gid, 'latitudeOfFirstGridPointInDegrees'), eccodes.codes_get(gid, 'longitudeOfFirstGridPointInDegrees')
-                    dlat, dlon = eccodes.codes_get(gid, 'jDirectionIncrementInDegrees'), eccodes.codes_get(gid, 'iDirectionIncrementInDegrees')
-                    num = eccodes.codes_get(gid, 'number') if eccodes.codes_get(gid, 'dataType') == 'pf' else 0
-                    step = int(eccodes.codes_get(gid, 'endStep'))
-                    if init is None:
-                        d, t = eccodes.codes_get(gid, 'dataDate'), eccodes.codes_get(gid, 'dataTime')
-                        init = dt.datetime.strptime(f'{d}{t:04d}', '%Y%m%d%H%M').replace(tzinfo=dt.timezone.utc)
-                    v = eccodes.codes_get_values(gid).reshape(nj, ni)
-                    lats = lat0 - np.arange(nj) * dlat
-                    lons = (lon0 + np.arange(ni) * dlon + 180) % 360 - 180
-                    rows = np.where((lats <= LAT_N) & (lats >= LAT_S))[0]
-                    cols = np.where((lons >= LON_W) & (lons <= LON_E))[0]
-                    fields[(num, step)] = v[np.ix_(rows, cols)]
-                finally:
-                    eccodes.codes_release(gid)
-    members = sorted({k[0] for k in fields}); steps = sorted({k[1] for k in fields})
-    tp = np.stack([np.stack([fields[(m, s)] for s in steps]) for m in members])
-    lat, lon = lats[rows], lons[cols]
-    # longitudes may not be monotonic after wrapping: sort them
-    order = np.argsort(lon); tp, lon = tp[..., order], lon[order]
-    print(f'ENS: {len(members)} members, steps {steps[0]}–{steps[-1]} h, grid {len(lat)}×{len(lon)}, init {init:%Y-%m-%d %HZ}')
+    """Return init datetime, lat, lon, steps and tp[member, step_index, lat, lon] (metres) cut to Ecuador."""
+    for path in sorted(DATA.glob('ens_pf_*.grib2')): crop_step(path)        # local runs keep the GRIB until here
+    parts = [np.load(f) for f in sorted(DATA.glob('ens_*.npz'))]
+    steps = [int(z['step']) for z in parts]
+    tp = np.stack([z['tp'] for z in parts], axis=1)
+    lat, lon, init = parts[0]['lat'], parts[0]['lon'], dt.datetime.fromisoformat(str(parts[0]['init']))
+    order = np.argsort(lon); tp, lon = tp[..., order], lon[order]     # longitudes may not be monotonic after wrapping
+    print(f'ENS: {tp.shape[0]} members, steps {steps[0]}–{steps[-1]} h, grid {len(lat)}×{len(lon)}, init {init:%Y-%m-%d %HZ}')
     return init, lat, lon, steps, tp
 
 
@@ -264,29 +275,42 @@ def write_outputs(init, areas, gauges, grid=None, flood=None):
     print('wrote', OUT / 'forecast.json')
 
 
-def bq_load(project):
+def bq_load(project, init):
+    """Append the NDJSON files to ectwin_commons; forecast tables are skipped when this run is already loaded (safe to re-run)."""
+    from google.cloud import bigquery
+    client = bigquery.Client(project=project)
     schemas = {
         'area_exceedance': 'init_time:TIMESTAMP,source:STRING,level:STRING,dpa_code:STRING,name:STRING,parent_code:STRING,lead_day:INTEGER,valid_date:DATE,threshold_mm:INTEGER,probability:FLOAT,median_mm:FLOAT,p90_mm:FLOAT',
         'floodhub_status': 'fetched_at:TIMESTAMP,gauge_id:STRING,lat:FLOAT,lon:FLOAT,quality_verified:BOOLEAN,has_model:BOOLEAN,severity:STRING,trend:STRING,issued_time:TIMESTAMP,forecast_start:TIMESTAMP,forecast_end:TIMESTAMP',
         'river_forecast': 'init_time:TIMESTAMP,source:STRING,river:STRING,site:STRING,river_id:INTEGER,lead_day:INTEGER,q_median:FLOAT,q_p10:FLOAT,q_p90:FLOAT,rp2:FLOAT,rp5:FLOAT,rp20:FLOAT,p_rp2:FLOAT,p_rp5:FLOAT,p_rp20:FLOAT'}
+    river_init = next((json.loads(l)['init_time'] for l in open(OUT / 'river_forecast.ndjson')), None)
     for table, schema in schemas.items():
         if (OUT / f'{table}.ndjson').stat().st_size == 0: continue
-        subprocess.run(['bq', f'--project_id={project}', 'load', '--source_format=NEWLINE_DELIMITED_JSON',
-                        f'ectwin_commons.{table}', str(OUT / f'{table}.ndjson'), schema], check=True)
-        print('loaded', f'{project}:ectwin_commons.{table}')
+        key = {'area_exceedance': init.isoformat(), 'river_forecast': river_init}.get(table)
+        if key:
+            n = list(client.query(f'SELECT COUNT(*) n FROM ectwin_commons.{table} WHERE init_time = TIMESTAMP(@t)',
+                                  job_config=bigquery.QueryJobConfig(query_parameters=[bigquery.ScalarQueryParameter('t', 'STRING', key)])).result())[0].n
+            if n: print(f'{table}: run {key} already loaded ({n} rows), skipped'); continue
+        cfg = bigquery.LoadJobConfig(source_format='NEWLINE_DELIMITED_JSON', write_disposition='WRITE_APPEND',
+                                     schema=[bigquery.SchemaField(c.split(':')[0], c.split(':')[1]) for c in schema.split(',')])
+        with open(OUT / f'{table}.ndjson', 'rb') as f: client.load_table_from_file(f, f'{project}.ectwin_commons.{table}', job_config=cfg).result()
+        print('loaded', f'ectwin_commons.{table}')
 
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--skip-download', action='store_true')
     ap.add_argument('--bq', metavar='PROJECT')
+    ap.add_argument('--crop', action='store_true', help='keep only the Ecuador window of each GRIB step (Cloud Run Job)')
     a = ap.parse_args()
-    if not a.skip_download: download_ens()
+    if not a.skip_download: download_ens(crop=a.crop)
     init, lat, lon, steps, tp = read_ens()
     areas, used = area_rain(lat, lon, steps, tp)
     grid = grid_rain(lat, lon, steps, tp, used)
     key = flood_api_key(a.bq)
-    flood = floodhub(key) if key else None
+    try: flood = floodhub(key) if key else None
+    except BaseException as e:                         # Flood Hub is an extra layer: never lose the day's run for it
+        print('Flood Hub skipped:', e); flood = None
     gauges = rivers()
     write_outputs(init, areas, gauges, grid, flood)
-    if a.bq: bq_load(a.bq)
+    if a.bq: bq_load(a.bq, init)

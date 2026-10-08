@@ -3,3 +3,5 @@ eccodes
 numpy
 requests
 rasterio
+google-cloud-bigquery
+pyshp

@@ -7,7 +7,8 @@ GeoJSON (ArcGIS Online: Add layer from URL), zipped Shapefile and CSV for:
   geoglows_estaciones GEOGloWS demo stations with 2/5/20-year floods and daily median flow
 MIT road data is never exported (not authorised for redistribution).
 """
-import csv, json, pathlib, subprocess, zipfile
+import csv, json, pathlib, zipfile
+import shapefile                                  # pyshp: pure Python, no GDAL or Node needed
 
 HERE = pathlib.Path(__file__).parent
 OUT = HERE / 'deploy' / 'data'
@@ -23,11 +24,38 @@ def day_attrs(p, med):
     return a
 
 
+def shp_fields(props):
+    """DBF field definitions from the first feature (names ≤ 10 characters)."""
+    out = []
+    for k, v in props.items():
+        if isinstance(v, bool): out.append((k, 'L', 1, 0))
+        elif isinstance(v, int): out.append((k, 'N', 18, 0))
+        elif isinstance(v, float) or v is None: out.append((k, 'N', 18, 4))
+        else: out.append((k, 'C', 254, 0))
+    return out
+
+
+def write_shp(base, features):
+    geom = features[0]['geometry']['type']
+    w = shapefile.Writer(str(base), shapeType=shapefile.POINT if geom == 'Point' else shapefile.POLYGON, encoding='utf-8')
+    fields = shp_fields(features[0]['properties'])
+    for f in fields: w.field(*f)
+    for ft in features:
+        g = ft['geometry']
+        if g['type'] == 'Point': w.point(*g['coordinates'])
+        else:
+            polys = [g['coordinates']] if g['type'] == 'Polygon' else g['coordinates']
+            # shapefile rings: outer clockwise, holes counter-clockwise (GeoJSON is the opposite)
+            w.poly([ring[::-1] for poly in polys for ring in poly])
+        w.record(*[ft['properties'].get(k) for k, *_ in fields])
+    w.close()
+
+
 def write(name, features, csv_rows=None):
     gj = OUT / f'{name}.geojson'
     gj.write_text(json.dumps({'type': 'FeatureCollection', 'features': features}, ensure_ascii=False, separators=(',', ':')))
     shp_dir = OUT / f'_{name}_shp'; shp_dir.mkdir(exist_ok=True)
-    subprocess.run(['npx', '-y', 'mapshaper@0.6', str(gj), '-o', 'format=shapefile', f'{shp_dir}/{name}.shp'], check=True, capture_output=True)
+    write_shp(shp_dir / name, features)
     (shp_dir / f'{name}.prj').write_text(WGS84_PRJ)
     (shp_dir / f'{name}.cpg').write_text('UTF-8')            # DBF text encoding, so ArcGIS reads ñ and accents
     with zipfile.ZipFile(OUT / f'{name}_shp.zip', 'w', zipfile.ZIP_DEFLATED) as z:

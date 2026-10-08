@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Refresh the twin with the latest ECMWF ENS + GEOGloWS forecast: pipeline -> BigQuery -> page -> Cloud Run.
+# Manual refresh from a laptop: pipeline -> BigQuery -> page -> Cloud Run redeploy.
+# The daily automatic run is the Cloud Run Job (job/deploy_job.sh), which publishes to Cloud Storage instead.
 # Usage: GCP_PROJECT_ID=<project> ./refresh.sh   (region and service can be overridden with REGION / SERVICE)
 set -euo pipefail
 cd "$(dirname "$0")"
