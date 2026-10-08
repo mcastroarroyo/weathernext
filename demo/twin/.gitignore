@@ -1,0 +1,17 @@
+# MIT Red Vial Estatal: shared with us for the demo, not authorised for public redistribution
+data/mit/
+data/geo/red_vial_mit.json
+data/web/red_vial_mit.topo.json
+# large or regenerated inputs/outputs
+data/inec/
+data/geo/
+pipeline/.venv/
+pipeline/data/
+pipeline/out/
+gemelo-ecuador.html
+preview.html
+deploy/index.html
+deploy/data/
+data/web/parroquias_export.json
+deploy/verificacion/
+deploy/verificacion.html
