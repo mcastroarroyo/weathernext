@@ -2,3 +2,4 @@ ecmwf-opendata
 eccodes
 numpy
 requests
+rasterio
