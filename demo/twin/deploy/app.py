@@ -109,6 +109,12 @@ def gate():
 def headers(resp):
     resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
     resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    # hardening flagged by the weekly ZAP baseline (CSP limited to what cannot break Google sign-in or the CDN scripts)
+    resp.headers.setdefault('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    resp.headers.setdefault('X-Frame-Options', 'DENY')
+    resp.headers.setdefault('Content-Security-Policy', "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com")
+    resp.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()')
+    resp.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
     if request.path.startswith('/data/'):
         resp.headers['Access-Control-Allow-Origin'] = '*'; resp.headers['Cache-Control'] = 'no-cache'
     elif resp.mimetype == 'text/html':
